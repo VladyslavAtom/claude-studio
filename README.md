@@ -24,7 +24,7 @@ Desktop UI for running Claude Code and Codex sessions in parallel: projects in t
 
 ## Requirements
 
-- Linux, X11 or Wayland. Developed on Ubuntu 24.04 / KDE Plasma; no macOS or Windows build.
+- Linux, X11 or Wayland. Developed on Ubuntu 24.04 / KDE Plasma. macOS: the code carries no Linux-only calls and `npm run dist` has dmg/zip targets, but nothing there has ever been run — treat it as untested. No Windows build.
 - Node.js 22.5+ (`node:sqlite` reads Codex's index), git, and `gh` for the PR button.
 - Claude Code and/or Codex CLI on PATH. The application starts them; it does not bundle them.
 
@@ -35,7 +35,7 @@ npm install
 npm run rebuild              # node-pty against the Electron ABI
 npm run dev                  # development, renderer HMR
 npm run build && npm start   # production build
-npm run dist                 # AppImage in release/
+npm run dist                 # AppImage (Linux) or dmg/zip (macOS) in release/
 ./claude-studio.sh           # build if needed, start in the background, --help for the rest
 
 npm run typecheck            # tsc -b: main and renderer are separate projects

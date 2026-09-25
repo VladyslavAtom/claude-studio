@@ -20,9 +20,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "rebuild": "electron-rebuild -f -w node-pty",
-    "smoke": "npm run build:light && CS_SMOKE=1 ELECTRON_DISABLE_SANDBOX=1 taskset -c 0-2 nice -n 15 electron .",
+    "smoke": "npm run build:light && CS_SMOKE=1 ELECTRON_DISABLE_SANDBOX=1 node tools/nice.mjs 0-2 -- electron .",
     "dist": "npm run build && electron-builder",
-    "build:light": "taskset -c 0-3 nice -n 15 env GOMAXPROCS=2 electron-vite build",
+    "build:light": "node tools/nice.mjs 0-3 -- env GOMAXPROCS=2 electron-vite build",
     "start:built": "ELECTRON_DISABLE_SANDBOX=1 electron ."
   },
   "build": {
@@ -41,6 +41,14 @@
         "AppImage"
       ],
       "category": "Development",
+      "icon": "resources/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools",
       "icon": "resources/icon.png"
     }
   },

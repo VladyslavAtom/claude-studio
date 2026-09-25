@@ -121,6 +121,11 @@ needs_build() {
 # The launcher: the icon goes into the hicolor theme, the .desktop into the application menu and
 # onto the desktop. StartupWMClass is what makes the window stick to its own icon in the taskbar.
 install_desktop() {
+  # XDG icons and a .desktop entry: Linux only. Elsewhere the app is started from this script or
+  # from a build of its own, and a silent no-op would look like a launcher that never appeared.
+  if [ "$(uname -s)" != "Linux" ]; then
+    die "--desktop is Linux only; on $(uname -s) start the app with this script or build it with: npm run dist"
+  fi
   local apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
   local icons="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
   local entry="$apps/claude-studio.desktop"
