@@ -76,11 +76,11 @@ export async function runSmoke(win: BrowserWindow): Promise<void> {
   // the answer in a file: that is how codex exec works, its stdout being taken up by a log
   const viaFile = await git.draftCommitMessage(wtPath, ['a.txt', 'new.txt'], {
     command: 'sh',
-    args: ['-c', 'cat > /dev/null; echo "через файл" > "$1"', 'sh', '{outfile}'],
+    args: ['-c', 'cat > /dev/null; echo "through a file" > "$1"', 'sh', '{outfile}'],
     env: {},
     prompt: 'ignored',
   })
-  log('draftCommitMessage через {outfile}:', JSON.stringify(viaFile))
+  log('draftCommitMessage through {outfile}:', JSON.stringify(viaFile))
 
   const committed = await git.commit(wtPath, ['a.txt', 'new.txt'], 'feat: smoke message')
   log('commit:', JSON.stringify(committed))
@@ -100,25 +100,25 @@ export async function runSmoke(win: BrowserWindow): Promise<void> {
     { command: 'sh', args: ['-c', 'wc -c | tr -d " \n"'], env: {}, prompt: 'ignored' },
     'main',
   )
-  log('draft-base (файл закоммичен, режим vs base):', JSON.stringify(draftBase))
+  log('draft-base (the file is committed, mode vs base):', JSON.stringify(draftBase))
   const draftHead = await git.draftCommitMessage(
     wtPath,
     ['a.txt'],
     { command: 'sh', args: ['-c', 'wc -c | tr -d " \n"'], env: {}, prompt: 'ignored' },
     'HEAD',
   )
-  log('draft-head (тот же файл, режим vs HEAD):', JSON.stringify(draftHead))
+  log('draft-head (the same file, mode vs HEAD):', JSON.stringify(draftHead))
 
   // commit-base: the «vs base» list holds a path that is already committed — it must not sink the commit
   await fs.mkdir(join(wtPath, 'docs'), { recursive: true })
-  await fs.writeFile(join(wtPath, 'docs', 'old.md'), 'к удалению\n')
+  await fs.writeFile(join(wtPath, 'docs', 'old.md'), 'to be deleted\n')
   await git.git(wtPath, ['add', '-A'])
-  await git.git(wtPath, ['commit', '-qm', 'добавлен old.md'])
+  await git.git(wtPath, ['commit', '-qm', 'add old.md'])
   await git.git(wtPath, ['rm', '-q', 'docs/old.md'])
-  await git.git(wtPath, ['commit', '-qm', 'удалён old.md'])
-  await fs.writeFile(join(wtPath, 'a.txt'), 'изменено руками\n')
-  const mixed = await git.commit(wtPath, ['docs/old.md', 'a.txt'], 'смешанный набор путей')
-  log('commit-base (закоммиченный + живой путь):', JSON.stringify(mixed))
+  await git.git(wtPath, ['commit', '-qm', 'remove old.md'])
+  await fs.writeFile(join(wtPath, 'a.txt'), 'edited by hand\n')
+  const mixed = await git.commit(wtPath, ['docs/old.md', 'a.txt'], 'a mixed set of paths')
+  log('commit-base (a committed path plus a live one):', JSON.stringify(mixed))
 
   const branched = await git.createBranch(wtPath, 'claude/smoke-2')
   log('createBranch:', JSON.stringify(branched), '->', await git.currentBranch(wtPath))
@@ -126,11 +126,11 @@ export async function runSmoke(win: BrowserWindow): Promise<void> {
   log('checkout back:', JSON.stringify(back), '->', await git.currentBranch(wtPath))
 
   // nested-worktree: edits inside a nested worktree must not reach the status of the root
-  await fs.writeFile(join(wtPath, 'in-worktree.txt'), 'только в worktree\n')
+  await fs.writeFile(join(wtPath, 'in-worktree.txt'), 'only in the worktree\n')
   const rootStatus = await git.status(repo, 'working')
-  log('nested-worktree: файлов в корне:', rootStatus.files.map((f) => f.path).join(', ') || 'пусто')
+  log('nested-worktree: files in the root:', rootStatus.files.map((f) => f.path).join(', ') || 'empty')
   const wtStatus = await git.status(wtPath, 'working')
-  log('nested-worktree: файлов в worktree:', wtStatus.files.map((f) => f.path).join(', ') || 'пусто')
+  log('nested-worktree: files in the worktree:', wtStatus.files.map((f) => f.path).join(', ') || 'empty')
   await fs.rm(join(wtPath, 'in-worktree.txt'), { force: true })
 
   const excluded = await fs.readFile(join(repo, '.git', 'info', 'exclude'), 'utf8')
@@ -160,7 +160,7 @@ export async function runSmoke(win: BrowserWindow): Promise<void> {
     initialCommand: 'echo MARKERS=$(env | grep -cE "^(CLAUDECODE|CLAUDE_CODE_CHILD_SESSION)=")',
   })
   const envOut = await waitForOutput(envId, /MARKERS=\d/, 5000)
-  log('markers leaked into terminal:', /MARKERS=0/.test(envOut) ? 'нет' : (envOut.match(/MARKERS=\d/)?.[0] ?? '?'))
+  log('markers leaked into terminal:', /MARKERS=0/.test(envOut) ? 'no' : (envOut.match(/MARKERS=\d/)?.[0] ?? '?'))
   ptys.kill(envId)
 
   // external sessions: what the agents themselves recorded for a project path
@@ -181,7 +181,7 @@ export async function runSmoke(win: BrowserWindow): Promise<void> {
   const claudeDir = process.env.CS_EXT_CLAUDE_DIR
   if (claudeDir) {
     const bogus = await sessionExists('claude', 'af6e4f8f-4fd6-413c-8a67-55db0900e8a5', claudeDir)
-    log('sessionExists(несуществующая беседа):', bogus)
+    log('sessionExists(a conversation that does not exist):', bogus)
   }
 
   // an end-to-end check: a conversation is started with a fixed id and proved to be resumable
@@ -189,7 +189,7 @@ export async function runSmoke(win: BrowserWindow): Promise<void> {
     const { randomUUID } = await import('node:crypto')
     const sid = randomUUID()
     const dir = process.env.CS_EXT_CLAUDE_DIR
-    log('resume-check: беседа', sid, 'существует до запуска:', await sessionExists('claude', sid, dir))
+    log('resume-check: conversation', sid, 'exists before the start:', await sessionExists('claude', sid, dir))
     const rid = 'smoke-resume'
     ptys.start({
       id: rid,
@@ -197,29 +197,29 @@ export async function runSmoke(win: BrowserWindow): Promise<void> {
       kind: 'agent',
       cols: 100,
       rows: 30,
-      initialCommand: `claude --session-id ${sid} -p 'ответь одним словом: ok'`,
+      initialCommand: `claude --session-id ${sid} -p 'answer with one word: ok'`,
       env: dir ? { CLAUDE_CONFIG_DIR: dir } : {},
     })
     for (let i = 0; i < 40; i++) {
       await new Promise((r) => setTimeout(r, 2000))
       if (await sessionExists('claude', sid, dir)) break
     }
-    log('resume-check: беседа появилась в хранилище:', await sessionExists('claude', sid, dir))
+    log('resume-check: the conversation appeared in the store:', await sessionExists('claude', sid, dir))
     // the title shows up a little later than the conversation file itself
     let title: string | null = null
     for (let i = 0; i < 20 && !title; i++) {
       await new Promise((r) => setTimeout(r, 3000))
       title = await sessionTitle('claude', sid, dir)
     }
-    log('resume-check: имя беседы от агента:', title ?? 'не появилось')
+    log('resume-check: the conversation name from the agent:', title ?? 'never appeared')
     ptys.kill(rid)
   }
 
   // a conversation must be found without a profile being named too: wrappers like claude-1 set it themselves
   const anyId = process.env.CS_ANY_SESSION_ID
   if (anyId) {
-    log('profiles: без configDir найдена:', await sessionExists('claude', anyId))
-    log('profiles: заголовок без configDir:', (await sessionTitle('claude', anyId)) ?? 'нет')
+    log('profiles: found without configDir:', await sessionExists('claude', anyId))
+    log('profiles: title without configDir:', (await sessionTitle('claude', anyId)) ?? 'none')
   }
 
   // service-ask: the warmed-up session answers and is reused by the second request
@@ -227,13 +227,13 @@ export async function runSmoke(win: BrowserWindow): Promise<void> {
     const { ask, serviceAlive, shutdownService } = await import('./serviceAgent')
     const cfg = { command: 'claude', args: ['--model', 'haiku', '--effort', 'low'], env: {}, cwd: repo }
     const t0 = Date.now()
-    const first = await ask(cfg, 'Верни короткое сообщение коммита.', 'M docs/plan.md; D docs/old.md', 90_000)
+    const first = await ask(cfg, 'Return a short commit message.', 'M docs/plan.md; D docs/old.md', 90_000)
     const t1 = Date.now()
-    const second = await ask(cfg, 'Верни короткое сообщение коммита.', 'M src/app.ts', 90_000)
+    const second = await ask(cfg, 'Return a short commit message.', 'M src/app.ts', 90_000)
     const t2 = Date.now()
-    log('service-ask первый:', JSON.stringify(first), `${t1 - t0} мс`)
-    log('service-ask второй:', JSON.stringify(second), `${t2 - t1} мс`)
-    log('service-ask процесс жив:', serviceAlive())
+    log('service-ask first:', JSON.stringify(first), `${t1 - t0} ms`)
+    log('service-ask second:', JSON.stringify(second), `${t2 - t1} ms`)
+    log('service-ask process alive:', serviceAlive())
     shutdownService()
   }
 

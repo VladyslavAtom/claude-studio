@@ -51,17 +51,17 @@ const SEL = {
  * belongs on.
  */
 const TID = {
-  /** «Оставить спящими» in the startup question (StartupModal) */
+  /** «Leave them asleep» in the startup question (StartupModal) */
   startupKeepAsleep: 'startup-keep-asleep',
   /** «⌛ N» in the tab strip, the run history (TerminalArea) */
   runHistory: 'run-history',
-  /** «⌕ агенты» in the session list header (SessionList) */
+  /** «⌕ agents» in the session list header (SessionList) */
   agentHistoryOpen: 'agent-history-open',
-  /** «↺ Откатить» in the commit box (ChangesPanel) */
+  /** «↺ Revert» in the commit box (ChangesPanel) */
   revertSelected: 'revert-selected',
-  /** the «no» button of a confirmation dialog — «Отмена» */
+  /** the «no» button of a confirmation dialog — «Cancel» */
   modalCancel: 'modal-cancel',
-  /** the button that closes a dialog which asks nothing — «Закрыть» */
+  /** the button that closes a dialog which asks nothing — «Close» */
   modalClose: 'modal-close',
   /** the shown-directory switch, which now lives inside the session's branch menu (BranchActions) */
   scopeToggle: 'scope-toggle',
@@ -92,7 +92,7 @@ function clickByText(win: BrowserWindow, sel: string, text: string): Promise<unk
 }
 
 /**
- * The question asked at startup («чем открыть сессии») covers the window, so every case starts
+ * The question asked at startup («how to open the sessions») covers the window, so every case starts
  * with it. These two lines used to be copied out eight times.
  */
 async function dismissStartup(win: BrowserWindow, settle = 700): Promise<void> {
@@ -126,11 +126,11 @@ const CASES: Record<string, ShotCase> = {
     await clickByText(win, SEL.fileNode, FILES.readme)
     await wait(1500)
     console.log(
-      '[shot] вкладки:',
+      '[shot] tabs:',
       await js(win, `JSON.stringify([...document.querySelectorAll('.term-tab .tab-title')].map((n) => n.textContent))`),
     )
     console.log(
-      '[shot] тело:',
+      '[shot] body:',
       await js(
         win,
         `(() => {
@@ -157,7 +157,7 @@ const CASES: Record<string, ShotCase> = {
         `(() => {
       const p = document.querySelector('.git-popup')
       const sub = document.querySelector('.git-submenu')
-      if (!p) return 'меню не открылось'
+      if (!p) return 'the menu did not open'
       const pr = p.getBoundingClientRect()
       const sr = sub?.getBoundingClientRect()
       return JSON.stringify({
@@ -169,7 +169,7 @@ const CASES: Record<string, ShotCase> = {
               w: Math.round(sr.width),
               items: sub.querySelectorAll('button').length,
               onScreen: sr.left >= 0,
-              hits: (() => { const el = document.elementFromPoint(sr.left + 20, sr.top + 20); return el ? el.className + '/' + el.tagName : 'ничего' })(),
+              hits: (() => { const el = document.elementFromPoint(sr.left + 20, sr.top + 20); return el ? el.className + '/' + el.tagName : 'nothing' })(),
               rect: [Math.round(sr.left), Math.round(sr.top)],
               parentOverflow: getComputedStyle(sub.parentElement.parentElement).overflowY,
             }
@@ -230,7 +230,7 @@ const CASES: Record<string, ShotCase> = {
         win,
         `(() => {
       const o = document.querySelector('.diff-overlay')
-      if (!o) return 'нет в DOM'
+      if (!o) return 'not in the DOM'
       const r = o.getBoundingClientRect()
       const rows = o.querySelectorAll('.diff-table tr').length
       return JSON.stringify({ w: Math.round(r.width), h: Math.round(r.height), left: Math.round(r.left), rows })
@@ -253,7 +253,7 @@ const CASES: Record<string, ShotCase> = {
       `(() => {
       const view = document.querySelector('.cm-content')
       view?.focus()
-      document.execCommand('insertText', false, '\nстрока из автосохранения\n')
+      document.execCommand('insertText', false, '\na line from the autosave\n')
     })()`,
     )
     await wait(2500)
@@ -274,7 +274,7 @@ const CASES: Record<string, ShotCase> = {
         win,
         `(() => {
       const m = document.querySelector('.history-menu')
-      if (!m) return 'нет в DOM'
+      if (!m) return 'not in the DOM'
       const r = m.getBoundingClientRect()
       const el = document.elementFromPoint(r.left + 20, r.top + 20)
       return JSON.stringify({ w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), hitsMenu: Boolean(el && m.contains(el)) })
@@ -297,7 +297,7 @@ const CASES: Record<string, ShotCase> = {
         win,
         `(() => {
       const m = document.querySelector('.preset-menu')
-      if (!m) return 'нет в DOM'
+      if (!m) return 'not in the DOM'
       const r = m.getBoundingClientRect()
       const items = m.querySelectorAll('button').length
       const el = document.elementFromPoint(r.left + 20, r.top + 20)
@@ -356,7 +356,7 @@ async function fullTour(win: BrowserWindow, dir: string): Promise<void> {
   await dismissStartup(win, 800)
   await capture(win, dir, '02-sleeping.png')
 
-  // waking the agent: it names its own tab and rings the bell -> "ждёт вас"
+  // waking the agent: it names its own tab and rings the bell -> «waiting for you»
   await js(win, `document.querySelectorAll('${SEL.termTab}')[0]?.click()`)
   await wait(3500)
   await js(win, `document.querySelectorAll('${SEL.termTab}')[1]?.click()`) // look away so attention sticks
@@ -391,7 +391,7 @@ async function fullTour(win: BrowserWindow, dir: string): Promise<void> {
     const input = document.querySelector('.term-search input')
     if (!input) return
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
-    setter.call(input, 'Рефакторинг')
+    setter.call(input, 'Refactoring')
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })()`,
   )
@@ -421,7 +421,7 @@ async function fullTour(win: BrowserWindow, dir: string): Promise<void> {
   await capture(win, dir, '06-revert.png')
   await clickTestId(win, TID.modalCancel)
 
-  // editor with the "→ агенту" bridge
+  // editor with the «→ agent» bridge
   await wait(400)
   await js(win, `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }))`)
   await wait(800)
@@ -456,7 +456,7 @@ export async function runScreenshots(win: BrowserWindow, dir: string): Promise<v
   const requested = process.env.CS_SHOT_CASE
   const single = requested ? CASES[requested] : undefined
   if (requested && !single)
-    console.log('[shot] неизвестный CS_SHOT_CASE:', requested, '— доступны:', Object.keys(CASES).join(', '))
+    console.log('[shot] unknown CS_SHOT_CASE:', requested, '— available:', Object.keys(CASES).join(', '))
 
   if (single) await single(win, dir)
   else await fullTour(win, dir)

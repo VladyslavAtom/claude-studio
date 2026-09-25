@@ -117,7 +117,7 @@ implementation), which is why its id is read after start from the SQLite index.
 The "this tab has been launched already" flag lied in both directions: `No conversation found
 with session ID` and `Session ID is already in use`. The source of truth was moved into the
 agent's store — if the conversation is there, then `--resume`; if it is not, a clean start with
-the same id. The check stands on every path: a click on a sleeping tab, «запустить всех» from
+the same id. The check stands on every path: a click on a sleeping tab, «start all» from
 the modal, and the "launch all" policy that asks nothing.
 
 ## 2026-07-25 — The tab name comes from the store, not from the terminal title
@@ -137,8 +137,8 @@ agent considered itself a child session: it turned off transcript recording, whi
 
 ## 2026-07-25 — There is no mode switch in the changes panel
 
-The «vs HEAD / vs base» toggle was renamed three times («вся работа ветки», «с начала
-сессии») — and every time it stayed incomprehensible. Analysis by two external models (fable and
+The «vs HEAD / vs base» toggle was renamed three times («the whole branch's work», «since the session
+started») — and every time it stayed incomprehensible. Analysis by two external models (fable and
 codex, independently) gave one and the same diagnosis: **the problem is not the name, it is the
 existence of a hidden mode**. One and the same list meant "this can be committed" one moment and
 "this is already done" the next, and the only way to work out its current meaning was to recall
@@ -151,14 +151,14 @@ push window.
 The directory switch (session / project root) was taken out of the permanent row and into the
 branch menu: the action is rare, while the space in a panel about 400 px wide is permanent.
 
-The words `worktree`, `upstream`, «vs base» and «с начала сессии» were removed from the UI.
+The words `worktree`, `upstream`, «vs base» and «since the session started» were removed from the UI.
 
 ## 2026-07-25 — The person chooses how to pull
 
 The button always did `pull --rebase`. rebase and merge are not interchangeable: rebase rewrites
 your own commits (a branch that has been pushed will then have to be force-pushed), while merge
 adds a merge commit. There is nothing here to choose silently on the user's behalf: the default
-is `pullStrategy: 'ask'`, the dialog has a «запомнить выбор» checkbox, and it can be changed on
+is `pullStrategy: 'ask'`, the dialog has a «remember the choice» checkbox, and it can be changed on
 the **Git** settings tab.
 
 Remote branches were removed from the branch menu: they duplicate the local ones, and the
@@ -183,8 +183,8 @@ and codex (independently) came to the same thing: what overloads is not the comp
 but that four things are presented as four mandatory decisions, when the intent is a single one
 — "work in isolation".
 
-What is left is one question, «Где работает агент», and a summary line under it; the branch,
-base and directory fields moved under «Настроить…». Hiding where exactly the agent will work is
+What is left is one question, «Where the agent works», and a summary line under it; the branch,
+base and directory fields moved under «Set up…». Hiding where exactly the agent will work is
 not allowed — which is why the summary line stayed in plain sight.
 
 ## 2026-07-25 — The call for attention comes from the conversation record, not from the terminal bell
@@ -842,8 +842,8 @@ differently from every other terminal on this key is a bug report waiting to be 
 
 The launcher kept the pid of the running app in `app.pid` and treated the file as authoritative
 if `kill -0` succeeded. Pids are recycled: the app of the previous session exited, the kernel
-handed 5037 to a Chrome renderer, and from then on every launch answered «уже запущено (pid
-5037); окно должно быть открыто» and exited 0. Started from the desktop shortcut that is no
+handed 5037 to a Chrome renderer, and from then on every launch answered «already running (pid
+5037); the window should be open» and exited 0. Started from the desktop shortcut that is no
 window, no error dialog and not a line in `app.log` — the shortcut looked broken, and the
 diagnosis went to the icon, the `.desktop` file and the trust flag before the log of the plasma
 session showed the script had run and refused.
@@ -859,7 +859,7 @@ guard used to need a manual `rm`, and nothing told the user that.
 
 Not used: a lock via `flock` on the pidfile, which is the correct answer to this class of
 problem. It would move the guard into the started process, and the guard is also what makes
-`--stop` and «уже запущено» work from a shell that holds no lock. Electron already keeps its own
+`--stop` and «already running» work from a shell that holds no lock. Electron already keeps its own
 single-instance lock inside the profile (`src/main/index.ts`) — the script's job is only to not
 lie about a pid.
 

@@ -67,7 +67,7 @@ The rules in `CLAUDE.md` hold per locale, and the catalogue is where they are en
 
 - The names of git operations stay English in every locale — push, pull, fetch, merge, rebase,
   cherry-pick, commit, stash, upstream, remote, HEAD, worktree, PR. A gloss in the language of
-  the locale may stand next to them, in brackets: `Кнопка Pull («обновить проект»)`.
+  the locale may stand next to them, in brackets: `Кнопка Pull («обновить проект»)` — the term stays, the gloss is the locale's own.
 - The same action is worded the same everywhere it appears. The project branch menu and the
   session branch menu name the same operations, so they take the **same key**, not two keys
   that happen to agree today.

@@ -219,7 +219,7 @@ export function start(opts: StartOptions): PtyStartResult {
     term.flushTimer = null
     term.pending = ''
     // Exit of a pty that `kill()` already retired: the renderer has remounted the pane under the
-    // same id and is listening again, so emitting here would print "процесс завершён" over a
+    // same id and is listening again, so emitting here would print «the process has finished» over a
     // terminal that is running. The scrollback goes with it — the record is gone from `terms`.
     if (term.discarded || terms.get(opts.id) !== term) return
     // A dead pty is exactly what a person scrolls back through — what did it say before it went?

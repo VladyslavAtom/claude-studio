@@ -209,7 +209,7 @@
   white-space: nowrap;
 }
 
-/* «где работает агент»: the place picker and its summary line; fields appear on «Настроить…» */
+/* «Where the agent works»: the place picker and its summary line; fields appear on «Set up…» */
 .where {
   display: flex;
   flex-direction: column;

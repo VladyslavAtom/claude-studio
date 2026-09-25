@@ -6,7 +6,7 @@ import { fail, git, lastLine, literal, literals, refuse } from './exec'
 
 /**
  * Which long operation a conflict stop is reported for. It travels as data rather than as a
- * label: «Rebase на «main»» is a sentence, and the sentence belongs to the renderer — main has
+ * label: «Rebase onto “main”» is a sentence, and the sentence belongs to the renderer — main has
  * no locale. `ref` is absent for a pull, which names no branch of its own.
  */
 export interface MergeOp {

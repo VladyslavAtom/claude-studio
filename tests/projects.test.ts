@@ -5,7 +5,7 @@ import { CLOSED_PROJECTS_KEPT, emptyState, type AppState, type Project, type Ses
 function session(over: Partial<Session> = {}): Session {
   return {
     id: 's1',
-    name: 'Сессия 1',
+    name: 'Session 1',
     cwd: '/repo/.worktrees/s1',
     terminals: [],
     activeTerminalId: null,

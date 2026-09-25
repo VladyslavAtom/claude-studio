@@ -12,7 +12,7 @@ export async function push(cwd: string, branch: string, setUpstream: boolean): P
 }
 
 /**
- * Pull («обновить проект»). The way is chosen by the person: rebase lays one's own commits on
+ * Pull («Pull — update the project»). The way is chosen by the person: rebase lays one's own commits on
  * top of other people's and leaves the history linear, merge keeps things as they were and adds
  * a merge commit. --autostash takes uncommitted edits away and puts them back, so that the
  * update does not run up against a dirty tree.

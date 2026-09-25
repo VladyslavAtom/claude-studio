@@ -112,7 +112,7 @@ const WORDING: Record<AppMessageCode, Wording> = {
 
   'no-operation-in-progress': (t) => t('git.error.noOperationInProgress'),
   // which operation stopped is data, and so is whether it had a ref to name: six wordings, one
-  // per case, because «Merge «main»» and «Rebase на «main»» are not one sentence with a hole
+  // per case, because «Merge “main”» and «Rebase onto “main”» are not one sentence with a hole
   'conflict-stop': (t, p) => {
     const files = num(p, 'files')
     const ref = str(p, 'ref')
@@ -174,8 +174,8 @@ export function appMessage(t: T, code: AppMessageCode, params?: MessageParams): 
  * What to show for a result that came back from the main process.
  *
  * A failure's code is the sentence itself; when the tool also said something, that text follows
- * after a colon. A success's code is a note **added** to the tool's line (` · пропущено уже
- * закоммиченных: 2`), because that is how the main process appends it. `fallback` is what to say
+ * after a colon. A success's code is a note **added** to the tool's line (` · 2 already-committed
+ * files skipped`), because that is how the main process appends it. `fallback` is what to say
  * when the result carries neither a code nor any text of its own.
  */
 export function resultMessage(t: T, res: CodedResult, fallback = ''): string {

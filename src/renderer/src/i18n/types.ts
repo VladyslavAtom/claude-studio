@@ -6,7 +6,7 @@ export type { Locale }
  * A string that agrees with a number. English fills `one` and `other`; Russian and Ukrainian
  * also fill `few` and `many`, because their rule has three forms and disagrees with English.
  *
- * `zero` is not a grammatical form — it is an opt-in wording for n === 0 («без сессий»), used
+ * `zero` is not a grammatical form — it is an opt-in wording for n === 0 («no sessions»), used
  * whenever the locale supplies it, in place of whatever the grammatical rule would pick.
  */
 export interface PluralForms {
