@@ -117,6 +117,17 @@ const CASES: Record<string, ShotCase> = {
     await capture(win, dir, 'hero.png')
   },
 
+  /**
+   * The second frame in the README: an agent tab with the task it was started with. The scene is
+   * `tools/shot.mjs agent`, which puts a real claude tab into the throwaway state — the CLI is
+   * given time to answer, because a frame of an empty terminal says nothing about the product.
+   */
+  heroAgent: async (win, dir) => {
+    await dismissStartup(win, 900)
+    await wait(45_000)
+    await capture(win, dir, 'heroAgent.png')
+  },
+
   filetabs: async (win, dir) => {
     await dismissStartup(win)
     await js(win, `document.querySelector('${SEL.change}')?.click()`)

@@ -2,7 +2,11 @@
 
 Desktop UI for running Claude Code and Codex sessions in parallel: projects in tabs, sessions in isolated git worktrees, diffs and terminals in one window.
 
-![Claude Studio: a session with a diff and the changes panel](docs/img/screenshot.png)
+![A session with a Claude agent at work](docs/img/screenshot-agent.png)
+
+An agent in its own session, with the task it was started with. The same session, showing the diff of what changed:
+
+![The diff of a changed file next to the changes panel](docs/img/screenshot.png)
 
 ## What it does
 
@@ -42,7 +46,7 @@ npm run typecheck            # tsc -b: main and renderer are separate projects
 npm run lint                 # eslint: react-hooks and the process boundary
 npm test                     # vitest
 npm run smoke                # worktrees, pty, IPC, painting — on a throwaway repository
-node tools/shot.mjs          # the screenshot above, on a throwaway repository
+node tools/shot.mjs [agent]  # the screenshots above, on a throwaway repository
 ```
 
 Ubuntu 24.04+ restricts unprivileged user namespaces through AppArmor, so the scripts set `ELECTRON_DISABLE_SANDBOX=1`. An AppArmor profile on the Electron binary is the alternative.

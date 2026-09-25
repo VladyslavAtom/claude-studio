@@ -7,7 +7,11 @@
  * of the person's own is touched: their projects, their state and their agents are in the real
  * `userData`, and this run never sees it.
  *
- *   node tools/shot.mjs [output.png]     # default: docs/img/screenshot.png
+ *   node tools/shot.mjs                      # the diff frame -> docs/img/screenshot.png
+ *   node tools/shot.mjs agent                # an agent at work -> docs/img/screenshot-agent.png
+ *
+ * The `agent` scene starts the real Claude CLI in the throwaway repository and gives it a task,
+ * so it needs `claude` on PATH and costs one short turn.
  *
  * The application has to be built first (`npm run build:light`); this does not build it, because
  * on the machine this was written for a build is started by hand.
@@ -15,11 +19,17 @@
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { randomUUID } from 'node:crypto'
+import { homedir } from 'node:os'
 import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const out = resolve(process.argv[2] ?? join(appDir, 'docs', 'img', 'screenshot.png'))
+const args = process.argv.slice(2)
+const scene = args[0] === 'agent' ? 'agent' : 'diff'
+const out = resolve(
+  args[1] ?? join(appDir, 'docs', 'img', scene === 'agent' ? 'screenshot-agent.png' : 'screenshot.png'),
+)
 
 if (!existsSync(join(appDir, 'out', 'main', 'index.js'))) {
   console.error('build first: npm run build:light')
@@ -107,7 +117,22 @@ const state = {
           id: 's1',
           name: 'Expiry check',
           cwd: repo,
-          terminals: [{ id: 't1', kind: 'shell', title: 'jwt-service', startedAt: Date.now() }],
+          terminals:
+            scene === 'agent'
+              ? [
+                  {
+                    id: 't1',
+                    kind: 'agent',
+                    agentId: 'claude',
+                    title: 'Claude',
+                    agentSessionId: randomUUID(),
+                    // the task the tab is started with: the frame shows an agent already working
+                    startPrompt:
+                      'Read src/lib/jwt.ts and say in three short lines what this module does and what the expiry check depends on. Do not edit anything.',
+                    startedAt: Date.now(),
+                  },
+                ]
+              : [{ id: 't1', kind: 'shell', title: 'jwt-service', startedAt: Date.now() }],
           activeTerminalId: 't1',
           createdAt: Date.now(),
           runs: [],
@@ -118,9 +143,26 @@ const state = {
   ],
   closedProjects: [],
   activeProjectId: 'p1',
-  settings: { startup: 'none' },
+  // the agent scene has to bring its tab up at startup; the diff scene must not start anything
+  settings: { startup: scene === 'agent' ? 'all' : 'none' },
 }
 writeFileSync(join(userData, 'state.json'), JSON.stringify(state), { mode: 0o600 })
+
+/**
+ * The agent scene runs the real CLI, and a frame of it must not carry the person's own machine
+ * into a public README: the shell prompt names the host, and the CLI's status line carries their
+ * plan and their usage. So the tab gets `sh` (a bare `$` prompt) and a config directory of its
+ * own — the credentials are copied in so the CLI is signed in, and nothing else is.
+ */
+function neutralAgentEnv() {
+  if (scene !== 'agent') return {}
+  const config = join(root, 'claude-config')
+  mkdirSync(config, { recursive: true })
+  const credentials = join(homedir(), '.claude', '.credentials.json')
+  if (existsSync(credentials)) copyFileSync(credentials, join(config, '.credentials.json'), 0)
+  writeFileSync(join(config, 'settings.json'), JSON.stringify({ includeCoAuthoredBy: false }), { mode: 0o600 })
+  return { SHELL: '/bin/sh', CLAUDE_CONFIG_DIR: config }
+}
 
 const shots = join(root, 'shots')
 try {
@@ -132,11 +174,12 @@ try {
       ELECTRON_DISABLE_SANDBOX: '1',
       CS_USERDATA: userData,
       CS_SHOT: shots,
-      CS_SHOT_CASE: 'hero',
+      ...neutralAgentEnv(),
+      CS_SHOT_CASE: scene === 'agent' ? 'heroAgent' : 'hero',
     },
   })
   mkdirSync(dirname(out), { recursive: true })
-  copyFileSync(join(shots, 'hero.png'), out)
+  copyFileSync(join(shots, scene === 'agent' ? 'heroAgent.png' : 'hero.png'), out)
   console.log('screenshot:', out)
 } finally {
   rmSync(root, { recursive: true, force: true })
