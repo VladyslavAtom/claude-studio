@@ -818,6 +818,12 @@ export interface FileContent extends Coded {
   /** the filesystem's own message; a refusal the app itself decided on comes as `code` instead */
   error?: string
   binary?: boolean
+  /**
+   * The file is shown, not edited: a data URL the renderer can paint as it stands. Set instead
+   * of `content`, so a reader that only knows about text sees a successful read with nothing in
+   * it rather than a picture rendered as mojibake.
+   */
+  image?: string
   size?: number
 }
 

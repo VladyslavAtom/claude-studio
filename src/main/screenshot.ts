@@ -128,6 +128,16 @@ const CASES: Record<string, ShotCase> = {
     await capture(win, dir, 'heroAgent.png')
   },
 
+  /** a picture opened from the file tree: shown, not read as text (`files:read` -> `image`) */
+  image: async (win, dir) => {
+    await dismissStartup(win, 900)
+    await js(win, `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }))`)
+    await wait(700)
+    await clickByText(win, SEL.fileNode, 'logo.png')
+    await wait(1500)
+    await capture(win, dir, 'image.png')
+  },
+
   filetabs: async (win, dir) => {
     await dismissStartup(win)
     await js(win, `document.querySelector('${SEL.change}')?.click()`)

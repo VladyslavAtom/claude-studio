@@ -3,6 +3,38 @@ import { basename, dirname, join, resolve, sep } from 'node:path'
 import type { DirEntry, FileContent, OpResult, ReadDirResult } from '../shared/types'
 
 const MAX_EDITABLE = 2 * 1024 * 1024
+/**
+ * An image is carried to the renderer as a data URL, i.e. base64 inside an IPC message, so its
+ * limit is its own and larger than the editable one: a screenshot an agent has just taken is the
+ * usual case, and 2 MB of text is a different measure of «too big» than 2 MB of PNG.
+ */
+const MAX_IMAGE = 16 * 1024 * 1024
+
+/**
+ * What is shown rather than edited. SVG is deliberately absent: it is source, it opens in the
+ * editor as it always has, and rendering it instead would take editing away.
+ *
+ * The extension decides, not the content: the file is opened because the person clicked it, and
+ * a sniffed type would only disagree with the name they clicked.
+ */
+const IMAGE_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  bmp: 'image/bmp',
+  ico: 'image/x-icon',
+}
+
+/** the media type this path is shown as, or null when it is something to read as text */
+export function imageMimeFor(path: string): string | null {
+  const name = basename(path)
+  const dot = name.lastIndexOf('.')
+  if (dot <= 0) return null // no extension, and a dotfile is not an image because of its dot
+  return IMAGE_TYPES[name.slice(dot + 1).toLowerCase()] ?? null
+}
 const HIDDEN = new Set(['.git', 'node_modules', '.DS_Store'])
 
 /** The allowed roots: the paths of the projects and worktrees the user has opened. */
@@ -114,6 +146,19 @@ export async function readFile(path: string): Promise<FileContent> {
   if (!isAllowed(path)) return { ok: false, code: 'path-outside-roots' }
   try {
     const st = await fs.stat(path)
+    const mime = imageMimeFor(path)
+    if (mime) {
+      if (st.size > MAX_IMAGE) {
+        return {
+          ok: false,
+          code: 'file-too-large',
+          params: { limitMb: MAX_IMAGE / (1024 * 1024), sizeKb: Math.round(st.size / 1024) },
+          size: st.size,
+        }
+      }
+      const buf = await fs.readFile(path)
+      return { ok: true, image: `data:${mime};base64,${buf.toString('base64')}`, size: st.size }
+    }
     if (st.size > MAX_EDITABLE) {
       return {
         ok: false,

@@ -26,9 +26,15 @@ import { fileURLToPath } from 'node:url'
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = process.argv.slice(2)
-const scene = args[0] === 'agent' ? 'agent' : 'diff'
+const scene = args[0] === 'agent' ? 'agent' : args[0] === 'image' ? 'image' : 'diff'
 const out = resolve(
-  args[1] ?? join(appDir, 'docs', 'img', scene === 'agent' ? 'screenshot-agent.png' : 'screenshot.png'),
+  args[1] ??
+    join(
+      appDir,
+      'docs',
+      'img',
+      scene === 'agent' ? 'screenshot-agent.png' : scene === 'image' ? 'screenshot-image.png' : 'screenshot.png',
+    ),
 )
 
 if (!existsSync(join(appDir, 'out', 'main', 'index.js'))) {
@@ -78,6 +84,8 @@ export function verify(token: string, secret: string, now = Date.now()): Claims 
 `,
 )
 writeFileSync(join(repo, 'src', 'index.ts'), "export { sign, verify } from './lib/jwt'\n")
+// a picture in the repository: the `image` case opens it from the tree
+copyFileSync(join(appDir, 'resources', 'icon-256.png'), join(repo, 'logo.png'))
 
 git('init', '-q', '-b', 'main')
 git('config', 'user.email', 'dev@example.com')
@@ -175,11 +183,11 @@ try {
       CS_USERDATA: userData,
       CS_SHOT: shots,
       ...neutralAgentEnv(),
-      CS_SHOT_CASE: scene === 'agent' ? 'heroAgent' : 'hero',
+      CS_SHOT_CASE: scene === 'agent' ? 'heroAgent' : scene === 'image' ? 'image' : 'hero',
     },
   })
   mkdirSync(dirname(out), { recursive: true })
-  copyFileSync(join(shots, scene === 'agent' ? 'heroAgent.png' : 'hero.png'), out)
+  copyFileSync(join(shots, scene === 'agent' ? 'heroAgent.png' : scene === 'image' ? 'image.png' : 'hero.png'), out)
   console.log('screenshot:', out)
 } finally {
   rmSync(root, { recursive: true, force: true })

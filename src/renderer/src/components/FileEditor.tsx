@@ -74,6 +74,12 @@ export default function FileEditor({
   const [readOnlyNote, setReadOnlyNote] = useState<string | null>(null)
   /** file changed under us (an agent rewrote it): writing would drop that change */
   const [conflict, setConflict] = useState(false)
+  /**
+   * A picture is shown, never edited: main answers with a data URL instead of text, and the
+   * whole editor below — CodeMirror, autosave, the conflict check — is simply not built. Half a
+   * megabyte of PNG rendered as text was what the tab used to do with it.
+   */
+  const [image, setImage] = useState<string | null>(null)
 
   /**
    * Mirrors of props and state for the CodeMirror callbacks, which are created once, when the
@@ -117,6 +123,7 @@ export default function FileEditor({
     setLoading(true)
     setReadOnlyNote(null)
     setConflict(false)
+    setImage(null)
   }
 
   useEffect(() => {
@@ -128,6 +135,10 @@ export default function FileEditor({
     void window.api.files.read(path).then((res) => {
       if (disposed || !hostRef.current) return
       setLoading(false)
+      if (res.ok && res.image) {
+        setImage(res.image)
+        return
+      }
       if (!res.ok || res.content === undefined) {
         setReadOnlyNote(resultMessage(tRef.current, res, tRef.current('editor.open.failed')))
         return
@@ -339,17 +350,19 @@ export default function FileEditor({
           )}
         </span>
         <span className="muted small">
-          {conflict
-            ? t('editor.status.conflict')
-            : dirty
-              ? editor.autoSave
-                ? t('editor.status.saving')
-                : t('editor.status.unsaved')
-              : savedAt
-                ? t('editor.status.saved')
-                : editor.autoSave
-                  ? t('editor.status.autoSave')
-                  : ''}
+          {image
+            ? ''
+            : conflict
+              ? t('editor.status.conflict')
+              : dirty
+                ? editor.autoSave
+                  ? t('editor.status.saving')
+                  : t('editor.status.unsaved')
+                : savedAt
+                  ? t('editor.status.saved')
+                  : editor.autoSave
+                    ? t('editor.status.autoSave')
+                    : ''}
         </span>
         <span className="muted small path">{path}</span>
         <div className="spacer" />
@@ -366,7 +379,7 @@ export default function FileEditor({
             </button>
           </>
         )}
-        {!editor.autoSave && !conflict && (
+        {!editor.autoSave && !conflict && !image && (
           <button onClick={() => void save.current()} disabled={!dirty} title={t('editor.save.title')}>
             {t('editor.save')}
           </button>
@@ -382,7 +395,12 @@ export default function FileEditor({
       </div>
       {loading && <div className="muted pad">{t('editor.loading')}</div>}
       {readOnlyNote && <div className="muted pad">{readOnlyNote}</div>}
-      <div className="editor-host" ref={hostRef} />
+      {image && (
+        <div className="editor-image">
+          <img src={image} alt={basename(path)} />
+        </div>
+      )}
+      <div className="editor-host" ref={hostRef} style={image ? { display: 'none' } : undefined} />
     </div>
   )
 }

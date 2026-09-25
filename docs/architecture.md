@@ -379,6 +379,14 @@ These are ordinary session tabs, not overlays: the content takes up the whole te
 (`inset: 0` inside `.center-stack`). There is no hand-written offset arithmetic (sidebar width +
 tree + changes panel) — in a narrow window it collapsed the block.
 
+A picture is shown rather than read as text. `files:read` answers with `image` — a data URL — for
+`png`, `jpg`, `jpeg`, `gif`, `webp`, `avif`, `bmp` and `ico`, decided by the extension, and the tab
+paints it on a chequerboard instead of building CodeMirror at all; there is no save button,
+because there is nothing to save. `svg` is deliberately not in that list: it is source, and
+showing it would take editing away. The limit is its own, 16 MB against the editable 2 MB — a
+screenshot an agent has just taken is the usual case, and a megabyte of PNG is not a megabyte of
+text. Before this, a `files:read` of any picture came back `file-binary` and the tab said so.
+
 The editor saves on a pause and when the tab is closed, not only on Ctrl+S. Writing a file is
 atomic: a temporary file plus a rename. File operations are limited to the registered roots,
 and `openExternal` lets through only http/https.

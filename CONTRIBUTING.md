@@ -41,8 +41,7 @@ how it works now) and, when there was a decision to record, a dated entry append
 ## Language
 
 The project writes about itself in English: code, comments, docs, tests, issues, pull requests.
-The commit messages in the history are Russian — they address one author; an English commit
-message in a pull request is fine and will not be rewritten.
+That includes commit messages.
 
 ## Scope
 

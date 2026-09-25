@@ -15,7 +15,7 @@ Two deliberate exceptions:
 
 - **The interface is multilingual** — that is a product decision, not a documentation one. UI
   strings live in locale dictionaries (§1).
-- **Commit messages are Russian.** They address one author, not the record.
+- **Commit messages are English too.** The repository is public: its history is part of the record.
 
 A comment may quote a Russian UI label verbatim inside «…» — that is a citation of what is on
 screen, not prose. Translate the sentence, keep the label: `«запустить всех» is about agents`.
