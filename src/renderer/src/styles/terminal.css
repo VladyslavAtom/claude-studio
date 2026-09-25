@@ -1,0 +1,444 @@
+/* Terminal area: tab bar, per-tab state, search, agent history menu, xterm host, context menu. */
+
+.terminal-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+.term-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.term-tabs > * {
+  flex: none;
+}
+.term-tabs-scroll {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* the tab strip shrinks first; the buttons on the right stay put */
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.term-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+.term-tabs-scroll > * {
+  flex: none;
+}
+.term-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 6px;
+  border-radius: var(--radius);
+  border-left: 2px solid transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+.term-tab:hover {
+  background: var(--bg-2);
+}
+.term-tab.active {
+  background: var(--bg-3);
+  color: var(--fg);
+}
+/* the tab strip is one Tab stop, arrows walk it: :focus-visible only, or a click on a tab
+   would leave the ring behind. Inset, so it is not clipped by the scrolling strip. */
+.term-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.term-tab .kind.file {
+  background: transparent;
+  border: 1px solid var(--fg-dim);
+}
+/* base dot; every state below is more specific and wins whatever the order */
+.term-tab .kind {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dot-neutral);
+}
+.term-tab .kind.claude {
+  background: var(--accent);
+}
+.term-tabs .add {
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  color: var(--fg-dim);
+  font-size: 11px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.term-tabs .cwd {
+  font-size: 11px;
+  color: var(--fg-dim);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.term-tab.running .kind {
+  background: var(--add);
+}
+.term-tab.waiting .kind {
+  background: var(--warn);
+}
+.term-tab.waiting {
+  color: var(--warn);
+}
+.term-tab.dead .kind {
+  background: var(--del);
+}
+
+.term-wrap {
+  position: absolute;
+  inset: 6px 0 0 8px;
+}
+.term-search {
+  position: absolute;
+  top: 4px;
+  right: 16px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.term-search input {
+  width: 210px;
+  font-size: 12px;
+  padding: 3px 6px;
+}
+
+.term-tab.asleep {
+  color: var(--fg-faint);
+  background: transparent;
+}
+.term-tab.asleep .kind {
+  background: var(--dot-neutral);
+}
+.term-tab .zzz {
+  color: var(--fg-faint);
+  font-style: italic;
+}
+/* the tab is running but nothing will ever ring for it — a mark, not an alarm */
+.term-tab .mute {
+  color: var(--fg-faint);
+  cursor: help;
+}
+.term-tab .tab-title {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.term-tabs .ghost.on {
+  color: var(--accent);
+  background: var(--bg-3);
+}
+
+.history-wrap {
+  position: relative;
+}
+.history-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  z-index: 45;
+  width: 330px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px;
+  box-shadow: var(--shadow-menu);
+}
+.history-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.history-menu button:hover {
+  background: var(--bg-3);
+}
+/* Arrow keys move focus between items by script, so :focus is what fires — not
+   :focus-visible, which the browser withholds after the popup was opened by mouse.
+   Same treatment as hover: pointer and keyboard land on the same highlight. */
+.history-menu [role='menuitem']:focus {
+  background: var(--bg-3);
+  outline: none;
+}
+.history-menu .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.history-menu .run-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sleep-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--fg-dim);
+}
+.zzz-big {
+  color: var(--fg-faint);
+  font-style: italic;
+  font-size: 32px;
+}
+
+/* The last screen of a sleeping tab: a bar that says so, and the frozen screen under it. The bar
+   takes its own row rather than floating over the output — it must never cover the thing it is
+   explaining, and it is the only way back from a tab with no process. */
+.sleep-screen {
+  position: absolute;
+  /* the same rectangle a live pane's `.term-host` gets: same width means the same number of
+     columns, so the captured screen is written back without a single line rewrapping */
+  inset: 6px 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.sleep-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 0;
+  color: var(--fg-dim);
+  font-size: 12px;
+}
+.sleep-bar .zzz {
+  color: var(--fg-faint);
+  font-style: italic;
+}
+.sleep-bar .what {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* the dashed line is the frame of a photograph: it says the screen below is not being written to */
+.sleep-host {
+  flex: 1;
+  min-height: 0;
+  border-top: 1px dashed var(--line);
+  padding-top: 4px;
+}
+.sleep-host .xterm {
+  height: 100%;
+}
+.sleep-host .xterm .xterm-viewport {
+  background-color: var(--bg);
+}
+
+.term-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  padding: 6px 0 0 8px;
+}
+.term-host {
+  position: absolute;
+  inset: 6px 0 0 8px;
+}
+.term-host .xterm {
+  height: 100%;
+}
+/* xterm paints the theme onto its scrollable element, but its own stylesheet still leaves
+   `background-color: #000` on the viewport underneath. That black shows through in the strip the
+   scrollable element does not cover — the row the horizontal scrollbar sits in — so it was a
+   black band along the bottom of every terminal, in both themes. */
+.term-host .xterm .xterm-viewport {
+  background-color: var(--bg);
+}
+
+/* --- split button that opens a new tab --- */
+
+.add-split {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 4px;
+}
+.add-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius) 0 0 var(--radius);
+  border-right: none;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.add-main .plus {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--accent);
+}
+.add-main .dot,
+.add-menu .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fg-dim);
+  flex: none;
+}
+.add-more {
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 3px 6px;
+  font-size: 10px;
+  color: var(--fg-dim);
+}
+.add-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  z-index: 45;
+  width: 240px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-menu);
+}
+.add-menu button {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.add-menu button:hover {
+  background: var(--bg-3);
+}
+.add-menu [role='menuitem']:focus {
+  background: var(--bg-3);
+  outline: none;
+}
+.add-menu .name {
+  flex: 1;
+}
+.add-menu .sep {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 0;
+}
+
+/* --- right-click menu (xterm has none of its own) and inline tab rename --- */
+
+/* right-click menu in the terminal: xterm has none of its own, and copying that way is expected */
+.term-menu-catch {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.term-menu {
+  position: fixed;
+  z-index: 61;
+  min-width: 220px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-menu);
+}
+.term-menu button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.term-menu button:hover {
+  background: var(--bg-3);
+}
+.term-menu [role='menuitem']:focus {
+  background: var(--bg-3);
+  outline: none;
+}
+.term-menu .sep {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 0;
+}
+
+/* what a click on a path in the output would open. It follows the pointer, so it must not take
+   the pointer: without pointer-events:none the hint would sit between the cursor and the link
+   it is describing and xterm would see the pointer leave. */
+.term-link-hint {
+  position: fixed;
+  z-index: 62;
+  pointer-events: none;
+  max-width: 320px;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--fg);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-menu);
+  overflow-wrap: anywhere;
+}
+
+/* renaming inline in the tab: the field must take the title's place without shifting anything */
+.tab-rename {
+  width: 120px;
+  min-width: 60px;
+  font: inherit;
+  padding: 1px 4px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+}
+.term-menu button.danger {
+  color: var(--del);
+}

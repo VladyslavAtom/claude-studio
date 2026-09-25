@@ -1,0 +1,7 @@
+{
+  // Solution file: it holds no sources of its own. Each Electron process is a separate
+  // project with its own lib and types, so the process boundary is checked rather than
+  // merely observed — see docs/architecture.md.
+  "files": [],
+  "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.web.json" }]
+}

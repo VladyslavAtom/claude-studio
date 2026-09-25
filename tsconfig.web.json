@@ -1,0 +1,12 @@
+{
+  // renderer + shared. No node types: `node:fs` in a component is a type error here.
+  // The renderer reaches main only through `window.api`, declared in src/renderer/src/env.d.ts.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "jsx": "react-jsx",
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.web.tsbuildinfo"
+  },
+  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "src/shared/**/*.ts"]
+}

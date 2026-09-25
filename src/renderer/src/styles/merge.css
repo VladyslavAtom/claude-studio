@@ -1,0 +1,113 @@
+/* Merge tab: conflict blocks, per-side actions, conflict list rows. */
+
+.merge-tab {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  z-index: 2;
+}
+.merge-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+}
+.merge-head .file {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.merge-head button {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+.merge-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  padding: 8px 10px;
+}
+.merge-text {
+  margin: 0;
+  padding: 2px 6px;
+  font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+  font-size: 12px;
+  color: var(--fg-dim);
+  white-space: pre-wrap;
+}
+.merge-conflict {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 8px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.merge-side pre {
+  margin: 0;
+  padding: 6px 8px;
+  font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.merge-side.ours pre {
+  background: var(--merge-ours-bg);
+}
+.merge-side.theirs pre {
+  background: var(--merge-theirs-bg);
+}
+.merge-side.base pre {
+  background: var(--bg-1);
+  color: var(--fg-dim);
+}
+.merge-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--bg-2);
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+.merge-side-head button {
+  font-size: 11px;
+  padding: 1px 8px;
+}
+.merge-both {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 8px;
+  background: var(--bg-1);
+}
+.merge-both button {
+  font-size: 11px;
+  padding: 1px 8px;
+}
+
+.conflict-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.conflict-row .link {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--warn);
+  text-align: left;
+  padding: 2px 0;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.conflict-row .ghost {
+  font-size: 11px;
+  padding: 1px 6px;
+}

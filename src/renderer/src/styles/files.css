@@ -1,0 +1,148 @@
+/* File tree panel: header, tree, nodes, type badges, git-state colours. */
+
+.files {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-right: 1px solid var(--line);
+  min-height: 0;
+}
+.files-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.files-head input {
+  font-size: 12px;
+  padding: 3px 6px;
+}
+.files-tree {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  min-height: 0;
+  padding-bottom: 8px;
+}
+.fnode {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px 2px 0;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fnode:hover {
+  background: var(--bg-2);
+}
+.fnode.active {
+  background: var(--bg-3);
+  color: var(--accent);
+}
+/* the tree is one Tab stop and arrows walk it: :focus-visible only, or clicking a file
+   would leave the ring behind. Inset, or the horizontal scroll of the tree cuts it off. */
+.fnode:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.fnode .icon {
+  color: var(--fg-dim);
+  width: 10px;
+  flex: none;
+  text-align: center;
+}
+
+.fnode.file {
+  color: var(--fg-dim);
+}
+
+/* --- node internals: type badge, caret, folder icon --- */
+
+/* file tree: the file type as a short label, its git state as the row colour */
+.fnode .badge {
+  display: inline-block;
+  width: 20px;
+  flex: none;
+  margin-right: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-align: center;
+  color: var(--fg-dim);
+}
+.fnode .caret {
+  display: inline-block;
+  width: 10px;
+  flex: none;
+  color: var(--fg-dim);
+  font-size: 9px;
+}
+.fnode .badge.dir {
+  /* the folder icon takes the same slot as a file's type label, so the name column stays aligned */
+  color: var(--ft-dir);
+  line-height: 0;
+}
+.fnode.dir.has-changes .badge.dir {
+  color: var(--dir-changed);
+}
+.fnode .folder {
+  vertical-align: -3px;
+}
+/* a file has no caret but keeps its space: otherwise tree names do not line up into a column */
+.fnode.file .caret {
+  visibility: hidden;
+}
+.fnode .badge.ts,
+.fnode .badge.css {
+  color: var(--ft-code);
+}
+.fnode .badge.js,
+.fnode .badge.json,
+.fnode .badge.yaml {
+  color: var(--ft-data);
+}
+.fnode .badge.py,
+.fnode .badge.sh,
+.fnode .badge.go {
+  color: var(--ft-script);
+}
+.fnode .badge.md {
+  color: var(--ft-doc);
+}
+.fnode .badge.html,
+.fnode .badge.docker,
+.fnode .badge.rs {
+  color: var(--ft-markup);
+}
+.fnode .badge.img {
+  color: var(--ft-media);
+}
+.fnode .badge.conf {
+  color: var(--ft-conf);
+}
+.fnode .badge.muted {
+  color: var(--ft-muted);
+}
+
+/* state colours repeat the changes list: the same thing must look the same */
+.fnode.modified {
+  color: var(--warn);
+}
+.fnode.added {
+  color: var(--add);
+}
+.fnode.deleted {
+  color: var(--del);
+  text-decoration: line-through;
+}
+.fnode.conflict {
+  color: var(--conflict);
+}
+.fnode.dir {
+  color: var(--fg);
+}
+.fnode.dir.has-changes {
+  color: var(--dir-changed);
+}

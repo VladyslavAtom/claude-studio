@@ -1,0 +1,104 @@
+/* Bare-element styling and one-word utility classes shared by every screen. */
+
+button {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: var(--btn-hover-bg);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button.primary {
+  color: var(--on-accent);
+  background: var(--btn-primary-bg);
+  border-color: var(--btn-primary-border);
+}
+button.primary:hover {
+  background: var(--btn-primary-hover-bg);
+}
+button.primary.danger {
+  color: var(--on-danger);
+  background: var(--btn-danger-bg);
+  border-color: var(--btn-danger-border);
+}
+button.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--fg-dim);
+  padding: 2px 7px;
+}
+button.ghost:hover {
+  background: var(--bg-3);
+  color: var(--fg);
+}
+
+input {
+  font: inherit;
+  width: 100%;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+}
+input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+select {
+  font: inherit;
+  width: 100%;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+}
+
+code {
+  font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+  font-size: 12px;
+  background: var(--bg);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.muted {
+  color: var(--fg-dim);
+}
+.small {
+  font-size: 11px;
+}
+.pad {
+  padding: 10px 12px;
+}
+.spacer {
+  flex: 1;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.boot {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--fg-dim);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}

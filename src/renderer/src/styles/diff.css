@@ -1,0 +1,143 @@
+/* Diff overlay: header, diff table, added/removed/hunk rows, syntax highlighting. */
+
+.diff-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-right: 1px solid var(--line);
+  z-index: 20;
+}
+.diff-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+}
+.diff-head .st {
+  width: auto;
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.diff-head .file {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.diff-head .stat {
+  font-size: 11px;
+}
+.diff-head .stat.add {
+  color: var(--add);
+}
+.diff-head .stat.del {
+  color: var(--del);
+}
+.diff-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+.diff-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
+  font-size: 12px;
+}
+.diff-table td {
+  padding: 0 6px;
+  vertical-align: top;
+  white-space: pre;
+}
+.diff-body.wrap .diff-table td.code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.diff-table td.no {
+  width: 1%;
+  text-align: right;
+  color: var(--diff-lineno);
+  user-select: none;
+  background: var(--bg-1);
+  border-right: 1px solid var(--line);
+}
+.diff-table td.sign {
+  width: 1%;
+  color: var(--fg-dim);
+  user-select: none;
+}
+.dl.add td.code,
+.dl.add td.sign {
+  background: var(--diff-add-bg);
+  color: var(--diff-add-fg);
+}
+.dl.del td.code,
+.dl.del td.sign {
+  background: var(--diff-del-bg);
+  color: var(--diff-del-fg);
+}
+.dl.hunk td {
+  background: var(--bg-2);
+  color: var(--accent);
+}
+.dl.meta td {
+  color: var(--fg-dim);
+}
+
+/* --- token colours, the same Darcula palette the editor uses --- */
+
+/* highlighting inside the diff: the same Darcula colours as in the editor */
+.diff-table .tok-keyword {
+  color: var(--tok-keyword);
+}
+.diff-table .tok-string {
+  color: var(--tok-string);
+}
+.diff-table .tok-number {
+  color: var(--tok-number);
+}
+.diff-table .tok-comment {
+  color: var(--tok-comment);
+  font-style: italic;
+}
+.diff-table .tok-doc {
+  color: var(--tok-doc);
+  font-style: italic;
+}
+.diff-table .tok-fn {
+  color: var(--tok-fn);
+}
+.diff-table .tok-attr {
+  color: var(--tok-attr);
+}
+.diff-table .tok-field,
+.diff-table .tok-constant {
+  color: var(--tok-field);
+}
+.diff-table .tok-annotation {
+  color: var(--tok-annotation);
+}
+.diff-table .tok-tag {
+  color: var(--tok-tag);
+}
+.diff-table .tok-heading {
+  color: var(--tok-heading);
+  font-weight: bold;
+}
+.diff-table .tok-link {
+  color: var(--tok-link);
+  text-decoration: underline;
+}
+.diff-table .tok-invalid {
+  color: var(--tok-invalid);
+}

@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+
+    // Two flags worth having, both measured on 2026-07-26 and both left off because turning
+    // them on means editing src/ — that is its own commit, not a rider on a tooling change.
+    //
+    // exactOptionalPropertyTypes: 23 errors across 14 files. Every one is the same shape —
+    // an object built with `x: maybeUndefined` where the target declares `x?: T`. The fix is
+    // either `?? ...` at the call site or `x?: T | undefined` in the type.
+    // "exactOptionalPropertyTypes": true,
+    //
+    // noUncheckedIndexedAccess: 67 errors across 21 files, worst are lib/highlight.ts (11),
+    // MergeTab.tsx (9), agentSessions.ts (7), main/git/* (10). This is the flag that catches
+    // the `-z` field-splitting class in src/main/git — `parts[++i]` is typed `string` today
+    // and is `undefined` on truncated git output.
+    // "noUncheckedIndexedAccess": true,
+
+    // no class in src/, so noImplicitOverride has nothing to check
+
+    // TS 7 removed `baseUrl`: these are relative to this file, which is the repo root.
+    // Mirrored by resolve.alias in electron.vite.config.ts — both are required.
+    "paths": {
+      "@shared/*": ["./src/shared/*"],
+      "@main/*": ["./src/main/*"],
+      "@renderer/*": ["./src/renderer/src/*"]
+    }
+  }
+}

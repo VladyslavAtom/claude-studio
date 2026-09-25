@@ -1,0 +1,296 @@
+/* Design tokens, global reset, scrollbars. Loaded first: everything below depends on these vars.
+
+   Every colour in the application lives here and nowhere else — a hex literal in any other
+   stylesheet is a bug, because it cannot follow the theme. The two blocks below are the whole
+   contract: `document.documentElement` carries data-theme="dark" or data-theme="light", and
+   both blocks must declare exactly the same property names. A name present in one theme and
+   missing from the other is a colour that silently keeps the dark value.
+
+   Adding a third theme = copying the light block, renaming the selector to
+   :root[data-theme='<name>'], and adding the name to THEMES in src/shared/types.ts. Nothing else.
+
+   Names are roles, not appearances: --bg is «the canvas», not «the dark grey», so the light
+   theme can make it white without turning the name into a lie. */
+
+/* not a colour, so it is theme-independent and stays out of the blocks below */
+:root {
+  --radius: 6px;
+}
+
+/* the neutral dark grey the user is already used to in their own terminal */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* --- surfaces --- */
+  --bg: #1c1f21;
+  --bg-1: #212427;
+  --bg-2: #26292d;
+  --bg-3: #2e3236;
+  /* popups, menus and modals: they float above the panels, and in a light theme they are
+     lighter than what is behind them, while --bg-2 (hover) has to be darker */
+  --surface-raised: #26292d;
+  /* the same near-black CodeMirror paints inside .editor-host, and deliberately not Darcula's
+     native #2b2b2b — see lib/editor.ts: on that grey the editor read as a foreign rectangle
+     glued into the window. #2b2b2b stood here until the theming pass and only survived because
+     nothing paints it long enough to be noticed (the frames before CodeMirror mounts). */
+  --editor-bg: #1c1f21;
+  --backdrop: rgba(8, 9, 13, 0.6);
+
+  /* --- lines --- */
+  --line: #383c41;
+  /* the outline of something you can operate: input, select, button. Has to be seen */
+  --line-strong: #383c41;
+
+  /* --- text --- */
+  --fg: #d3d6d9;
+  --fg-dim: #8a9096;
+  --fg-faint: #6b7280;
+
+  /* --- accents --- */
+  --accent: #79b8ff;
+  --accent-2: #8ab4ff;
+  /* text laid over a filled accent or danger surface */
+  --on-accent: #d3d6d9;
+  --on-danger: #d3d6d9;
+
+  /* --- controls --- */
+  --btn-hover-bg: #2b3040;
+  --btn-primary-bg: #2f6fd0;
+  --btn-primary-border: #3b7fe0;
+  --btn-primary-hover-bg: #3a7ee0;
+  --btn-danger-bg: #b4453f;
+  --btn-danger-border: #c9534c;
+
+  /* --- git and status --- */
+  --add: #7ee787;
+  --del: #ff6b6b;
+  --warn: #f2cc60;
+  /* text on a --warn fill */
+  --on-warn: #2a2300;
+  --conflict: #ff9f43;
+  --dir-changed: #c9b06a;
+  /* a destructive action offered as plain text rather than as a filled button */
+  --danger-fg: #e08a86;
+  --danger-soft-bg: #3a1f22;
+  --danger-soft-fg: #ffb3b3;
+  --toast-error-bg: #3a1f22;
+  --toast-error-border: #6b2f34;
+  /* the banner of an unfinished rebase/merge */
+  --op-bg: #3a2f1c;
+
+  /* --- diff and merge --- */
+  --diff-lineno: #5b6272;
+  --diff-add-bg: rgba(126, 231, 135, 0.09);
+  --diff-add-fg: #b7f2bd;
+  --diff-del-bg: rgba(255, 107, 107, 0.09);
+  --diff-del-fg: #ffb3b3;
+  --merge-ours-bg: rgba(126, 231, 135, 0.08);
+  --merge-theirs-bg: rgba(121, 184, 255, 0.08);
+
+  /* --- state dots --- */
+  --dot-neutral: #4b5361;
+  --dot-idle: #4c5566;
+  --dot-asleep-line: #3a4152;
+
+  /* --- file type badges in the tree --- */
+  --ft-code: #79b8ff;
+  --ft-data: #f2cc60;
+  --ft-script: #7ee787;
+  --ft-doc: #d3d6d9;
+  --ft-markup: #ffa657;
+  --ft-media: #d2a8ff;
+  --ft-conf: #a5f3f6;
+  --ft-muted: #6b7278;
+  --ft-dir: #7d858c;
+
+  /* --- syntax: Darcula, the palette the editor uses --- */
+  --tok-keyword: #cc7832;
+  --tok-string: #6a8759;
+  --tok-number: #6897bb;
+  --tok-comment: #808080;
+  --tok-doc: #629755;
+  --tok-fn: #ffc66d;
+  --tok-attr: #bababa;
+  --tok-field: #9876aa;
+  --tok-annotation: #bbb529;
+  --tok-tag: #e8bf6a;
+  --tok-heading: #ffc66d;
+  --tok-link: #287bde;
+  --tok-invalid: #ff6b68;
+
+  /* --- elevation: the whole shadow is the token, so a light theme can change its geometry
+         and not only its colour --- */
+  --shadow-sm: 0 8px 20px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-menu: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-menu-strong: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+  /* --- scrollbars --- */
+  --scrollbar-thumb: #454a4f;
+  --scrollbar-thumb-hover: #565c62;
+}
+
+/* Light: designed, not inverted. Body text clears WCAG AA (4.5:1) on every surface it lands
+   on, and the border of an operable control clears 3:1. The accent, add/del/warn and the
+   syntax palette are all darker than their dark-theme counterparts — a colour that reads well
+   on near-black is always too pale on white, and inverting one gives grey mud. */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  /* --- surfaces --- */
+  /* white is the canvas (editor, inputs, diff body); the panels step down from it */
+  --bg: #ffffff;
+  --bg-1: #f4f5f7;
+  --bg-2: #e9ecf0;
+  --bg-3: #dee1e6;
+  --surface-raised: #ffffff;
+  --editor-bg: #ffffff;
+  --backdrop: rgba(31, 35, 40, 0.32);
+
+  /* --- lines --- */
+  --line: #dfe3e8;
+  --line-strong: #818a93;
+
+  /* --- text --- */
+  --fg: #1f2328;
+  --fg-dim: #5c636b;
+  --fg-faint: #5f6670;
+
+  /* --- accents --- */
+  --accent: #0757ba;
+  --accent-2: #04408a;
+  --on-accent: #ffffff;
+  --on-danger: #ffffff;
+
+  /* --- controls --- */
+  --btn-hover-bg: #d3d8de;
+  --btn-primary-bg: #0757ba;
+  --btn-primary-border: #04408a;
+  --btn-primary-hover-bg: #064a9e;
+  --btn-danger-bg: #c01c28;
+  --btn-danger-border: #8f1119;
+
+  /* --- git and status --- */
+  --add: #14722f;
+  --del: #c01c28;
+  /* yellow does not survive on white; the amber below is the lightest hue that still reads
+     «yellow» beside the green and the red and keeps 4.5:1 on every panel */
+  --warn: #845700;
+  --on-warn: #ffffff;
+  --conflict: #ab4400;
+  --dir-changed: #7a5f18;
+  --danger-fg: #c01c28;
+  --danger-soft-bg: #ffebe9;
+  --danger-soft-fg: #8f1119;
+  --toast-error-bg: #ffebe9;
+  --toast-error-border: #ff8182;
+  --op-bg: #fff8c5;
+
+  /* --- diff and merge --- */
+  --diff-lineno: #656d76;
+  /* opaque tints, not translucent ones: pale enough to read syntax colours through,
+     distinct enough to tell an added row from a removed one at a glance */
+  --diff-add-bg: #e6ffec;
+  --diff-add-fg: #103d21;
+  --diff-del-bg: #ffebe9;
+  --diff-del-fg: #5c1a1a;
+  --merge-ours-bg: #e6ffec;
+  --merge-theirs-bg: #ddf4ff;
+
+  /* --- state dots --- */
+  --dot-neutral: #79818a;
+  --dot-idle: #79818a;
+  --dot-asleep-line: #838b94;
+
+  /* --- file type badges in the tree --- */
+  --ft-code: #0550ae;
+  --ft-data: #7a5c00;
+  --ft-script: #14722f;
+  --ft-doc: #3d444d;
+  --ft-markup: #a94b00;
+  --ft-media: #6e40c9;
+  --ft-conf: #0f6f7a;
+  --ft-muted: #5f6670;
+  --ft-dir: #656d76;
+
+  /* --- syntax: IntelliJ Light, role for role against the Darcula palette above --- */
+  --tok-keyword: #0033b3;
+  --tok-string: #067d17;
+  --tok-number: #1750eb;
+  --tok-comment: #656d76;
+  --tok-doc: #3a6a2a;
+  --tok-fn: #00627a;
+  --tok-attr: #3d444d;
+  --tok-field: #871094;
+  --tok-annotation: #7d6c00;
+  --tok-tag: #a03000;
+  --tok-heading: #7a3e00;
+  --tok-link: #0757ba;
+  --tok-invalid: #c01c28;
+
+  /* --- elevation: darkness cannot hide an edge on white, so the shadows are real and soft,
+         and each carries a hairline ring that keeps a white popup off a white page --- */
+  --shadow-sm: 0 2px 8px rgba(31, 35, 40, 0.12), 0 0 0 1px rgba(31, 35, 40, 0.06);
+  --shadow-pop: 0 6px 16px rgba(31, 35, 40, 0.14), 0 0 0 1px rgba(31, 35, 40, 0.06);
+  --shadow-toast: 0 8px 24px rgba(31, 35, 40, 0.18);
+  --shadow-menu: 0 8px 24px rgba(31, 35, 40, 0.16), 0 0 0 1px rgba(31, 35, 40, 0.06);
+  --shadow-menu-strong: 0 12px 32px rgba(31, 35, 40, 0.2), 0 0 0 1px rgba(31, 35, 40, 0.08);
+  --shadow-modal: 0 16px 48px rgba(31, 35, 40, 0.24), 0 0 0 1px rgba(31, 35, 40, 0.08);
+
+  /* --- scrollbars --- */
+  --scrollbar-thumb: #c1c8ce;
+  --scrollbar-thumb-hover: #a8b0b8;
+}
+
+* {
+  box-sizing: border-box;
+  /* system scrollbars are light and carry buttons — bring them in line with the theme */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    13px/1.45 -apple-system,
+    'Inter',
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    sans-serif;
+  overflow: hidden;
+}

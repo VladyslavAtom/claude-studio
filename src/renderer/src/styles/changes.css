@@ -1,0 +1,404 @@
+/* Changes panel: branch head, sync counters, sections, repo operations, file list, commit box, push. */
+
+.changes {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-left: 1px solid var(--line);
+  min-height: 0;
+}
+.changes.collapsed {
+  width: 28px;
+  align-items: center;
+  padding-top: 6px;
+}
+.changes .collapse {
+  background: transparent;
+  border: none;
+  color: var(--fg-dim);
+}
+.changes-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 6px 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+/* branch name, and subordinate to it the base: "what we branched off" is context, not a second action */
+.branch-name {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+}
+.branch-name .own {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+.branch-name .base {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+  color: var(--fg-dim);
+  font-size: 11px;
+}
+.branch-name:hover {
+  background: var(--bg-3);
+  border-color: var(--line);
+}
+.branch-name.static {
+  cursor: default;
+}
+/* exchange with the server reads as in an IDE: up in green is ours, down in blue is theirs */
+.changes-head .sync {
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.changes-head .sync .out,
+.changes-head .sync .in {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+}
+.changes-head .sync .out {
+  color: var(--add);
+}
+.changes-head .sync .in {
+  color: var(--accent);
+}
+.changes-head .sync .out:hover,
+.changes-head .sync .in:hover {
+  text-decoration: underline;
+}
+.changes-head .link-mute {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+.changes-head .link-mute:hover {
+  text-decoration: underline;
+}
+
+/* a directory other than our own is shown: a rare mode, and it has to be visibly remembered */
+.scope-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  font-size: 11px;
+  color: var(--warn);
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+.scope-badge span {
+  flex: 1;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 11px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.section-head .section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-dim);
+}
+.section-head .caret {
+  width: 10px;
+  flex: none;
+  color: var(--fg-dim);
+}
+
+/* while a rebase/merge is unfinished, the operation takes the bottom of the panel, not the commit box */
+.op-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-1);
+}
+.repo-op {
+  border-bottom: 1px solid var(--line);
+  background: var(--op-bg);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.repo-op-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.repo-op-head .what {
+  color: var(--warn);
+  font-size: 12px;
+}
+.repo-op-files {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.repo-op-files code {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.change .resolve {
+  color: var(--add);
+  padding: 0 4px;
+  font-size: 11px;
+}
+
+.changes-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+.change {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.change:hover {
+  background: var(--bg-2);
+}
+.change.active {
+  background: var(--bg-3);
+}
+/* the list is one Tab stop and arrows walk the rows: :focus-visible only, or clicking a
+   file would leave the ring behind. Inset, since the list clips overflow on x. */
+.change:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.change .path {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+}
+.change .path .dir {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-dim);
+}
+.change .path .name {
+  white-space: nowrap;
+  flex: none;
+}
+.change .staged {
+  color: var(--add);
+  font-size: 9px;
+}
+.st {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  width: 14px;
+  flex: none;
+  text-align: center;
+  color: var(--fg-dim);
+}
+.st.added,
+.st.untracked {
+  color: var(--add);
+}
+.st.deleted {
+  color: var(--del);
+}
+.st.modified {
+  color: var(--warn);
+}
+.st.renamed {
+  color: var(--accent);
+}
+.st.conflict {
+  color: var(--conflict);
+}
+
+.section-head .check-all input,
+.change input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.commit-box {
+  border-top: 1px solid var(--line);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg-1);
+}
+.commit-box textarea {
+  font:
+    12px/1.4 -apple-system,
+    'Inter',
+    'Segoe UI',
+    sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  resize: vertical;
+  min-height: 52px;
+}
+.commit-box textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.commit-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.commit-actions button {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* --- branch actions menu, hosted in the panel head --- */
+
+.branch-actions {
+  position: relative;
+}
+.branch-actions-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  z-index: 45;
+  width: 250px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-menu);
+}
+.branch-actions-menu button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.branch-actions-menu button:hover {
+  background: var(--bg-3);
+}
+/* focus here is moved by script (arrows), so :focus, repeating the hover highlight */
+.branch-actions-menu [role='menuitem']:focus {
+  background: var(--bg-3);
+  outline: none;
+}
+.branch-actions-menu .sep {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 0;
+}
+
+button.ghost.danger {
+  color: var(--danger-fg);
+}
+button.ghost.danger:hover:not(:disabled) {
+  background: var(--danger-soft-bg);
+  color: var(--danger-soft-fg);
+}
+.revert-list {
+  margin: 0;
+  padding-left: 18px;
+  max-height: 160px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+
+/* push dialog: commits on the left, the selected commit's files on the right — as in an IDE */
+.push-modal .push-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  min-height: 260px;
+  max-height: 50vh;
+}
+.push-commits,
+.push-files {
+  /* a grid item will not shrink below its own content unless it is told it may: without this the
+     list ignores the body's max-height, spills out of its cell and paints over the buttons below */
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.push-commit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+.push-commit:hover {
+  background: var(--bg-2);
+}
+.push-commit.active {
+  background: var(--bg-3);
+}
+.push-commit .subject {
+  font-size: 12px;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.push-commit .meta {
+  display: flex;
+  gap: 6px;
+}
+.push-modal .modal-actions {
+  align-items: center;
+}

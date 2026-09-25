@@ -1,0 +1,171 @@
+/* Git menu: branch button, popup, branch rows, submenus. */
+
+.git-menu {
+  position: relative;
+  align-self: center;
+  margin-bottom: 4px;
+}
+.branch-btn {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.branch-btn:hover:not(:disabled),
+.branch-btn.open {
+  background: var(--bg-3);
+  border-color: var(--line);
+}
+.git-popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  margin-top: 4px;
+  width: 380px;
+  max-height: calc(100vh - 90px);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-menu);
+}
+.git-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.git-caption {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+  padding: 8px 8px 4px;
+}
+.git-group {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+.git-action {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.git-action:hover:not(:disabled) {
+  background: var(--bg-3);
+}
+/* the popup holds a filter field as well as commands, so it carries no menu role and its
+   items carry no menuitem role — arrows walk the plain buttons, and those need the same
+   highlight as the roled menus. :focus, for the same script-driven reason. */
+.git-action:focus {
+  background: var(--bg-3);
+  outline: none;
+}
+.git-branch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.git-branch:hover,
+.git-branch.open {
+  background: var(--bg-3);
+}
+.git-branch .pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 5px 4px 5px 8px;
+  font-size: 12px;
+}
+.git-branch .pick:disabled {
+  opacity: 1;
+  color: var(--accent);
+}
+.git-branch .mark {
+  width: 8px;
+  flex: none;
+  color: var(--accent);
+  font-size: 9px;
+}
+.git-branch .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.git-branch .more {
+  flex: none;
+  background: transparent;
+  border: none;
+  color: var(--fg-dim);
+  padding: 4px 8px;
+}
+.git-branch .more:hover {
+  color: var(--fg);
+}
+/* both halves of a branch row are arrow-walked buttons of the roleless popup above */
+.git-branch .pick:focus {
+  background: var(--bg-3);
+  outline: none;
+}
+.git-branch .more:focus {
+  background: var(--bg-3);
+  color: var(--fg);
+  outline: none;
+}
+.git-submenu {
+  position: fixed;
+  width: 300px;
+  z-index: 60;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-menu-strong);
+}
+.git-submenu button {
+  flex: none;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.git-submenu button:hover:not(:disabled) {
+  background: var(--bg-3);
+}
+/* arrows move focus by script, so :focus; disabled items never take it, so no :not() here */
+.git-submenu [role='menuitem']:focus {
+  background: var(--bg-3);
+  outline: none;
+}
+.git-submenu .sep {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 0;
+}

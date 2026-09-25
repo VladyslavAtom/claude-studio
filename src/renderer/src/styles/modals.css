@@ -1,0 +1,254 @@
+/* Modal chrome plus the widgets that only appear inside modals. */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  z-index: 100;
+}
+.modal {
+  width: 520px;
+  max-width: 92vw;
+  /* a tall modal scrolls inside itself; otherwise the page behind it ends up scrolled */
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-modal);
+}
+
+/* a dialog with nothing focusable inside takes focus itself, to trap Tab and hold Escape.
+   A ring around the whole box would read as a bug: the title already names the dialog. */
+.modal:focus {
+  outline: none;
+}
+
+.modal.wide {
+  width: 820px;
+}
+
+.modal h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+.modal label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg);
+}
+.modal label.check input {
+  width: auto;
+}
+.modal .nested {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+}
+.modal .hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+.modal .hint.warn {
+  color: var(--warn);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* --- form blocks --- */
+
+.modal h2.section {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.modal .two {
+  display: flex;
+  gap: 10px;
+}
+.modal .two label {
+  flex: 1;
+  min-width: 0;
+}
+.modal textarea {
+  font:
+    12px/1.4 'JetBrains Mono',
+    'DejaVu Sans Mono',
+    monospace;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  resize: vertical;
+}
+.modal textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* a choice between equally valid ways: each has its own cost, hence the explanation */
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+.choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.choice:hover {
+  border-color: var(--accent);
+  background: var(--bg-3);
+}
+.choice-title {
+  font-size: 13px;
+  color: var(--fg);
+}
+.choice-hint {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--fg-dim);
+  white-space: normal;
+}
+.row-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+.row-check input {
+  width: auto;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+/* base picker: a hand-rolled list instead of datalist, which filtered by the already-filled field */
+.base-pick {
+  position: relative;
+}
+.base-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-menu);
+}
+.base-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 5px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 12px;
+}
+.base-list button:hover {
+  background: var(--bg-3);
+}
+/* ArrowDown out of the field moves focus onto an option by script, so :focus fires and
+   :focus-visible may not. Same highlight as hover; the accent name below still shows
+   which option is the chosen one, because this rule only touches the background. */
+.base-list [role='option']:focus {
+  background: var(--bg-3);
+  outline: none;
+}
+.base-list button.active .name {
+  color: var(--accent);
+}
+.base-list .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* «где работает агент»: the place picker and its summary line; fields appear on «Настроить…» */
+.where {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.where-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 0 4px 22px;
+}
+.where .summary {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+.where .summary code {
+  color: var(--fg);
+}
+.where .summary .link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 12px;
+}
+.where .summary .link:hover {
+  text-decoration: underline;
+}
+.where .nested {
+  margin-top: 4px;
+}
+.where input[type='radio'] {
+  width: auto;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}

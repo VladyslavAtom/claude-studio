@@ -1,0 +1,67 @@
+/* Workspace shell: empty states, centre stack, resizable panes, splitters. */
+
+.workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+
+.empty-project,
+.empty-session {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--fg-dim);
+}
+.empty-project h1 {
+  margin: 0;
+  color: var(--fg);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.center-stack {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+.center-stack > .terminal-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.pane {
+  /* panels shrink when the window is narrow, otherwise the centre goes negative */
+  flex: 0 1 auto;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+.pane > * {
+  flex: 1;
+  width: 100%;
+}
+.splitter {
+  flex: none;
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.12s;
+}
+.splitter:hover,
+.splitter.dragging {
+  background: var(--accent);
+}
+/* 5px of transparent handle: the UA ring around it reads as an artefact, so the handle
+   paints itself instead — the same accent bar as hover, over the whole height. Ties with
+   the rule above on specificity, so it has to stay after it. */
+.splitter:focus-visible {
+  background: var(--accent);
+  outline: none;
+}

@@ -1,0 +1,271 @@
+/* Sessions sidebar: list, meta, drag and drop, archived-session history, activity dots. */
+
+.sessions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-right: 1px solid var(--line);
+  min-height: 0;
+}
+.sessions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 6px 8px 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+  border-bottom: 1px solid var(--line);
+}
+.sessions-head .icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--fg-dim);
+  display: flex;
+  align-items: center;
+  padding: 2px 6px;
+}
+.sessions-head .icon-btn:hover {
+  color: var(--fg);
+  background: var(--bg-3);
+}
+.sessions-head .icon-btn.on {
+  color: var(--accent);
+}
+
+.sessions-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.session {
+  padding: 7px 10px 7px 12px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+}
+.session:hover {
+  background: var(--bg-2);
+}
+.session.active {
+  background: var(--bg-2);
+  border-left-color: var(--accent);
+}
+/* the list is one Tab stop and arrows walk the rows: :focus-visible only, or clicking a
+   session would leave the ring behind. Inset, so it survives the scrolling list. */
+.session:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.session-row .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.session-meta .branch {
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-meta .branch.main {
+  color: var(--fg-dim);
+}
+.sessions-foot {
+  border-top: 1px solid var(--line);
+  padding: 6px 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- drag and drop --- */
+
+.dragging {
+  opacity: 0.45;
+}
+.drop-target {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.project-tabs .drop-target,
+.term-tab.drop-target {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* --- session history --- */
+
+.history-section {
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  max-height: 45%;
+  min-height: 0;
+}
+.history-toggle {
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--fg-dim);
+  font-size: 11px;
+  padding: 6px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.history-toggle:hover:not(:disabled) {
+  background: var(--bg-2);
+  color: var(--fg);
+}
+.history-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 6px;
+}
+.history-head .history-toggle {
+  flex: 1;
+}
+.history-head .ghost {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ext-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-1);
+}
+.ext-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.ext-item:last-child {
+  border-bottom: none;
+}
+.ext-item:hover {
+  background: var(--bg-2);
+}
+.ext-item.known {
+  opacity: 0.65;
+}
+.ext-item .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.ext-main {
+  flex: 1;
+  min-width: 0;
+}
+.ext-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ext-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  overflow: hidden;
+}
+.ext-meta .badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--bg-3);
+  color: var(--fg-dim);
+  white-space: nowrap;
+}
+
+.history-list {
+  overflow-y: auto;
+  min-height: 0;
+}
+.archived {
+  padding: 5px 8px 5px 12px;
+  border-left: 2px solid transparent;
+}
+.archived:hover {
+  background: var(--bg-2);
+}
+.archived-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.archived-row .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-dim);
+}
+.session-meta .tabs-count {
+  color: var(--fg-dim);
+}
+
+/* --- inline rename of a session --- */
+
+.session-row input {
+  font-size: 13px;
+  padding: 1px 5px;
+}
+
+/* a session's activity at a glance: one dot per state, with the tab count */
+.session-meta .pulse {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.pulse-part {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--fg-dim);
+}
+.pulse-part .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-dim);
+}
+.pulse-part.calling {
+  color: var(--warn);
+}
+.pulse-part.calling .dot {
+  background: var(--warn);
+}
+.pulse-part.working {
+  color: var(--add);
+}
+.pulse-part.working .dot {
+  background: var(--add);
+}
+.pulse-part.idle .dot {
+  background: var(--dot-idle);
+}
+.pulse-part.asleep .dot {
+  background: transparent;
+  border: 1px solid var(--dot-asleep-line);
+}

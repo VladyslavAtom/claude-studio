@@ -1,0 +1,19 @@
+/* Entry point. Order is load-bearing: no rule in this stylesheet uses !important,
+   so every specificity tie is resolved by source order. Do not reorder these
+   imports, and append a new area only after checking what it can override. */
+
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/project-tabs.css';
+@import './styles/settings.css';
+@import './styles/workspace.css';
+@import './styles/sessions.css';
+@import './styles/files.css';
+@import './styles/merge.css';
+@import './styles/editor.css';
+@import './styles/terminal.css';
+@import './styles/changes.css';
+@import './styles/git-menu.css';
+@import './styles/diff.css';
+@import './styles/modals.css';
+@import './styles/toast.css';

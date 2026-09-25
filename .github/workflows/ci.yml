@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# read-only: nothing here publishes, and a fork's pull request gets no more than it needs
+permissions:
+  contents: read
+
+# a new push to the same branch cancels the run that is already going
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Build and smoke run are deliberately absent: electron-builder and a real Electron start
+# are heavy, and on this project they are the user's job. CI checks types, lint and tests.
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
