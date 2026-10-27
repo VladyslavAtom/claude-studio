@@ -12,6 +12,7 @@ const SLEEP_TICK_MS = 20_000
 /** what a pty is spawned with when the renderer had nothing to measure yet */
 const DEFAULT_COLS = 80
 const DEFAULT_ROWS = 24
+const REDRAW_STEP_MS = 80 // long enough for the program to read the stepped size before it is undone
 const FLUSH_MS = 25 // TUI agents repaint dozens of times per second; batch before crossing IPC
 
 /** a running (or lately running) terminal; the scrollback it keeps for replay is in `scrollback.ts` */
@@ -40,6 +41,8 @@ interface Term extends Scrollback {
   /** output waiting to be flushed to the renderer */
   pending: string
   flushTimer: NodeJS.Timeout | null
+  /** pending return to the true size after a redraw nudge, see `resizeAndRedraw` */
+  redrawTimer: NodeJS.Timeout | null
 }
 
 const terms = new Map<string, Term>()
@@ -151,7 +154,7 @@ export function start(opts: StartOptions): PtyStartResult {
     // Real size changes arrive through `resize()`, which the renderer wires to `term.onResize`.
     if (existing.alive && opts.cols !== undefined && opts.rows !== undefined) {
       try {
-        existing.proc.resize(Math.max(opts.cols, 2), Math.max(opts.rows, 2))
+        resizeAndRedraw(existing, opts.cols, opts.rows)
       } catch {
         /* ignore */
       }
@@ -193,6 +196,7 @@ export function start(opts: StartOptions): PtyStartResult {
     lastCommand: '',
     pending: '',
     flushTimer: null,
+    redrawTimer: null,
   }
   terms.set(opts.id, term)
 
@@ -284,10 +288,43 @@ export function resize(id: string, cols: number, rows: number): void {
   const t = terms.get(id)
   if (!t?.alive) return
   try {
-    t.proc.resize(Math.max(cols, 2), Math.max(rows, 2))
+    resizeAndRedraw(t, cols, rows)
   } catch {
     /* pty may have died between checks */
   }
+}
+
+/**
+ * Apply a size and make sure the program repaints.
+ *
+ * A freshly mounted pane replays the kept buffer: its tail, cut at an arbitrary byte and drawn
+ * at whatever sizes the pty had over its life. A TUI's cursor moves replayed at another width
+ * scatter words across the screen. The program's full repaint fixes that, and SIGWINCH is what
+ * asks for one — but the kernel sends it only when the size changes, and a pane coming back
+ * usually measures exactly what the pty already has. So an unchanged size is stepped one row
+ * away, and back after a pause: two steps in a row arrive as one signal, Node reads the final
+ * size, sees no change and emits no `resize`, and nothing repaints. Only a new pane gets here
+ * with an unchanged size: a live one's `term.onResize` fires on a change only.
+ */
+function resizeAndRedraw(t: Term, cols: number, rows: number): void {
+  const c = Math.max(cols, 2)
+  const r = Math.max(rows, 2)
+  if (t.redrawTimer) clearTimeout(t.redrawTimer)
+  t.redrawTimer = null
+  if (t.proc.cols !== c || t.proc.rows !== r) {
+    t.proc.resize(c, r)
+    return
+  }
+  t.proc.resize(c, r > 2 ? r - 1 : r + 1)
+  t.redrawTimer = setTimeout(() => {
+    t.redrawTimer = null
+    if (!t.alive) return
+    try {
+      t.proc.resize(c, r)
+    } catch {
+      /* pty may have died meanwhile */
+    }
+  }, REDRAW_STEP_MS)
 }
 
 /** remembers the id of a finished process and forgets the oldest once too many records pile up */
@@ -309,6 +346,8 @@ export function kill(id: string): void {
   t.discarded = true
   if (t.flushTimer) clearTimeout(t.flushTimer)
   t.flushTimer = null
+  if (t.redrawTimer) clearTimeout(t.redrawTimer)
+  t.redrawTimer = null
   t.pending = ''
   clearChunks(t)
   try {
