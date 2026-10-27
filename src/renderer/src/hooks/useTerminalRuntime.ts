@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AgentActivity, Project, Session } from '../../../shared/types'
 import { useT } from '../i18n'
 import { notifyAttention } from '../lib/notify'
-import { dropSnapshots, putSnapshot } from '../lib/snapshots'
+import { dropSnapshots, putSnapshot, type Snapshot } from '../lib/snapshots'
 import { useLoaded, useAppState } from '../state/appStateContext'
 import { useAppStateRef } from '../state/selectors'
 import { useWaitingPoll } from './useWaitingPoll'
@@ -30,13 +30,13 @@ export interface TerminalRuntimeState {
    * The last screen of a tab, as xterm's own escapes — what a sleeping tab shows instead of a
    * card. Keyed by terminal id; see `lib/snapshots` for why it is kept here and not on disk.
    */
-  snapshots: Map<string, string>
+  snapshots: Map<string, Snapshot>
 }
 
 export interface TerminalRuntimeActions {
   wake: (terminalId: string) => void
   /** a pane, on its way out, hands over what was on its screen */
-  rememberSnapshot: (terminalId: string, text: string) => void
+  rememberSnapshot: (terminalId: string, snapshot: Snapshot) => void
   markActivity: (terminalId: string) => void
   markSeen: (terminalId: string) => void
   /**
@@ -85,7 +85,7 @@ export function useTerminalRuntime(): { state: TerminalRuntimeState; actions: Te
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
   const [agentActivity, setAgentActivity] = useState<Map<string, AgentActivity>>(new Map())
   const [silent, setSilent] = useState<Set<string>>(new Set())
-  const [snapshots, setSnapshots] = useState<Map<string, string>>(new Map())
+  const [snapshots, setSnapshots] = useState<Map<string, Snapshot>>(new Map())
   const activityAt = useRef<Map<string, number>>(new Map())
   /**
    * Tabs that are gone. A pane serialises its last screen from its cleanup, and that cleanup runs
@@ -138,9 +138,9 @@ export function useTerminalRuntime(): { state: TerminalRuntimeState; actions: Te
     setAwake((prev) => (prev.has(terminalId) ? prev : new Set(prev).add(terminalId)))
   }, [])
 
-  const rememberSnapshot = useCallback((terminalId: string, text: string) => {
+  const rememberSnapshot = useCallback((terminalId: string, snapshot: Snapshot) => {
     if (forgotten.current.includes(terminalId)) return
-    setSnapshots((prev) => putSnapshot(prev, terminalId, text))
+    setSnapshots((prev) => putSnapshot(prev, terminalId, snapshot))
   }, [])
 
   const markActivity = useCallback((terminalId: string) => {

@@ -10,6 +10,7 @@ import type { PtyDataEvent, PtyStartOptions, TerminalKind } from '../../../share
 import { useT } from '../i18n'
 import { middleCloseRecently } from '../lib/dnd'
 import { isKey } from '../lib/keys'
+import type { Snapshot } from '../lib/snapshots'
 import { createPathLinks } from '../lib/termLinks'
 import { fileUrlToPath } from '../lib/termPaths'
 import { useThemed } from '../theme/themeContext'
@@ -128,12 +129,12 @@ function hasVisibleText(term: Terminal): boolean {
  * A pane that was never shown has no measured size, and its terminal is xterm's untouched 80×24;
  * serialising that is harmless, it is the buffer that is read and not the layout.
  */
-function snapshotOf(term: Terminal, serialize: SerializeAddon): string {
+function snapshotOf(term: Terminal, serialize: SerializeAddon): Snapshot {
   try {
-    if (!hasVisibleText(term)) return ''
-    return serialize.serialize({ scrollback: 0, excludeModes: true })
+    if (!hasVisibleText(term)) return { text: '', cols: term.cols }
+    return { text: serialize.serialize({ scrollback: 0, excludeModes: true }), cols: term.cols }
   } catch {
-    return ''
+    return { text: '', cols: term.cols }
   }
 }
 
@@ -189,7 +190,7 @@ interface Props {
    * session, the pane cannot tell them apart and does not need to. A sleeping tab shows it back;
    * for a tab that closes it costs one string that its own bookkeeping throws away.
    */
-  onSnapshot?: (text: string) => void
+  onSnapshot?: (snapshot: Snapshot) => void
 }
 
 export default function TerminalPane({

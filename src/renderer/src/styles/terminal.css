@@ -256,7 +256,10 @@
   flex: 1;
   min-height: 0;
   border-top: 1px dashed var(--line);
-  padding-top: 4px;
+  /* the live pane's left inset (.term-body), so the frozen screen sits where the live one did */
+  padding: 4px 0 0 8px;
+  /* drawn at the captured width: a pane narrower than that clips the right edge */
+  overflow: hidden;
 }
 .sleep-host .xterm {
   height: 100%;

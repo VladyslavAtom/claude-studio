@@ -4,11 +4,12 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { useT } from '../i18n'
 import { useThemed } from '../theme/themeContext'
+import type { Snapshot } from '../lib/snapshots'
 import { TERMINAL_THEMES } from '../theme/terminal'
 
 interface Props {
-  /** the tab's last screen, as the escapes `SerializeAddon` wrote for it */
-  snapshot: string
+  /** the tab's last screen, as the escapes `SerializeAddon` wrote for it, and its width */
+  snapshot: Snapshot
   /** the tab's name, as the strip shows it */
   title: string
   /** an agent keeps its conversation across the sleep; a shell has nothing to keep */
@@ -79,26 +80,27 @@ export default function SleepScreen({ snapshot, title, isAgent, onWake }: Props)
     term.open(host)
     // no WebGL renderer here: one static screen is not worth a texture atlas and a GL context,
     // and this pane is built and torn down every time a tab is looked at while it sleeps
-    try {
-      fit.fit()
-    } catch {
-      // not laid out yet — the screen is written into the size xterm defaulted to
+    // Rows follow the pane; columns are the ones the screen was captured at. This terminal's
+    // fitted width is not the live pane's (another renderer measures the cell differently), and
+    // at any other width the lines the program wrapped itself break again a character early.
+    // A narrower pane clips the right edge instead. The rows it cannot hold scroll off the top,
+    // which is the right end to lose: what a person came back for is the last thing said.
+    const fitRows = (): void => {
+      try {
+        const dims = fit.proposeDimensions()
+        term.resize(snapshot.cols, dims ? Math.max(dims.rows, 1) : term.rows)
+      } catch {
+        // not laid out yet: the screen is written into the rows xterm defaulted to
+      }
     }
-    // The captured screen was serialised at the live pane's size, and this one is a couple of
-    // rows shorter. Same columns, so nothing rewraps; the rows it cannot hold scroll off the
-    // top, which is the right end to lose — what a person came back for is the last thing the
-    // process said.
-    term.write(snapshot + '\x1b[?25l')
+    fitRows()
+    term.write(snapshot.text + '\x1b[?25l')
     if (term.textarea) term.textarea.tabIndex = -1
     termRef.current = term
 
     const ro = new ResizeObserver(() => {
       if (!host.isConnected || host.clientWidth === 0) return
-      try {
-        fit.fit()
-      } catch {
-        /* ignore transient layout errors */
-      }
+      fitRows()
     })
     ro.observe(host)
 

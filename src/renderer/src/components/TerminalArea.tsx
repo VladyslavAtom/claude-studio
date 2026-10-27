@@ -11,6 +11,7 @@ import { useT } from '../i18n'
 import { commandFor, envFor, findAgent } from '../lib/agents'
 import { dragHandlers, middleClickClose } from '../lib/dnd'
 import { terminalStatus } from '../lib/status'
+import type { Snapshot } from '../lib/snapshots'
 import { formatTime } from '../lib/util'
 import InlineRename from '../ui/InlineRename'
 import { Menu, MenuItem, MenuSep } from '../ui/Menu'
@@ -33,9 +34,9 @@ interface Props {
   /** tabs whose CLI reports nothing: they will never ring, and the strip has to say so */
   silent: Set<string>
   /** the last screen of a tab, kept while it sleeps; see lib/snapshots */
-  snapshots: Map<string, string>
+  snapshots: Map<string, Snapshot>
   /** a pane hands over its screen as it goes away — asleep, closed or left behind on a switch */
-  onSnapshot: (terminalId: string, text: string) => void
+  onSnapshot: (terminalId: string, snapshot: Snapshot) => void
   /** put a tab to sleep by hand; main kills the process and answers with the same `slept` event */
   onSleepTerminal: (terminalId: string) => void
   /**
@@ -607,7 +608,7 @@ export default function TerminalArea({
               onSeen={() => onSeen(tab.id)}
               onCommand={(cmd) => onTerminalCommand(tab.id, cmd)}
               onOpenPath={onOpenPath}
-              onSnapshot={(text) => onSnapshot(tab.id, text)}
+              onSnapshot={(snapshot) => onSnapshot(tab.id, snapshot)}
             />
           )
         })}
