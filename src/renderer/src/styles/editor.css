@@ -52,8 +52,7 @@
   place-items: center;
   overflow: auto;
   padding: 12px;
-  background:
-    repeating-conic-gradient(var(--surface-raised) 0% 25%, var(--editor-bg) 0% 50%) 50% / 20px 20px;
+  background: repeating-conic-gradient(var(--surface-raised) 0% 25%, var(--editor-bg) 0% 50%) 50% / 20px 20px;
 }
 
 .editor-image img {
@@ -61,4 +60,84 @@
   max-height: 100%;
   object-fit: contain;
   image-rendering: auto;
+}
+
+/* CodeMirror's Ctrl+F panel. Its DOM and base theme are the library's, and the bare `input` and
+   `button` rules in base.css leak into it (a checkbox at width: 100% is what cut the labels
+   off). The base theme is scoped under a generated class and mounted after this sheet, so these
+   selectors carry the panel's whole chain to outrank it rather than tie with it. */
+.cm-editor .cm-panels.cm-panels-bottom {
+  border-top-color: var(--line);
+}
+.cm-editor .cm-panels .cm-panel.cm-search {
+  padding: 4px 34px 4px 8px;
+  font-size: 12px;
+}
+.cm-editor .cm-panels .cm-panel.cm-search input,
+.cm-editor .cm-panels .cm-panel.cm-search button,
+.cm-editor .cm-panels .cm-panel.cm-search label {
+  margin: 2px 6px 2px 0;
+  vertical-align: middle;
+}
+.cm-editor .cm-panels .cm-panel.cm-search .cm-textfield {
+  width: 220px;
+  font-size: 12px;
+  padding: 3px 6px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+.cm-editor .cm-panels .cm-panel.cm-search .cm-textfield:focus {
+  border-color: var(--accent);
+}
+.cm-editor .cm-panels .cm-panel.cm-search .cm-button {
+  font-size: 12px;
+  padding: 3px 10px;
+  color: var(--fg);
+  background: var(--bg-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+.cm-editor .cm-panels .cm-panel.cm-search .cm-button:hover {
+  background: var(--btn-hover-bg);
+}
+.cm-editor .cm-panels .cm-panel.cm-search label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+}
+.cm-editor .cm-panels .cm-panel.cm-search input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.cm-editor .cm-panels .cm-panel.cm-search [name='close'] {
+  top: 5px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--fg-dim);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+}
+.cm-editor .cm-panels .cm-panel.cm-search [name='close']:hover {
+  color: var(--fg);
+  background: var(--bg-3);
+}
+/* the match counter lib/editor.ts puts after the «all» button */
+.cm-editor .cm-panels .cm-panel.cm-search .cm-search-count {
+  display: inline-block;
+  min-width: 4.5em;
+  margin-right: 10px;
+  vertical-align: middle;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
 }

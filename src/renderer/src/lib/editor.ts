@@ -1,5 +1,7 @@
-import { EditorView } from '@codemirror/view'
+import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 import { Compartment, type Extension } from '@codemirror/state'
+import { getSearchQuery, searchPanelOpen } from '@codemirror/search'
+import { searchCount } from './searchCount'
 import { HighlightStyle, syntaxHighlighting, StreamLanguage, type LanguageSupport } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 import type { ThemeName } from '../../../shared/types'
@@ -191,10 +193,52 @@ export const intellijLightHighlight = editorHighlight(L)
 export const intellijLight: Extension = [intellijLightTheme, syntaxHighlighting(intellijLightHighlight)]
 
 /**
+ * The match counter (`searchCount`) of the Ctrl+F panel, which CodeMirror's own panel does not have. Its DOM is
+ * the library's, so the counter is put in after the «all» button rather than by replacing the
+ * panel. Placed in the measure phase: the panel is created by another plugin's update, which may
+ * run after this one.
+ */
+const searchCounter = ViewPlugin.fromClass(
+  class {
+    readonly el = document.createElement('span')
+    constructor(readonly view: EditorView) {
+      this.el.className = 'cm-search-count'
+      this.schedule()
+    }
+    update(u: ViewUpdate): void {
+      // an editor without a search panel (the diff) never gets past the first test
+      const open = searchPanelOpen(u.state)
+      if (open !== searchPanelOpen(u.startState)) this.schedule()
+      else if (open && (u.docChanged || u.selectionSet || getSearchQuery(u.state) !== getSearchQuery(u.startState)))
+        this.schedule()
+    }
+    schedule(): void {
+      this.view.requestMeasure({ key: this, read: () => null, write: () => this.place() })
+    }
+    place(): void {
+      const panel = searchPanelOpen(this.view.state) ? this.view.dom.querySelector('.cm-search') : null
+      const anchor = panel?.querySelector('button[name=select]')
+      if (!anchor) {
+        this.el.remove()
+        return
+      }
+      this.el.textContent = searchCount(this.view.state) ?? ''
+      if (anchor.nextSibling !== this.el) anchor.after(this.el)
+    }
+    destroy(): void {
+      this.el.remove()
+    }
+  },
+)
+
+/**
  * Pass to `useThemed`. Module-level and built once: the extensions are values CodeMirror compares
  * by identity, so a fresh object per render would reconfigure the editor on every keystroke.
  */
-export const EDITOR_THEMES: Record<ThemeName, Extension> = { dark: darcula, light: intellijLight }
+export const EDITOR_THEMES: Record<ThemeName, Extension> = {
+  dark: [darcula, searchCounter],
+  light: [intellijLight, searchCounter],
+}
 
 /**
  * The slot the editor colours occupy in the configuration. A compartment is how CodeMirror lets
