@@ -101,4 +101,6 @@ code {
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* the window root never scrolls: a strip that runs out of room scrolls inside itself */
+  overflow: hidden;
 }

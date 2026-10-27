@@ -23,6 +23,10 @@ export const sessions = {
   /** the operation itself: the context menu and the confirming button of the closing dialog */
   close: 'Close the session',
   'close.title': 'Close the session (it goes to the history)',
+  /** a project folder or a session directory deleted from disk; one wording for the tab and the row */
+  missing: 'folder missing',
+  'missing.title': 'The folder {path} is not on disk',
+  recreateWorktree: 'Recreate worktree',
   'close.aria': 'Close the session “{name}”',
   'menu.rename': 'Rename',
   'menu.rename.hint': 'double click',

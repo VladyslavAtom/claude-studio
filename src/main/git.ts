@@ -45,7 +45,7 @@ export {
 } from './git/branches'
 export { pull, push, syncWithBase } from './git/remote'
 export { acceptSide, continueOperation, markResolved, repoState } from './git/state'
-export { addWorktree, listWorktrees, removeWorktree } from './git/worktree'
+export { addWorktree, isValidBranchName, listWorktrees, removeWorktree } from './git/worktree'
 export { clone } from './git/clone'
 export { createPullRequest } from './gh'
 export { draftCommitMessage } from './commitMessage'

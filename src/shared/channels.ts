@@ -81,6 +81,8 @@ export const CHANNELS = {
     worktreeAdd: 'git:worktreeAdd',
     worktreeRemove: 'git:worktreeRemove',
     worktrees: 'git:worktrees',
+    /** `git check-ref-format --branch`: the new-session window checks a typed name before Create */
+    checkBranchName: 'git:checkBranchName',
     clone: 'git:clone',
   },
   files: {

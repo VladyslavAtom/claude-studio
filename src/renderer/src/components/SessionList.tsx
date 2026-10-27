@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AgentActivity, ArchivedSession, Project, Session } from '../../../shared/types'
 import type { T } from '../i18n'
 import { useT } from '../i18n'
@@ -21,6 +21,10 @@ interface Props {
   busyIds: Set<string>
   /** what each claude tab's own CLI says it is doing, for the tabs anything answers for */
   agentActivity: Map<string, AgentActivity>
+  /** session directories that are not on disk */
+  missing: ReadonlySet<string>
+  /** put a deleted worktree back at its path, on its branch */
+  onRecreate: (session: Session) => void
   onSelect: (id: string) => void
   onNew: () => void
   onClose: (session: Session) => void
@@ -110,6 +114,8 @@ export default function SessionList({
   attention,
   busyIds,
   agentActivity,
+  missing,
+  onRecreate,
   onSelect,
   onNew,
   onClose,
@@ -135,6 +141,11 @@ export default function SessionList({
     })
   const listRef = useRef<HTMLDivElement>(null)
   const onListKeys = useRovingFocus(listRef, '.session')
+
+  // a new session, or the active one after a restart, may sit below the fold of a long list
+  useEffect(() => {
+    listRef.current?.querySelector('.session.active')?.scrollIntoView({ block: 'nearest' })
+  }, [project.id, project.activeSessionId])
 
   const history = project.history ?? []
   const parentName = (id: string | undefined): string => project.sessions.find((p) => p.id === id)?.name ?? ''
@@ -169,7 +180,12 @@ export default function SessionList({
         {treeRows(project.sessions, collapsed).map(({ session: s, index, depth, childCount, hidden }) => (
           <div
             key={s.id}
-            className={'session' + (s.id === project.activeSessionId ? ' active' : '') + (depth ? ' child' : '')}
+            className={
+              'session' +
+              (s.id === project.activeSessionId ? ' active' : '') +
+              (depth ? ' child' : '') +
+              (missing.has(s.cwd) ? ' missing' : '')
+            }
             style={{ '--depth': depth }}
             data-testid={depth ? 'session-child' : 'session'}
             role="button"
@@ -257,6 +273,32 @@ export default function SessionList({
               <span className="tabs-count">{t.plural('sessions.tabCount', s.terminals.length)}</span>
               <span className="time">{formatTime(s.createdAt)}</span>
             </div>
+            {missing.has(s.cwd) && (
+              <div className="session-missing" title={t('sessions.missing.title', { path: s.cwd })}>
+                <span className="missing-badge">{t('sessions.missing')}</span>
+                {s.worktree && (
+                  <button
+                    className="link"
+                    data-testid="session-recreate"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRecreate(s)
+                    }}
+                  >
+                    {t('sessions.recreateWorktree')}
+                  </button>
+                )}
+                <button
+                  className="link"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onClose(s)
+                  }}
+                >
+                  {t('sessions.close')}
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -272,6 +314,9 @@ export default function SessionList({
               hint: t('sessions.menu.rename.hint'),
               onPick: () => setEditingId(menuAt.session.id),
             },
+            ...(menuAt.session.worktree && missing.has(menuAt.session.cwd)
+              ? [{ label: t('sessions.recreateWorktree'), onPick: () => onRecreate(menuAt.session) }]
+              : []),
             {
               label: t('sessions.close'),
               hint: t('sessions.menu.close.hint'),

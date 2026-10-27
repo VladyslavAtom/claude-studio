@@ -16,6 +16,7 @@ import StartupModal from './components/StartupModal'
 import AgentHistoryModal from './components/AgentHistoryModal'
 import Splitter from './components/Splitter'
 import { COLLAPSED_W } from './hooks/useLayout'
+import { useMissingDirs } from './hooks/useMissingDirs'
 import { diffTab, fileTab, mergeTab } from './hooks/useTerminalActions'
 import { ActionsProvider } from './state/ActionsProvider'
 import { useActions } from './state/actionsContext'
@@ -73,6 +74,7 @@ function Shell(): JSX.Element {
   const { projects } = useActions()
   const activeProject = useActiveProject()
   const t = useT()
+  const { missing, recheck } = useMissingDirs(state.projects)
 
   if (!loaded) return <div className="boot">{t('common.loading')}</div>
 
@@ -86,6 +88,7 @@ function Shell(): JSX.Element {
         busyIds={busyIds}
         agentActivity={agentActivity}
         activeId={state.activeProjectId}
+        missing={missing}
         onSelect={projects.selectProject}
         onClose={projects.closeProject}
         onReopen={(id) => void projects.reopenProject(id)}
@@ -114,7 +117,7 @@ function Shell(): JSX.Element {
           onSave={(settings) => dispatch({ type: 'settingsSaved', settings })}
         />
       ) : activeProject ? (
-        <Workspace project={activeProject} />
+        <Workspace project={activeProject} missing={missing} recheck={recheck} />
       ) : (
         <div className="empty-project">
           <h1>Claude Studio</h1>
@@ -134,7 +137,15 @@ function Shell(): JSX.Element {
   )
 }
 
-function Workspace({ project }: { project: Project }): JSX.Element {
+function Workspace({
+  project,
+  missing,
+  recheck,
+}: {
+  project: Project
+  missing: ReadonlySet<string>
+  recheck: () => void
+}): JSX.Element {
   const state = useAppState()
   const dispatch = useDispatch()
   const t = useT()
@@ -156,6 +167,12 @@ function Workspace({ project }: { project: Project }): JSX.Element {
           attention={attention}
           busyIds={busyIds}
           agentActivity={agentActivity}
+          missing={missing}
+          onRecreate={(session) =>
+            void sessions.recreateWorktree(project, session).then((ok) => {
+              if (ok) recheck()
+            })
+          }
           onSelect={(id) => sessions.selectSession(project, id)}
           onNew={() => openModal({ kind: 'newSession', project })}
           onClose={(session) =>
@@ -338,10 +355,14 @@ function ModalHost({ activeProject }: { activeProject: Project | null }): JSX.El
           // what the modal reads as "pick the default"
           {...(modal.baseRef ? { initialBase: modal.baseRef } : {})}
           onCancel={closeModal}
-          onConfirm={(res) => {
+          // the window stays open until the session exists: a failure is shown inside it, with
+          // the typed name and task still there to correct
+          onConfirm={async (res) => {
             const project = modal.project
+            const created = await sessions.createSession(project, res, true)
+            if (!created.ok) return created.message
             closeModal()
-            void sessions.createSession(project, res)
+            return null
           }}
         />
       )

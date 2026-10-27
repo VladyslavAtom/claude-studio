@@ -8,6 +8,24 @@
   border-bottom: 1px solid var(--line);
   padding: 6px 8px 0;
   min-height: 38px;
+  min-width: 0;
+}
+/* Only the tabs scroll; «+», the git menu and settings sit outside the strip and stay on screen.
+   Tabs keep their width — a row of names cut to three letters is no better than one off screen.
+   No scrollbar: it would eat the height of the strip. The wheel, the arrows and the active tab
+   kept in view move it, and the tab cut at the edge says there is more. */
+.project-tabs .tab-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.project-tabs > :not(.tab-strip, .spacer) {
+  flex: none;
 }
 
 .project-tabs .tab {
@@ -21,6 +39,7 @@
   color: var(--fg-dim);
   cursor: pointer;
   max-width: 240px;
+  flex: none;
 }
 /* the project's colour: a line along the top of the window, and a cap on every tab, full on the
    one on screen and half-strength on the rest — the tab bar reads as a row of colours */
@@ -192,4 +211,10 @@
 .project-tabs .settings:hover {
   color: var(--fg);
   background: var(--bg-3);
+}
+
+/* a project whose folder was deleted from disk */
+.project-tabs .tab.missing .label {
+  color: var(--fg-dim);
+  text-decoration: line-through;
 }
