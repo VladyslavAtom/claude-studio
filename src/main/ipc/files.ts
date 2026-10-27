@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { promises as fs } from 'node:fs'
 import { CHANNELS } from '../../shared/channels'
 import * as files from '../files'
+import * as fileOps from '../fileOps'
 
 /** reading and writing the project's files; `files.ts` is what keeps them inside the allowed roots */
 export function register(): void {
@@ -14,6 +15,17 @@ export function register(): void {
   // a path clicked in terminal output: it registers that one file and nothing around it — see
   // openFromTerminal for why the grant is a file rather than a directory
   ipcMain.handle(CHANNELS.files.openFromTerminal, (_e, path: string) => files.openFromTerminal(path))
+
+  // the file tree's operations: fileOps checks source and destination against the roots
+  ipcMain.handle(CHANNELS.files.create, (_e, dir: string, name: string, kind: 'file' | 'dir') =>
+    fileOps.createEntry(dir, name, kind),
+  )
+  ipcMain.handle(CHANNELS.files.rename, (_e, path: string, name: string) => fileOps.renameEntry(path, name))
+  ipcMain.handle(CHANNELS.files.move, (_e, paths: string[], destDir: string) => fileOps.moveEntries(paths, destDir))
+  ipcMain.handle(CHANNELS.files.copy, (_e, paths: string[], destDir: string) => fileOps.copyEntries(paths, destDir))
+  ipcMain.handle(CHANNELS.files.trash, (_e, paths: string[]) => fileOps.trashEntries(paths))
+  ipcMain.handle(CHANNELS.files.reveal, (_e, path: string) => fileOps.revealEntry(path))
+  ipcMain.handle(CHANNELS.files.openDefault, (_e, path: string) => fileOps.openEntry(path))
 
   // an existence check for a path: it needs no root — the answer is a yes or a no anyway
   ipcMain.handle(CHANNELS.fs.exists, async (_e, path: string) => {

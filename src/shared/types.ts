@@ -315,6 +315,8 @@ export interface TerminalTab {
   fileLine?: number
   /** for merge tabs: the working directory of the repository */
   mergeCwd?: string
+  /** for shell tabs: where the shell starts when that is not the session's directory («Open in ▸ Terminal») */
+  shellCwd?: string
   /** for diff tabs: what is compared against what */
   diff?: {
     cwd: string
@@ -761,6 +763,20 @@ export type AppMessageCode =
   | 'terminal-path-gone'
   /** a path clicked in terminal output is a directory, or something else that is not a file */
   | 'terminal-path-not-a-file'
+
+  // --- file tree operations (main/fileOps.ts) ---
+  /** an empty name, `.`/`..`, or one holding `/`. {name} */
+  | 'file-name-invalid'
+  /** something of that name is already in the target directory; nothing is overwritten. {name} */
+  | 'file-name-exists'
+  /** a directory cannot be moved into itself or below itself. {name} */
+  | 'file-move-into-itself'
+  /** the root of the tree itself is not renamed, moved or trashed from the tree */
+  | 'file-is-root'
+  /** the path is not inside a repository, so there is no .gitignore to add it to */
+  | 'not-in-repo'
+  /** success note: the entry is already in .gitignore and the file was left alone. {entry} */
+  | 'gitignore-already-listed'
 
   // --- the draft commit message (main/commitMessage.ts, main/serviceAgent.ts) ---
   /** the selected files differ from neither HEAD nor the base ref, so there is nothing to describe. {ref?} */

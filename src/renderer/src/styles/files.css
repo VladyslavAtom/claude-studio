@@ -44,6 +44,30 @@
 }
 /* the tree is one Tab stop and arrows walk it: :focus-visible only, or clicking a file
    would leave the ring behind. Inset, or the horizontal scroll of the tree cuts it off. */
+/* gathered by Ctrl/Shift+click: Delete, Cut, Copy and the Git items act on all of these */
+.fnode.picked {
+  background: var(--bg-3);
+}
+/* cut and waiting for a Paste */
+.fnode.cut {
+  opacity: 0.55;
+}
+/* the inline field of Rename and New: it takes the name's place in the row */
+.fnode-rename {
+  flex: 1;
+  min-width: 60px;
+  font: inherit;
+  padding: 0 4px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+}
+/* the commit and branch lists of Git ▸ Show history and Compare with branch */
+.file-git-list {
+  max-height: 50vh;
+  margin: 8px 0;
+}
 .fnode:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;

@@ -180,6 +180,10 @@ function Workspace({ project }: { project: Project }): JSX.Element {
                   }
                   onOpen={(path) => terminals.openTab(project, activeSession, fileTab(path))}
                   onClose={() => layout.setPanel('filesOpen', false)}
+                  onOpenDiff={(spec) => terminals.openTab(project, activeSession, diffTab(spec))}
+                  onOpenTerminal={(dir) => terminals.openShellAt(project, activeSession, dir)}
+                  onError={setError}
+                  onInfo={setBusy}
                 />
               </div>
               <Splitter onResize={(dx: number) => layout.resize('files', dx)} />

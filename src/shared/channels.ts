@@ -67,6 +67,10 @@ export const CHANNELS = {
     fileAtRef: 'git:fileAtRef',
     listCommits: 'git:listCommits',
     commitFiles: 'git:commitFiles',
+    /** the commits touching one path: the file tree's Git ▸ Show History */
+    fileHistory: 'git:fileHistory',
+    /** the file tree's Git ▸ Add to .gitignore */
+    addToGitignore: 'git:addToGitignore',
     pull: 'git:pull',
     merge: 'git:merge',
     rebaseOnto: 'git:rebaseOnto',
@@ -86,6 +90,14 @@ export const CHANNELS = {
     registerRoot: 'files:registerRoot',
     /** a path the user clicked in terminal output: that one file becomes readable */
     openFromTerminal: 'files:openFromTerminal',
+    // the file tree's own operations; every one is checked against the roots in main/fileOps.ts
+    create: 'files:create',
+    rename: 'files:rename',
+    move: 'files:move',
+    copy: 'files:copy',
+    trash: 'files:trash',
+    reveal: 'files:reveal',
+    openDefault: 'files:openDefault',
   },
   agent: {
     listExternalSessions: 'agent:listExternalSessions',

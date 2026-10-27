@@ -57,6 +57,8 @@ export function register(): void {
   ipcMain.handle(CH.fileAtRef, (_e, cwd: string, ref: string, path: string) => git.fileAtRef(cwd, ref, path))
   ipcMain.handle(CH.listCommits, (_e, cwd: string, range: string) => git.listCommits(cwd, range))
   ipcMain.handle(CH.commitFiles, (_e, cwd: string, hash: string) => git.commitFiles(cwd, hash))
+  ipcMain.handle(CH.fileHistory, (_e, cwd: string, path: string) => git.fileHistory(cwd, path))
+  ipcMain.handle(CH.addToGitignore, (_e, path: string) => git.addToGitignore(path))
   ipcMain.handle(CH.pull, (_e, cwd: string, strategy: 'merge' | 'rebase') => git.pull(cwd, strategy))
   ipcMain.handle(CH.merge, (_e, cwd: string, branch: string) => git.mergeBranch(cwd, branch))
   ipcMain.handle(CH.rebaseOnto, (_e, cwd: string, branch: string) => git.rebaseOnto(cwd, branch))

@@ -153,6 +153,14 @@ const WORDING: Record<AppMessageCode, Wording> = {
   'terminal-path-gone': (t) => t('terminal.link.gone'),
   'terminal-path-not-a-file': (t) => t('terminal.link.notAFile'),
 
+  // the file tree's operations name what they could not do to which entry
+  'file-name-invalid': (t, p) => t('files.error.nameInvalid', { name: str(p, 'name') }),
+  'file-name-exists': (t, p) => t('files.error.nameExists', { name: str(p, 'name') }),
+  'file-move-into-itself': (t, p) => t('files.error.moveIntoItself', { name: str(p, 'name') }),
+  'file-is-root': (t) => t('files.error.isRoot'),
+  'not-in-repo': (t) => t('files.error.notInRepo'),
+  'gitignore-already-listed': (t, p) => t('files.note.ignoreListed', { entry: str(p, 'entry') }),
+
   // no ref means the files were compared with HEAD alone, and the wording says so
   'draft-no-changes': (t, p) => {
     const ref = str(p, 'ref')

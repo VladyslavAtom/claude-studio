@@ -442,3 +442,15 @@
 .term-menu button.danger {
   color: var(--del);
 }
+/* a row that opens a submenu (the file tree's New, Copy Path, Open in, Git) */
+.term-menu button[aria-haspopup]::after {
+  content: '▸';
+  color: var(--fg-dim);
+}
+.term-menu button:disabled {
+  color: var(--fg-faint);
+  cursor: default;
+}
+.term-menu button:disabled:hover {
+  background: transparent;
+}

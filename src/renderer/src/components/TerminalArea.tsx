@@ -585,7 +585,7 @@ export default function TerminalArea({
             <TerminalPane
               key={`${tab.id}:${nonces[tab.id] ?? 0}`}
               id={tab.id}
-              cwd={session.cwd}
+              cwd={tab.shellCwd ?? session.cwd}
               kind={tab.kind}
               command={commandFor(agent, tab, hookPaths ?? undefined)}
               env={tab.configDir ? { ...(agent?.env ?? {}), CLAUDE_CONFIG_DIR: tab.configDir } : agent?.env}

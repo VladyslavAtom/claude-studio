@@ -76,13 +76,17 @@ export async function revertFiles(cwd: string, files: string[]): Promise<OpResul
 
 const LOG_SEP = '\u0001'
 
-/** commits in a range (`origin/main..HEAD`, say) — for the window shown before a push */
-export async function listCommits(cwd: string, range: string, limit = 200): Promise<CommitInfo[]> {
+/**
+ * commits in a range (`origin/main..HEAD`, say) — for the window shown before a push; with
+ * `paths`, only those touching them (the tree's Show History), each path as a literal pathspec
+ */
+export async function listCommits(cwd: string, range: string, limit = 200, paths: string[] = []): Promise<CommitInfo[]> {
   const r = await git(cwd, [
     'log',
     `--max-count=${limit}`,
     `--format=%H${LOG_SEP}%h${LOG_SEP}%s${LOG_SEP}%an${LOG_SEP}%ct`,
     range,
+    ...(paths.length ? ['--', ...literals(paths)] : []),
   ])
   if (r.code !== 0) return []
   const out: CommitInfo[] = []
@@ -95,6 +99,11 @@ export async function listCommits(cwd: string, range: string, limit = 200): Prom
     out.push({ hash, short, subject, author, date: (parseInt(ts, 10) || 0) * 1000 })
   }
   return out
+}
+
+/** Git ▸ Show History of one file or directory, relative to `cwd`: the newest 200 commits */
+export function fileHistory(cwd: string, path: string): Promise<CommitInfo[]> {
+  return listCommits(cwd, 'HEAD', 200, [path])
 }
 
 /** what a single commit changed: merges are shown against the first parent */

@@ -6,7 +6,8 @@
  *   exec      — the one spawn, the buffers, `literal()` for pathspecs (invariants in its header)
  *   refs      — HEAD, the base, the upstream, the contents of a file at a revision
  *   status    — parsing of status and `--name-status`, the diff of a file, the summary
- *   commit    — committing the selected paths, reverting, reading history
+ *   commit    — committing the selected paths, reverting, reading history (of a file, too)
+ *   ignore    — appending a path to .gitignore, inside the open roots
  *   branches  — the branch list, creating, switching, merge/rebase onto a branch
  *   remote    — push, pull, updating from the base
  *   state     — unfinished operations, conflicts, the shared runner for merge-like commands
@@ -31,7 +32,8 @@ export {
   renameSources,
   status,
 } from './git/status'
-export { commit, commitFiles, listCommits, revertFiles } from './git/commit'
+export { commit, commitFiles, fileHistory, listCommits, revertFiles } from './git/commit'
+export { addToGitignore } from './git/ignore'
 export {
   checkout,
   createBranch,
