@@ -14,6 +14,7 @@ export const editor = {
 
   dirty: 'Not saved',
   'status.conflict': 'the file changed on disk',
+  'status.gone': 'the file is no longer on disk',
   'status.saving': 'saving…',
   'status.unsaved': 'not saved — Ctrl+S',
   'status.saved': 'saved',
@@ -29,6 +30,11 @@ export const editor = {
   'save.title': 'Save (Ctrl+S)',
   close: 'Close (Esc)',
   'close.editor.aria': 'Close the editor (Esc)',
+  'close.confirm': 'Close «{file}»?',
+  'close.unsaved': 'The edits in this tab are not saved.',
+  'close.conflict': 'The file changed on disk since it was opened. Overwrite writes your version over it.',
+  'close.gone': 'The file is no longer on disk. Overwrite writes your version back.',
+  'close.discard': "Don't save",
 
   'diff.wrap': 'Line wrapping',
   'diff.wrap.on': '⤶ on',

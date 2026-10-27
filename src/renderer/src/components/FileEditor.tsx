@@ -2,7 +2,7 @@ import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { defaultKeymap, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { bracketMatching, indentOnInput, foldGutter, foldKeymap } from '@codemirror/language'
 import { searchKeymap, highlightSelectionMatches, search } from '@codemirror/search'
 import { useT } from '../i18n'
@@ -10,8 +10,9 @@ import { resultMessage } from '../ui/useGitAction'
 import { EDITOR_THEMES, languageFor, themeSlot } from '../lib/editor'
 import { basename } from '../lib/util'
 import { useThemed } from '../theme/themeContext'
-import { editedByUser, useCheckedFile } from '../hooks/useCheckedFile'
-import type { EditorConfig } from '../../../shared/types'
+import { editedByUser, undoHistory, useCheckedFile, type CloseGuard } from '../hooks/useCheckedFile'
+import { useChangesRefresh } from '../hooks/useChangesRefresh'
+import type { EditorConfig, TerminalTab } from '../../../shared/types'
 
 /**
  * Put the caret on a line and scroll it into view. Clamped rather than trusted: the line comes
@@ -25,6 +26,10 @@ function revealLine(view: EditorView, line: number): void {
 }
 
 interface Props {
+  /**
+   * The file. It changes only when the file itself was renamed or moved (see `pathsMoved`): the
+   * buffer, its undo history and its unsaved edits stay, and the next save goes to the new path.
+   */
   path: string
   /** the line to go to, when whoever opened the tab named one (a `git.ts:42` in the output) */
   line?: number
@@ -36,9 +41,13 @@ interface Props {
    * would throw away the unsaved buffer on every tab switch.
    */
   active?: boolean
+  /** the session's tabs: whether the re-read needs a fallback poll (see `useChangesRefresh`) */
+  terminals: readonly TerminalTab[]
   /** hand the current file (and selected line range) to the active agent tab */
   onSend: (text: string) => void
   onClose: () => void
+  /** what closing would lose, asked before the tab closes; null as the editor goes away */
+  onGuard?: (guard: CloseGuard | null) => void
   onSaved?: (path: string) => void
   onError: (msg: string) => void
 }
@@ -49,8 +58,10 @@ export default function FileEditor({
   cwd,
   editor,
   active = true,
+  terminals,
   onSend,
   onClose,
+  onGuard,
   onSaved,
   onError,
 }: Props): JSX.Element {
@@ -62,7 +73,7 @@ export default function FileEditor({
   const [readOnlyNote, setReadOnlyNote] = useState<string | null>(null)
   /** the checked save, the autosave and the conflict with the disk — shared with the diff view */
   const file = useCheckedFile({ path, editor, viewRef, onError, ...(onSaved ? { onSaved } : {}) })
-  const { dirty, conflict, savedAt } = file
+  const { dirty, conflict, gone, savedAt } = file
   /**
    * A picture is shown, never edited: main answers with a data URL instead of text, and the
    * whole editor below — CodeMirror, autosave, the conflict check — is simply not built. Half a
@@ -87,30 +98,32 @@ export default function FileEditor({
   const coloursRef = useRef(editorColours)
   // the file is read before the view exists, so the line to go to has to survive that wait
   const lineRef = useRef(line)
+  // the file is read once, on mount: a later path is the same file moved, not a new one to load
+  const pathRef = useRef(path)
+  const onGuardRef = useRef(onGuard)
   useEffect(() => {
     fileRef.current = file
     activeRef.current = active
     tRef.current = t
     coloursRef.current = editorColours
     lineRef.current = line
+    pathRef.current = path
+    onGuardRef.current = onGuard
   })
 
-  /**
-   * A different file means a different editor. Reset while rendering rather than from the
-   * effect below: an effect runs after the paint, so `editor.status.saved` from the previous
-   * file stood over the new one's header for a frame.
-   */
-  const [openFor, setOpenFor] = useState(path)
-  if (openFor !== path) {
-    setOpenFor(path)
-    setLoading(true)
-    setReadOnlyNote(null)
-    file.reset()
-    setImage(null)
-  }
+  useEffect(() => {
+    const register = onGuardRef.current
+    register?.({
+      risk: () => fileRef.current.closeRisk(),
+      // in conflict, or with the file gone, saving is writing over the disk: the dialog said so
+      save: () => (fileRef.current.closeRisk() === 'unsaved' ? fileRef.current.save() : fileRef.current.overwrite()),
+    })
+    return () => register?.(null)
+  }, [])
 
   useEffect(() => {
     let disposed = false
+    const path = pathRef.current
 
     void window.api.files.read(path).then((res) => {
       if (disposed || !hostRef.current) return
@@ -131,7 +144,7 @@ export default function FileEditor({
         highlightActiveLine(),
         highlightActiveLineGutter(),
         foldGutter(),
-        history(),
+        undoHistory(),
         indentOnInput(),
         bracketMatching(),
         highlightSelectionMatches(),
@@ -170,11 +183,27 @@ export default function FileEditor({
 
     return () => {
       disposed = true
-      fileRef.current.flush(path)
+      fileRef.current.flush(pathRef.current)
       viewRef.current?.destroy()
       viewRef.current = null
     }
-  }, [path])
+  }, [])
+
+  /**
+   * The disk may have moved under the buffer — an agent's turn ended, the app wrote, the window
+   * came back: a clean buffer takes the new text, a dirty one shows the conflict, a deleted file
+   * is marked so (see `reread`). Only while visible; coming back to the tab, or the file moving
+   * to a new path, re-reads at once.
+   */
+  useChangesRefresh({
+    cwd: path,
+    terminals,
+    enabled: active && !loading && !image,
+    refresh: () => fileRef.current.reread(),
+  })
+  useEffect(() => {
+    if (active) void fileRef.current.reread()
+  }, [active, path])
 
   /**
    * The tab is already open and a link named another line in the same file: go there. On the
@@ -220,23 +249,23 @@ export default function FileEditor({
     onSend(ref + ' ')
   }
 
-  useEffect(() => {
-    // hidden editor keeps its buffer but must not answer keys meant for the visible tab
-    if (!active) return
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [active, onClose])
-
   // returning to the tab should put the caret back where it was
   useEffect(() => {
     if (active) viewRef.current?.focus()
   }, [active])
 
   return (
-    <div className="editor-overlay" style={{ display: active ? 'flex' : 'none' }}>
+    <div
+      className="editor-overlay"
+      style={{ display: active ? 'flex' : 'none' }}
+      // Escape closes the tab only from inside it, and only when nothing inside took the key
+      // first: CodeMirror's search panel, a multi-selection, a popup
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || e.defaultPrevented) return
+        e.preventDefault()
+        onClose()
+      }}
+    >
       <div className="editor-head">
         <span className="file" title={path}>
           {basename(path)}
@@ -249,17 +278,19 @@ export default function FileEditor({
         <span className="muted small">
           {image
             ? ''
-            : conflict
-              ? t('editor.status.conflict')
-              : dirty
-                ? editor.autoSave
-                  ? t('editor.status.saving')
-                  : t('editor.status.unsaved')
-                : savedAt
-                  ? t('editor.status.saved')
-                  : editor.autoSave
-                    ? t('editor.status.autoSave')
-                    : ''}
+            : gone
+              ? t('editor.status.gone')
+              : conflict
+                ? t('editor.status.conflict')
+                : dirty
+                  ? editor.autoSave
+                    ? t('editor.status.saving')
+                    : t('editor.status.unsaved')
+                  : savedAt
+                    ? t('editor.status.saved')
+                    : editor.autoSave
+                      ? t('editor.status.autoSave')
+                      : ''}
         </span>
         <span className="muted small path">{path}</span>
         <div className="spacer" />
@@ -275,9 +306,11 @@ export default function FileEditor({
             >
               {t('editor.overwrite')}
             </button>
-            <button onClick={() => void file.reload()} title={t('editor.reload.title')}>
-              {t('editor.reload')}
-            </button>
+            {!gone && (
+              <button onClick={() => void file.reload()} title={t('editor.reload.title')}>
+                {t('editor.reload')}
+              </button>
+            )}
           </>
         )}
         {!editor.autoSave && !conflict && !image && (
