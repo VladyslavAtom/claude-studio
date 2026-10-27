@@ -750,6 +750,8 @@ export type AppMessageCode =
   | 'commit-nothing-to-commit'
   /** success note next to git's own line: some selected files were already committed. {count} */
   | 'commit-skipped-committed'
+  /** `git add` or `git commit` failed (a hook rejected it, say); git's text is the detail. The index is put back */
+  | 'commit-failed'
 
   // --- an unfinished operation in the repository (main/git/state.ts) ---
   /** continue/skip/abort was asked for while nothing is in progress */
@@ -766,6 +768,12 @@ export type AppMessageCode =
   | 'worktree-remove-failed'
   /** the worktree is gone but its branch could not be deleted — a warning, not a failure */
   | 'worktree-removed-branch-kept'
+  /** a branch name typed or passed starts with `-`: git would read it as an option. {ref} */
+  | 'ref-leading-dash'
+  /** checkout/merge/rebase refused over uncommitted edits: offer to stash them. {operation, ref} */
+  | 'dirty-tree'
+  /** success note: switched, but the stashed edits conflicted on the way back; they stay in the stash */
+  | 'autostash-conflict'
 
   // --- the server (main/git/remote.ts, main/gh.ts) ---
   /** pull has nowhere to pull from: the branch has no upstream yet, a push would create it */

@@ -1,5 +1,6 @@
 /** Committing the selected paths, reverting edits and reading history. */
 import type { ChangedFile, CommitInfo, GitOpResult, OpResult } from '../../shared/types'
+import type { GitRunResult } from './exec'
 import { fail, git, literal, literals, refuse } from './exec'
 import { parseNameStatus, renameSources, workingStatus } from './status'
 
@@ -21,9 +22,20 @@ export async function commit(cwd: string, files: string[], message: string): Pro
 
   if (!staged.length) return refuse({ code: 'commit-already-committed' })
 
+  // the index as it was, put back when the commit does not happen: otherwise a hook that rejects
+  // it leaves the picked files staged. write-tree fails only on unmerged entries — then there is
+  // no tree to return to, and the index stays as git leaves it
+  const before = await git(cwd, ['write-tree'])
+  const restore = async (): Promise<void> => {
+    if (before.code === 0) await git(cwd, ['read-tree', before.stdout.trim()])
+  }
+
   // -A is what makes deletions reach the index on a par with edits
   const added = await git(cwd, ['add', '-A', '--', ...literals(staged)])
-  if (added.code !== 0) return fail(added)
+  if (added.code !== 0) {
+    await restore()
+    return commitFailed(added)
+  }
 
   // the old path of a rename is not handed to `add`: it is gone from both the working tree and
   // the index, and the pathspec would match nothing (`did not match any files`). The commit does
@@ -32,8 +44,9 @@ export async function commit(cwd: string, files: string[], message: string): Pro
   const pathspec = [...new Set([...staged, ...sources])]
   const res = await git(cwd, ['commit', '-m', message, '--', ...literals(pathspec)])
   if (res.code !== 0) {
+    await restore()
     // the pattern is matched against git's own English output, so it is not a translated string
-    const failed = fail(res)
+    const failed = commitFailed(res)
     if (/nothing to commit|no changes added/i.test(failed.error ?? '')) {
       return refuse({ code: 'commit-nothing-to-commit' })
     }
@@ -45,6 +58,12 @@ export async function commit(cwd: string, files: string[], message: string): Pro
   const head = res.stdout.trim().split('\n')[0]
   if (!skipped.length) return { ok: true, output: head }
   return { ok: true, output: head, code: 'commit-skipped-committed', params: { count: skipped.length } }
+}
+
+/** a failed step of a commit: git's text follows «Commit failed», unless the spawn itself failed */
+function commitFailed(r: GitRunResult): GitOpResult {
+  const failed = fail(r)
+  return failed.code ? failed : { ...failed, code: 'commit-failed' }
 }
 
 export async function revertFiles(cwd: string, files: string[]): Promise<OpResult> {
@@ -80,7 +99,12 @@ const LOG_SEP = '\u0001'
  * commits in a range (`origin/main..HEAD`, say) — for the window shown before a push; with
  * `paths`, only those touching them (the tree's Show History), each path as a literal pathspec
  */
-export async function listCommits(cwd: string, range: string, limit = 200, paths: string[] = []): Promise<CommitInfo[]> {
+export async function listCommits(
+  cwd: string,
+  range: string,
+  limit = 200,
+  paths: string[] = [],
+): Promise<CommitInfo[]> {
   const r = await git(cwd, [
     'log',
     `--max-count=${limit}`,

@@ -37,8 +37,8 @@ export function register(): void {
   ipcMain.handle(CH.revertFiles, (_e, cwd: string, files: string[]) => git.revertFiles(cwd, files))
   ipcMain.handle(CH.push, (_e, cwd: string, branch: string, setUpstream: boolean) => git.push(cwd, branch, setUpstream))
   ipcMain.handle(CH.hasUpstream, (_e, cwd: string) => git.hasUpstream(cwd))
-  ipcMain.handle(CH.syncWithBase, (_e, cwd: string, baseRef: string, mode: 'rebase' | 'merge') =>
-    git.syncWithBase(cwd, baseRef, mode),
+  ipcMain.handle(CH.syncWithBase, (_e, cwd: string, baseRef: string, mode: 'rebase' | 'merge', autostash?: boolean) =>
+    git.syncWithBase(cwd, baseRef, mode, autostash),
   )
   ipcMain.handle(CH.createPullRequest, (_e, cwd: string, title: string, body: string, baseRef: string) =>
     git.createPullRequest(cwd, title, body, baseRef),
@@ -60,13 +60,19 @@ export function register(): void {
   ipcMain.handle(CH.fileHistory, (_e, cwd: string, path: string) => git.fileHistory(cwd, path))
   ipcMain.handle(CH.addToGitignore, (_e, path: string) => git.addToGitignore(path))
   ipcMain.handle(CH.pull, (_e, cwd: string, strategy: 'merge' | 'rebase') => git.pull(cwd, strategy))
-  ipcMain.handle(CH.merge, (_e, cwd: string, branch: string) => git.mergeBranch(cwd, branch))
-  ipcMain.handle(CH.rebaseOnto, (_e, cwd: string, branch: string) => git.rebaseOnto(cwd, branch))
+  ipcMain.handle(CH.merge, (_e, cwd: string, branch: string, autostash?: boolean) =>
+    git.mergeBranch(cwd, branch, autostash),
+  )
+  ipcMain.handle(CH.rebaseOnto, (_e, cwd: string, branch: string, autostash?: boolean) =>
+    git.rebaseOnto(cwd, branch, autostash),
+  )
   ipcMain.handle(CH.renameBranch, (_e, cwd: string, from: string, to: string) => git.renameBranch(cwd, from, to))
   ipcMain.handle(CH.deleteBranch, (_e, cwd: string, branch: string, force: boolean) =>
     git.deleteBranch(cwd, branch, force),
   )
-  ipcMain.handle(CH.checkout, (_e, cwd: string, branch: string) => git.checkout(cwd, branch))
+  ipcMain.handle(CH.checkout, (_e, cwd: string, branch: string, autostash?: boolean) =>
+    git.checkout(cwd, branch, autostash),
+  )
   ipcMain.handle(CH.createBranch, (_e, cwd: string, branch: string, baseRef?: string) =>
     git.createBranch(cwd, branch, baseRef),
   )

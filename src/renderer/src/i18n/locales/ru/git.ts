@@ -186,5 +186,16 @@ export const git: GitArea = {
   'error.draftEmptyAnswer': 'пустой ответ',
   'error.serviceNoAnswer': 'служебная сессия не ответила',
 
+  // --- неудачный коммит, плохое имя ветки, мешающие изменения ---
+  'error.commitFailed': 'Коммит не удался',
+  'error.refLeadingDash': 'имя ветки не может начинаться с «-»: «{ref}»',
+  'error.dirtyTree': 'мешают незакоммиченные изменения',
+  'note.autostashConflict':
+    'ваши изменения при возврате конфликтуют с веткой — решите конфликт в панели изменений; копия осталась в stash',
+  'stash.title': 'Незакоммиченные изменения',
+  'stash.hint':
+    '{what}: мешают незакоммиченные изменения. Убрать их в stash, выполнить и вернуть поверх — как pull с --autostash.',
+  'stash.confirm': 'Stash и продолжить',
+
   'error.withDetail': '{message}: {detail}',
 }

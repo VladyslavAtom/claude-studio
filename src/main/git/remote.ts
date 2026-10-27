@@ -1,5 +1,6 @@
 /** Exchange with the server: push, pull and bringing a branch up to date with its base. */
 import type { GitOpResult } from '../../shared/types'
+import { askToStash } from './branches'
 import { errText, fail, git, refuse } from './exec'
 import { resolveBaseRef } from './refs'
 import { runMergeLike } from './state'
@@ -27,7 +28,12 @@ export async function pull(cwd: string, strategy: 'merge' | 'rebase' = 'rebase')
 }
 
 /** bring the worktree up to date with its base branch; falls back to merge when rebase refuses */
-export async function syncWithBase(cwd: string, baseRef: string, mode: 'rebase' | 'merge'): Promise<GitOpResult> {
+export async function syncWithBase(
+  cwd: string,
+  baseRef: string,
+  mode: 'rebase' | 'merge',
+  autostash = false,
+): Promise<GitOpResult> {
   // `fetch origin <branch>` puts the result into FETCH_HEAD, not into origin/<branch>: so that
   // the operation starts from a fresh state, the remote-tracking refs are updated wholesale
   const remote = baseRef.includes('/') ? baseRef.slice(0, baseRef.indexOf('/')) : 'origin'
@@ -38,7 +44,16 @@ export async function syncWithBase(cwd: string, baseRef: string, mode: 'rebase' 
   const target = await resolveBaseRef(cwd, baseRef)
 
   // the prefix is the ref's own name: a git object, the same word in every locale
-  return mode === 'rebase'
-    ? runMergeLike(cwd, ['rebase', target], { operation: 'rebase', ref: target }, `${target}: `)
-    : runMergeLike(cwd, ['merge', '--no-edit', target], { operation: 'merge', ref: target }, `${target}: `)
+  // `autostash`: the person agreed to have uncommitted edits stashed and put back, as pull does
+  const stash = autostash ? ['--autostash'] : []
+  const r =
+    mode === 'rebase'
+      ? await runMergeLike(cwd, ['rebase', ...stash, target], { operation: 'rebase', ref: target }, `${target}: `)
+      : await runMergeLike(
+          cwd,
+          ['merge', '--no-edit', ...stash, target],
+          { operation: 'merge', ref: target },
+          `${target}: `,
+        )
+  return askToStash(r, mode, target)
 }

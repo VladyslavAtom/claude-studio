@@ -8,6 +8,7 @@ import type { GitActionResult } from '../ui/useGitAction'
 import { lastLine, resultMessage, useGitAction } from '../ui/useGitAction'
 import PullChoiceModal from './PullChoiceModal'
 import RenameBranchModal from './RenameBranchModal'
+import StashChoiceModal from './StashChoiceModal'
 
 interface Props {
   session: Session
@@ -19,6 +20,8 @@ interface Props {
   /** the session has a directory of its own — only then is there anything to switch */
   separate: boolean
   projectPath: string
+  /** the branch checked out in the project folder: what the header names while that folder is shown */
+  projectBranch: string | undefined
   pullStrategy: PullStrategy
   onPullStrategy: (strategy: PullStrategy) => void
   /** push goes through the shared window: show what will leave before it does */
@@ -43,6 +46,7 @@ export default function BranchActions({
   onScope,
   separate,
   projectPath,
+  projectBranch,
   pullStrategy,
   onPullStrategy,
   onPush,
@@ -54,6 +58,8 @@ export default function BranchActions({
   const [open, setOpen] = useState(false)
   const [asking, setAsking] = useState(false)
   const [renaming, setRenaming] = useState(false)
+  /** a merge/rebase refused over a dirty tree: the same call with autostash, if agreed */
+  const [stashing, setStashing] = useState<{ label: string; retry: () => Promise<GitActionResult> } | null>(null)
   const menu = useMenu(open, () => setOpen(false))
   // bound once: reading a member off a handle that carries refs counts as touching a ref
   // during render, whether or not `.current` is what is being read
@@ -62,11 +68,22 @@ export default function BranchActions({
 
   const worktree = session.worktree
 
-  /** every entry here folds the menu first, and `gh` answers with a URL rather than output */
-  const run = async (label: string, fn: () => Promise<GitActionResult>): Promise<void> => {
+  /**
+   * Every entry here folds the menu first, and `gh` answers with a URL rather than output.
+   * `retry` is the same call with autostash: a refusal over uncommitted edits asks first.
+   */
+  const run = async (
+    label: string,
+    fn: () => Promise<GitActionResult>,
+    retry?: () => Promise<GitActionResult>,
+  ): Promise<void> => {
     setOpen(false)
     // push puts the line worth showing last; an app-authored note replaces it when there is one
-    await runGit(label, fn, { done: (res) => res.url ?? (res.code ? resultMessage(t, res) : lastLine(res.output)) })
+    const res = await runGit(label, fn, {
+      done: (r) => r.url ?? (r.code ? resultMessage(t, r) : lastLine(r.output)),
+      ...(retry ? { onFail: (_error: string, r: GitActionResult) => r.code === 'dirty-tree' } : {}),
+    })
+    if (retry && res?.code === 'dirty-tree') setStashing({ label, retry })
   }
 
   if (!worktree) return null
@@ -83,8 +100,10 @@ export default function BranchActions({
       await run(t('git.run.pull'), () => window.api.git.pull(session.cwd, strategy))
       return
     }
-    await run(t('git.run.pullFrom', { ref: worktree.baseRef }), () =>
-      window.api.git.syncWithBase(session.cwd, worktree.baseRef, strategy),
+    await run(
+      t('git.run.pullFrom', { ref: worktree.baseRef }),
+      () => window.api.git.syncWithBase(session.cwd, worktree.baseRef, strategy),
+      () => window.api.git.syncWithBase(session.cwd, worktree.baseRef, strategy, true),
     )
   }
 
@@ -101,6 +120,12 @@ export default function BranchActions({
   const baseLine = behind
     ? t.plural('git.title.base', behind, { ref: worktree.baseRef })
     : t('git.title.baseCurrent', { ref: worktree.baseRef })
+  /**
+   * The project folder on screen: the list, the ahead count and Commit all act on its checkout,
+   * so the header names that branch — the session's branch and its base would point elsewhere.
+   */
+  const showsProject = scope === 'project' && separate
+  const shownBranch = showsProject ? (projectBranch ?? '…') : worktree.branch
 
   return (
     <div className="branch-actions" ref={rootRef}>
@@ -110,13 +135,19 @@ export default function BranchActions({
         aria-label={t('git.branchMenu.aria', { branch: worktree.branch })}
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
-        title={`${branchLabel}\n${baseLine}\n${t('git.title.folder', { path: session.cwd })}`}
+        title={
+          showsProject
+            ? `${t('git.branchLabel', { branch: shownBranch })}\n${t('git.title.folder', { path: projectPath })}`
+            : `${branchLabel}\n${baseLine}\n${t('git.title.folder', { path: session.cwd })}`
+        }
       >
-        ⑂ <span className="own">{worktree.branch}</span>
-        <span className="base">
-          ← {worktree.baseRef}
-          {behind ? ` −${behind}` : ''}
-        </span>
+        ⑂ <span className="own">{shownBranch}</span>
+        {!showsProject && (
+          <span className="base">
+            ← {worktree.baseRef}
+            {behind ? ` −${behind}` : ''}
+          </span>
+        )}
         ▾
       </button>
       {open && (
@@ -150,8 +181,10 @@ export default function BranchActions({
           <MenuSep />
           <MenuItem
             onClick={() =>
-              void run(t('git.run.mergeBase'), () =>
-                window.api.git.syncWithBase(session.cwd, worktree.baseRef, 'merge'),
+              void run(
+                t('git.run.mergeBase'),
+                () => window.api.git.syncWithBase(session.cwd, worktree.baseRef, 'merge'),
+                () => window.api.git.syncWithBase(session.cwd, worktree.baseRef, 'merge', true),
               )
             }
           >
@@ -159,8 +192,10 @@ export default function BranchActions({
           </MenuItem>
           <MenuItem
             onClick={() =>
-              void run(t('git.run.rebaseBase'), () =>
-                window.api.git.syncWithBase(session.cwd, worktree.baseRef, 'rebase'),
+              void run(
+                t('git.run.rebaseBase'),
+                () => window.api.git.syncWithBase(session.cwd, worktree.baseRef, 'rebase'),
+                () => window.api.git.syncWithBase(session.cwd, worktree.baseRef, 'rebase', true),
               )
             }
           >
@@ -200,6 +235,17 @@ export default function BranchActions({
             setAsking(false)
             if (remember) onPullStrategy(strategy)
             void runPull(strategy)
+          }}
+        />
+      )}
+
+      {stashing && (
+        <StashChoiceModal
+          what={stashing.label}
+          onClose={() => setStashing(null)}
+          onConfirm={() => {
+            setStashing(null)
+            void run(stashing.label, stashing.retry)
           }}
         />
       )}
