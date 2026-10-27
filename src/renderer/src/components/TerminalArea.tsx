@@ -8,7 +8,7 @@ import DiffView from './DiffView'
 import MergeTab from './MergeTab'
 import type { TKey } from '../i18n'
 import { useT } from '../i18n'
-import { commandFor, findAgent } from '../lib/agents'
+import { commandFor, envFor, findAgent } from '../lib/agents'
 import { dragHandlers, middleClickClose } from '../lib/dnd'
 import { terminalStatus } from '../lib/status'
 import { formatTime } from '../lib/util'
@@ -589,7 +589,7 @@ export default function TerminalArea({
               cwd={tab.shellCwd ?? session.cwd}
               kind={tab.kind}
               command={commandFor(agent, tab, hookPaths ?? undefined)}
-              env={tab.configDir ? { ...(agent?.env ?? {}), CLAUDE_CONFIG_DIR: tab.configDir } : agent?.env}
+              env={envFor(agent, tab)}
               sleepable={tab.kind === 'agent'}
               scrollbackLines={settings.terminal.scrollbackLines}
               active={tab.id === activeId}

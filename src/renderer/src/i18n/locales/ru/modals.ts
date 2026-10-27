@@ -36,6 +36,18 @@ export const modals: ModalsArea = {
   'closeSession.warn': 'Незакоммиченные изменения в worktree будут потеряны.',
   'closeSession.warnBranch':
     'Незакоммиченные изменения в worktree будут потеряны, а вместе с веткой — и её коммиты, если они не слиты и не отправлены.',
+  'closeSession.children':
+    'Её агент открыл эти сессии. Отмеченные закроются вместе с ней, с тем же выбором про worktree и ветки:',
+  'closeSession.children.rest': 'Неотмеченные останутся открытыми и поднимутся на уровень выше.',
+  'closeSession.child.loading': 'проверяю…',
+  'closeSession.child.unknown': 'состояние неизвестно',
+  'closeSession.child.clean': 'нет незакоммиченных изменений',
+  'closeSession.child.dirty': {
+    one: '{count} незакоммиченный файл',
+    few: '{count} незакоммиченных файла',
+    many: '{count} незакоммиченных файлов',
+    other: '{count} незакоммиченного файла',
+  },
 
   'newSession.title': 'Новая сессия',
   'newSession.name': 'Название',

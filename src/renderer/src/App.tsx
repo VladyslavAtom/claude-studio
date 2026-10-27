@@ -23,6 +23,8 @@ import { AppStateProvider } from './state/AppStateProvider'
 import { useAppState, useDispatch, useLoaded } from './state/appStateContext'
 import { RuntimeProvider } from './state/RuntimeProvider'
 import { useRuntimeActions, useRuntimeState } from './state/runtimeContext'
+import { colorOf, colorVar } from './lib/projectColor'
+import { descendants } from './lib/sessionTree'
 import { useActiveProject, useActiveSession } from './state/selectors'
 import { UiProvider } from './state/UiProvider'
 import { useUiActions, useUiState } from './state/uiContext'
@@ -75,7 +77,7 @@ function Shell(): JSX.Element {
   if (!loaded) return <div className="boot">{t('common.loading')}</div>
 
   return (
-    <div className="app">
+    <div className="app" style={activeProject ? { '--project': colorVar(colorOf(activeProject)) } : undefined}>
       <ProjectTabs
         projects={state.projects}
         closedProjects={state.closedProjects}
@@ -99,6 +101,7 @@ function Shell(): JSX.Element {
           openModal({ kind: 'newSession', project: activeProject, baseRef })
         }}
         onRename={projects.renameProject}
+        onColor={projects.colorProject}
         pullStrategy={state.settings.pullStrategy}
         onPullStrategy={(pullStrategy) => dispatch({ type: 'settingsPatched', patch: { pullStrategy } })}
       />
@@ -155,7 +158,14 @@ function Workspace({ project }: { project: Project }): JSX.Element {
           agentActivity={agentActivity}
           onSelect={(id) => sessions.selectSession(project, id)}
           onNew={() => openModal({ kind: 'newSession', project })}
-          onClose={(session) => openModal({ kind: 'closeSession', project, session })}
+          onClose={(session) =>
+            openModal({
+              kind: 'closeSession',
+              project,
+              session,
+              descendants: descendants(project.sessions, session.id),
+            })
+          }
           onRename={(session, name) => sessions.renameSession(project, session, name)}
           onReorder={(from, to) => sessions.reorderSessions(project, from, to)}
           onRestore={(archived) => void sessions.restoreSession(project, archived)}
@@ -352,11 +362,17 @@ function ModalHost({ activeProject }: { activeProject: Project | null }): JSX.El
       return (
         <CloseSessionModal
           session={modal.session}
+          descendants={modal.descendants}
           onCancel={closeModal}
-          onConfirm={(removeWorktree, deleteBranch) => {
+          onConfirm={(removeWorktree, deleteBranch, closeIds) => {
             const { project, session } = modal
             closeModal()
-            void sessions.closeSession(project, session, removeWorktree, deleteBranch)
+            // children before their parents: each one closed is one fewer to move up the tree
+            const children = modal.descendants.filter((d) => closeIds.includes(d.id)).reverse()
+            void (async () => {
+              for (const child of children) await sessions.closeSession(project, child, removeWorktree, deleteBranch)
+              await sessions.closeSession(project, session, removeWorktree, deleteBranch)
+            })()
           }}
         />
       )

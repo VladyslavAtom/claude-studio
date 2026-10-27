@@ -95,6 +95,7 @@ export function useSessionActions(): SessionActions {
         activeTerminalId: terminal.id,
         createdAt: Date.now(),
         runs: [],
+        ...(res.parentId ? { parentId: res.parentId } : {}),
       }
       wake(terminal.id)
       dispatch({ type: 'sessionCreated', projectId: project.id, session })

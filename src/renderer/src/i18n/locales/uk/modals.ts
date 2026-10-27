@@ -36,6 +36,18 @@ export const modals: ModalsArea = {
   'closeSession.warn': 'Незакомічені зміни у worktree буде втрачено.',
   'closeSession.warnBranch':
     'Незакомічені зміни у worktree буде втрачено, а разом із гілкою — і її коміти, якщо для них не зробили merge і push.',
+  'closeSession.children':
+    'Її агент відкрив ці сесії. Позначені закриються разом із нею, з тим самим вибором щодо worktree і гілок:',
+  'closeSession.children.rest': 'Непозначені залишаться відкритими й піднімуться на рівень вище.',
+  'closeSession.child.loading': 'перевіряю…',
+  'closeSession.child.unknown': 'стан невідомий',
+  'closeSession.child.clean': 'немає незакомічених змін',
+  'closeSession.child.dirty': {
+    one: '{count} незакомічений файл',
+    few: '{count} незакомічені файли',
+    many: '{count} незакомічених файлів',
+    other: '{count} незакоміченого файлу',
+  },
 
   'newSession.title': 'Нова сесія',
   'newSession.name': 'Назва',

@@ -972,3 +972,55 @@ The menu follows PyCharm's project view (issue 1). Decided along the way:
   PyCharm's «Rollback»: one operation, one key.
 - **Show history compares with the working file.** The diff tab's right side is always the file
   on disk, so a commit's own patch (`hash^` against `hash`) is not something it can show yet.
+
+## 2026-10-27 — A session opened by an agent is that agent's child, and the parent closes it
+
+`open_session` made sessions nobody owned: when the work was done, the tabs stayed until the person
+closed them by hand, and the list did not show which session had opened which.
+
+Now the opened session records its parent, and the parent's agent gets the means and the duty:
+`list_sessions`, `send_to_session`, `close_session`. The tool descriptions say when to close —
+once the overall plan has nothing left for the child, not after its first answer.
+
+**Agent closing is conservative.** Worktree removed only when clean, branch only when merged into
+the parent's branch; anything else is refused, and `force` closes the tab but leaves the work on
+disk. An agent that is wrong about «done» costs a stray worktree, never lost changes. The person's
+own dialog keeps its free choice.
+
+**The person closing a parent is asked.** The dialog lists the descendants with their uncommitted
+files and ticks only the clean ones; the unticked ones move up a level instead of losing their
+owner silently. Cascade-always was rejected: it loses a child's work. Orphaning without asking was
+rejected: a child left without a parent has nobody to report to.
+
+**`send_to_session` exists** although sessions already message each other: a child stuck on a
+permission prompt in its terminal cannot read a message, only a keystroke.
+
+**The child forks from the parent's branch,** not from the project's checkout: its work is merged
+back into the parent, and that is also what «merged» is checked against when it is closed.
+
+Limits — depth 3, 8 open children — stop a runaway loop of `open_session`; they are not tuned.
+
+## 2026-10-27 — A project marks the window with its colour
+
+Sessions were opened in the wrong project: every project looked the same once its tab was out of
+sight. Each project now has a colour from eight muted ones, declared per theme as
+`--project-<name>`.
+
+Where it shows: a 3 px line along the top of the window, a cap on every project tab (full on the
+one on screen, half on the rest), and a 6 % tint of the session list and the terminal tab strip.
+Not the terminal, the diff or the accent: a project colour must never be read as added, removed or
+a state. Painting the whole accent was rejected for that reason.
+
+A new project gets the first colour no open project has; the tab's context menu changes it. A
+project from before has no `color` and derives one from its path — stable, and nothing is written
+on its behalf, so absent stays «never chosen».
+
+## 2026-10-27 — A child session starts without its project on screen
+
+A session opened through `open_session` used to wait for the person to open its project: a pty
+starts when its pane mounts, and only the session on screen has panes. A parent working in the
+background could not get a child running. The window now starts the child's pty itself, with what
+the pane would have passed and no size — the pane re-attaches later, as it does after any switch.
+Only for sessions an agent opened: a restored or a person's session still starts on first look,
+which is what keeps a cold start from launching every agent at once.
+

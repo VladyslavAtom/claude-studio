@@ -370,39 +370,52 @@ export interface AgentHookPaths {
  * file, taken by main, carried out by the renderer — which is the only side that knows what a
  * session is.
  */
-export interface AgentToolRequest {
-  id: string
-  /** the tab whose agent asked; null when the server could not name it — then the active project */
-  terminalId: string | null
-  /** the first task of the new session, handed to its agent as the initial prompt */
-  task: string
-  /** the session name; absent means numbered exactly as the new-session window numbers it */
-  name?: string
-  /** a worktree of its own; absent means the project's default — isolated when it is a git repo */
-  isolate?: boolean
-}
+/**
+ * One call of a tool a tab's agent was given (`main/agentTools`). `terminalId` is the tab whose
+ * agent asked; null when the server could not name it — then `open` lands in the active project,
+ * and the tools that act on a child are refused: without the asker there is no parent to check.
+ */
+export type AgentToolRequest = { id: string; terminalId: string | null } & (
+  | {
+      tool: 'open'
+      /** the first task of the new session, handed to its agent as the initial prompt */
+      task: string
+      /** the session name; absent means numbered exactly as the new-session window numbers it */
+      name?: string
+      /** a worktree of its own; absent means the project's default — isolated when it is a git repo */
+      isolate?: boolean
+    }
+  | { tool: 'list' }
+  /** `force` closes a child with unsaved work, leaving its worktree and branch on disk */
+  | { tool: 'close'; session: string; force?: boolean }
+  /** typed into the child's agent tab and submitted, as if the person had typed it */
+  | { tool: 'send'; session: string; text: string }
+)
 
 /**
- * The answer to one request. It is read by the agent that asked, never by a person, so the
- * `error` is an English sentence rather than an `AppMessageCode`: the renderer is writing to
+ * The answer to one request. It is read by the agent that asked, never by a person, so `error`
+ * and `text` are English sentences rather than `AppMessageCode`s: the renderer is writing to
  * another CLI here, not to the interface.
  */
 export interface AgentToolResult {
   ok: boolean
   error?: string
+  /** what `open_session` made; the other tools answer in `text` */
   session?: AgentToolSession
+  text?: string
 }
 
 export interface AgentToolSession {
+  /** the id the other tools address this session by */
+  id: string
   name: string
   cwd: string
   branch?: string
   /** the conversation id the new tab is started with: how the asking agent can name it */
   agentSessionId?: string
   /**
-   * its agent is already running. A tab's process starts when its pane is first mounted, and a
-   * pane exists only for the session on screen — a session opened in a project the user is not
-   * looking at waits for them to open it.
+   * its agent is running. The window starts it at once, whichever project is on screen; false
+   * means the start failed, and the tab starts when the person opens it.
    */
   started: boolean
 }
@@ -485,6 +498,12 @@ export interface Session {
   activeTerminalId: string | null
   createdAt: number
   runs?: AgentRun[]
+  /**
+   * the session whose agent opened this one through `open_session`. That agent may list, type
+   * into and close it. A parent that is gone (closed, forgotten) makes this a top-level session:
+   * the list treats an unknown id as no parent rather than hiding the session.
+   */
+  parentId?: string
 }
 
 export interface ArchivedSession extends Session {
@@ -493,11 +512,20 @@ export interface ArchivedSession extends Session {
   worktreeRemoved?: boolean
 }
 
+/**
+ * The colour a project marks the window with, so the person sees which project they are in. Names
+ * only: each is a token per theme (`--project-<name>` in `styles/tokens.css`).
+ */
+export const PROJECT_COLORS = ['blue', 'teal', 'green', 'olive', 'amber', 'terracotta', 'pink', 'violet'] as const
+export type ProjectColor = (typeof PROJECT_COLORS)[number]
+
 export interface Project {
   id: string
   name: string
   path: string
   isGit: boolean
+  /** absent: never chosen, and a colour is derived from the path (`lib/projectColor`) */
+  color?: ProjectColor
   sessions: Session[]
   activeSessionId: string | null
   history?: ArchivedSession[]

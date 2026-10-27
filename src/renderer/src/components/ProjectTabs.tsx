@@ -1,9 +1,18 @@
 import type { JSX } from 'react'
 import { useMemo, useRef, useState } from 'react'
-import type { AgentActivity, ClosedProject, Project, PullStrategy, TerminalStatus } from '../../../shared/types'
+import type {
+  AgentActivity,
+  ClosedProject,
+  Project,
+  ProjectColor,
+  PullStrategy,
+  TerminalStatus,
+} from '../../../shared/types'
+import { PROJECT_COLORS } from '../../../shared/types'
 import GitMenu from './GitMenu'
 import { useT } from '../i18n'
 import { dragHandlers, middleClickClose } from '../lib/dnd'
+import { colorOf, colorVar } from '../lib/projectColor'
 import type { PulsePart } from '../lib/status'
 import { PULSE_LOOK, projectPulse, terminalStatus } from '../lib/status'
 import InlineRename from '../ui/InlineRename'
@@ -12,6 +21,18 @@ import { formatTime } from '../lib/util'
 import { useMenu } from '../ui/useMenu'
 import { activateOnKey, useRovingFocus } from '../ui/rows'
 import ContextMenu from './ContextMenu'
+
+/** one key per colour, spelled out: a key assembled from the name would lose its type */
+const COLOR_KEY = {
+  blue: 'projects.color.blue',
+  teal: 'projects.color.teal',
+  green: 'projects.color.green',
+  olive: 'projects.color.olive',
+  amber: 'projects.color.amber',
+  terracotta: 'projects.color.terracotta',
+  pink: 'projects.color.pink',
+  violet: 'projects.color.violet',
+} as const satisfies Record<ProjectColor, string>
 
 interface Props {
   projects: Project[]
@@ -38,6 +59,7 @@ interface Props {
   onInfo: (msg: string | null) => void
   onNewWorktree: (baseRef: string) => void
   onRename: (id: string, name: string) => void
+  onColor: (id: string, color: ProjectColor) => void
   pullStrategy: PullStrategy
   onPullStrategy: (strategy: PullStrategy) => void
 }
@@ -62,6 +84,7 @@ export default function ProjectTabs({
   onInfo,
   onNewWorktree,
   onRename,
+  onColor,
   pullStrategy,
   onPullStrategy,
 }: Props): JSX.Element {
@@ -125,6 +148,7 @@ export default function ProjectTabs({
           <div
             key={p.id}
             className={'tab' + (p.id === activeId ? ' active' : '')}
+            style={{ '--tab-color': colorVar(colorOf(p)) }}
             role="button"
             aria-current={p.id === activeId}
             aria-label={
@@ -203,6 +227,15 @@ export default function ProjectTabs({
               hint: t('projects.menu.rename.hint'),
               onPick: () => setEditing({ id: menuAt.id, initial: menuAt.name }),
             },
+            ...PROJECT_COLORS.map((color) => {
+              const current = projects.find((p) => p.id === menuAt.id)
+              return {
+                label: t(COLOR_KEY[color]),
+                swatch: colorVar(color),
+                ...(current && colorOf(current) === color ? { hint: '✓' } : {}),
+                onPick: () => onColor(menuAt.id, color),
+              }
+            }),
             {
               label: t('projects.close'),
               hint: t('projects.menu.close.hint'),

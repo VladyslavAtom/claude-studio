@@ -23,6 +23,8 @@ export interface NewSessionResult {
   agentId: string | null
   /** first task, handed to the agent as its initial prompt */
   startPrompt: string
+  /** the session whose agent asked for this one; the window itself never sets it */
+  parentId?: string
 }
 
 interface Props {

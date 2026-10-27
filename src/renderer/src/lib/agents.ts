@@ -84,6 +84,11 @@ export function commandFor(agent: AgentDef | null, tab: TerminalTab, hooks?: Age
   return parts.filter(Boolean).join(' ')
 }
 
+/** the env a tab's process gets: its agent's, with the tab's own profile over it */
+export function envFor(agent: AgentDef | null, tab: TerminalTab): Record<string, string> | undefined {
+  return tab.configDir ? { ...(agent?.env ?? {}), CLAUDE_CONFIG_DIR: tab.configDir } : agent?.env
+}
+
 /** command line that reopens a recorded run */
 export function commandForRun(agent: AgentDef, run: AgentRun): string {
   const base = run.agentSessionId

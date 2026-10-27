@@ -34,6 +34,13 @@ export const modals = {
   'closeSession.warn': 'Uncommitted changes in the worktree will be lost.',
   'closeSession.warnBranch':
     'Uncommitted changes in the worktree will be lost, and with the branch its commits too, unless they are merged or pushed.',
+  'closeSession.children':
+    'Its agent opened these sessions. Ticked ones close with it, with the same choice about worktrees and branches:',
+  'closeSession.children.rest': 'Unticked ones stay open and move up a level.',
+  'closeSession.child.loading': 'checking…',
+  'closeSession.child.unknown': 'state unknown',
+  'closeSession.child.clean': 'no uncommitted changes',
+  'closeSession.child.dirty': { one: '{count} uncommitted file', other: '{count} uncommitted files' },
 
   'newSession.title': 'New session',
   'newSession.name': 'Name',

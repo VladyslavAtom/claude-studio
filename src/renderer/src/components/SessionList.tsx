@@ -4,6 +4,7 @@ import type { AgentActivity, ArchivedSession, Project, Session } from '../../../
 import type { T } from '../i18n'
 import { useT } from '../i18n'
 import { terminalStatus } from '../lib/status'
+import { treeRows } from '../lib/sessionTree'
 import { formatTime } from '../lib/util'
 import { dragHandlers, middleClickClose } from '../lib/dnd'
 import InlineRename from '../ui/InlineRename'
@@ -33,27 +34,28 @@ interface Props {
 }
 
 /**
- * A session's activity at a glance: what its tabs add up to. Each tab is classified exactly as
+ * A session's activity at a glance: what its tabs add up to — and, for a folded parent, its
+ * descendants' tabs too, so a child calling for the person is not hidden by the fold. Each tab is classified exactly as
  * the tab strip classifies it — one shared function (`lib/status`), because two hand-written
  * chains of `if`s over the same four inputs is two chances to disagree, and the pulse and the
  * strip are looking at the same tabs.
  */
 function SessionPulse({
-  session,
+  sessions,
   awake,
   attention,
   busyIds,
   agentActivity,
   t,
 }: {
-  session: Session
+  sessions: Session[]
   awake: Set<string>
   attention: Set<string>
   busyIds: Set<string>
   agentActivity: Map<string, AgentActivity>
   t: T
 }): JSX.Element | null {
-  const live = session.terminals.filter((t) => t.kind === 'agent' || t.kind === 'shell')
+  const live = sessions.flatMap((s) => s.terminals).filter((t) => t.kind === 'agent' || t.kind === 'shell')
   if (!live.length) return null
   // `dead` is not passed: it is the terminal area's own bookkeeping and no tab list has it
   const statuses = live.map((tab) =>
@@ -123,10 +125,19 @@ export default function SessionList({
   const [menuAt, setMenuAt] = useState<{ x: number; y: number; session: Session } | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  /** folded parents; a view preference of this window, not saved */
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
+  const toggleFold = (id: string): void =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
   const listRef = useRef<HTMLDivElement>(null)
   const onListKeys = useRovingFocus(listRef, '.session')
 
   const history = project.history ?? []
+  const parentName = (id: string | undefined): string => project.sessions.find((p) => p.id === id)?.name ?? ''
 
   return (
     <aside className="sessions">
@@ -155,17 +166,22 @@ export default function SessionList({
         aria-label={t('sessions.list.aria')}
       >
         {project.sessions.length === 0 && <div className="muted pad">{t('sessions.list.empty')}</div>}
-        {project.sessions.map((s, i) => (
+        {treeRows(project.sessions, collapsed).map(({ session: s, index, depth, childCount, hidden }) => (
           <div
             key={s.id}
-            className={'session' + (s.id === project.activeSessionId ? ' active' : '')}
+            className={'session' + (s.id === project.activeSessionId ? ' active' : '') + (depth ? ' child' : '')}
+            style={{ '--depth': depth }}
+            data-testid={depth ? 'session-child' : 'session'}
             role="button"
             aria-current={s.id === project.activeSessionId}
             aria-label={t('sessions.item.aria', { name: s.name })}
             onClick={() => onSelect(s.id)}
             onKeyDown={activateOnKey(() => onSelect(s.id))}
-            title={t('sessions.item.title', { path: s.cwd })}
-            {...dragHandlers('session', i, onReorder)}
+            title={
+              t('sessions.item.title', { path: s.cwd }) +
+              (depth ? '\n' + t('sessions.child.of', { name: parentName(s.parentId) }) : '')
+            }
+            {...dragHandlers('session', index, onReorder)}
             {...middleClickClose(() => onClose(s))}
             onContextMenu={(e) => {
               e.preventDefault()
@@ -173,6 +189,20 @@ export default function SessionList({
             }}
           >
             <div className="session-row">
+              {childCount > 0 && (
+                <button
+                  className="fold"
+                  aria-expanded={!collapsed.has(s.id)}
+                  aria-label={t(collapsed.has(s.id) ? 'sessions.children.expand' : 'sessions.children.collapse')}
+                  title={t(collapsed.has(s.id) ? 'sessions.children.expand' : 'sessions.children.collapse')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleFold(s.id)
+                  }}
+                >
+                  {collapsed.has(s.id) ? '▸' : '▾'}
+                </button>
+              )}
               {editingId === s.id ? (
                 <InlineRename
                   label={t('sessions.rename.label')}
@@ -209,7 +239,7 @@ export default function SessionList({
             </div>
             <div className="session-meta">
               <SessionPulse
-                session={s}
+                sessions={[s, ...hidden]}
                 awake={awake}
                 attention={attention}
                 busyIds={busyIds}
@@ -220,6 +250,9 @@ export default function SessionList({
                 <span className="branch">⎇ {s.worktree.branch}</span>
               ) : (
                 <span className="branch main">{t('sessions.mainRepo')}</span>
+              )}
+              {childCount > 0 && (
+                <span className="children-count">{t.plural('sessions.children.count', childCount)}</span>
               )}
               <span className="tabs-count">{t.plural('sessions.tabCount', s.terminals.length)}</span>
               <span className="time">{formatTime(s.createdAt)}</span>

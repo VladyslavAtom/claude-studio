@@ -43,6 +43,11 @@ export const sessions = {
   'history.forget': 'Remove from the history',
   'history.forget.aria': 'Remove “{name}” from the history',
   'history.worktreeRemoved': 'worktree removed',
+  /** a session opened by another session's agent; the tooltip of its row names the parent */
+  'child.of': 'opened by the session “{name}”',
+  'children.count': { one: '{count} child', other: '{count} children' },
+  'children.collapse': 'Hide the sessions it opened',
+  'children.expand': 'Show the sessions it opened',
 } as const
 
 export type SessionsArea = AreaOf<typeof sessions>

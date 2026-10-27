@@ -12,7 +12,8 @@ export type Modal =
   | { kind: 'clone' }
   | { kind: 'settings'; tab: 'agents' | 'commits' }
   | { kind: 'agentHistory' }
-  | { kind: 'closeSession'; project: Project; session: Session }
+  /** `descendants` is taken when the dialog opens: it is what the dialog asks about */
+  | { kind: 'closeSession'; project: Project; session: Session; descendants: Session[] }
   | { kind: 'startup'; agents: number; sessions: number }
 
 export interface UiState {

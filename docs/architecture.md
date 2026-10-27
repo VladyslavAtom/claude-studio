@@ -263,13 +263,37 @@ are what the tooltip says, and they are the tab's `aria-label` — the dots them
 mean «this folder is a git repository»; that has moved to the tooltip, since every project is one
 and a light that never changes reads as a status that is always good.
 
-### A tab's agent can open a session
+### Project colour
+
+`Project.color` (`PROJECT_COLORS` in `shared/types.ts`) names a token, `--project-<name>`, declared
+in both themes. `.app` carries the active project's as `--project`, and each project tab its own as
+`--tab-color`; the stylesheets mix them into the top line of the window, the tab caps and a 6 %
+tint of the session list and the terminal tab strip. `lib/projectColor` derives a colour from the
+path when none was chosen and picks the first free one for a new project.
+
+### A tab's agent can open a session, and owns it
 
 The hooks are the CLI talking about itself; this is the CLI **asking for something**. A claude tab
 is started with an MCP server of ours as well — `--mcp-config <userData>/agent-tools/mcp.json`,
-written next to the settings overlay by `src/main/agentTools.ts` — and the server offers exactly
-one tool, `open_session`, with `task`, `name` and `isolate`. A call becomes an ordinary session in
-the window: a worktree, a tab, an agent already holding the task.
+written next to the settings overlay by `src/main/agentTools.ts`. `open_session` (`task`, `name`,
+`isolate`) becomes an ordinary session in the window: a worktree, a tab, an agent already holding
+the task, and the answer names its session id.
+
+That session is the asker's **child**: `Session.parentId`. Three more tools act on the asker's
+descendants and nothing else — `list_sessions` (id, branch, conversation id, tab state,
+uncommitted files), `send_to_session` (typed into the child's agent tab and submitted; multi-line
+text as a bracketed paste) and `close_session`. Closing removes the worktree only when it is clean
+and the branch only when it has no commits outside the parent's branch; otherwise it is refused,
+and `force` closes the session but keeps both on disk. A child with open children of its own is
+refused. The child forks from the parent's branch, and its first prompt opens with a line naming
+the parent and its conversation id. Limits: depth 3, 8 open children per session
+(`lib/sessionTree`).
+
+The list stays flat in the state; `lib/sessionTree` reads the tree off `parentId`, and an unknown
+parent means top level. Rows are indented with a guide line, a parent folds, and a folded parent's
+pulse counts its descendants' tabs. Closing a session moves its open children up to its own parent
+(`sessionClosed` in the reducer); the closing dialog lists the descendants, ticks the ones with no
+uncommitted changes, and closes the ticked ones first.
 
 Only the opening is ours. Claude Code sessions on one machine already reach each other, so nothing
 here carries messages between them; what an agent cannot do by itself is make a session visible,
@@ -297,12 +321,15 @@ process and speaks the protocol to it.
 the project (the tab that asked, or the one on screen when the server could not name its tab — the
 environment does not always reach an MCP server), the name and the branch (the new-session window's
 own helpers, `lib/sessionDefaults`, so an agent's session is named like a person's), and the agent
-to run (claude). The reply is English on purpose: it is read by another CLI, not by a person, so it
+to run (claude). The tools that act on a child find the asker by its tab and check the target is
+its descendant there, against the state; the request is never trusted with that. The reply is English on purpose: it is read by another CLI, not by a person, so it
 is not an `AppMessageCode` and it is not translated.
 
-A session opened into a project nobody is looking at does not start its agent: a pty starts when
-its pane is first mounted. The reply says so — `started: false` — and the task is already in the
-tab.
+A tab's pty normally starts when its pane is first mounted, and panes exist only for the session
+on screen. A session an agent opened is started by `useAgentToolRequests` itself, with the command
+and env the pane would pass (`commandFor`, `envFor`) and no size; the pane that mounts later
+re-attaches to the live pty, replays its output and applies the measured size. `started: false` in
+the reply means that start failed.
 
 Codex is given none of this: the two CLIs do not share an MCP configuration format on the command
 line. Everything degrades to silence as the hooks do — no config, no tool, and the tab starts

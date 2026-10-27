@@ -13,7 +13,7 @@
   align-items: center;
   gap: 4px;
   padding: 5px 8px;
-  background: var(--bg-1);
+  background: color-mix(in srgb, var(--project) 6%, var(--bg-1));
   border-bottom: 1px solid var(--line);
   min-width: 0;
 }
@@ -395,6 +395,16 @@
   text-align: left;
   padding: 6px 8px;
   font-size: 12px;
+}
+.term-menu .with-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.term-menu .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
 }
 .term-menu button:hover {
   background: var(--bg-3);

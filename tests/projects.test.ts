@@ -147,3 +147,27 @@ describe('sessions whose directory vanished while the project was closed', () =>
     expect(next).toBe(state)
   })
 })
+
+describe('closing a session that opened others', () => {
+  it('moves its open children up to its own parent, and a top-level one leaves them top-level', () => {
+    const p = project({
+      sessions: [
+        session({ id: 'root' }),
+        session({ id: 'mid', parentId: 'root' }),
+        session({ id: 'leaf', parentId: 'mid' }),
+        session({ id: 'other', parentId: 'root' }),
+      ],
+    })
+    const close = (state: AppState, id: string): AppState =>
+      appReducer(state, { type: 'sessionClosed', projectId: p.id, sessionId: id, closedAt: 1, worktreeRemoved: false })
+
+    const afterMid = close(stateWith([p]), 'mid')
+    const leaf = afterMid.projects[0]?.sessions.find((s) => s.id === 'leaf')
+    expect(leaf?.parentId).toBe('root')
+
+    const afterRoot = close(afterMid, 'root')
+    const left = afterRoot.projects[0]?.sessions ?? []
+    expect(left.map((s) => s.id).sort()).toEqual(['leaf', 'other'])
+    expect(left.every((s) => !('parentId' in s))).toBe(true)
+  })
+})

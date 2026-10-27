@@ -4,7 +4,8 @@
   flex: none;
   display: flex;
   flex-direction: column;
-  background: var(--bg-1);
+  /* tinted with the project's colour: the panel itself says which project this is */
+  background: color-mix(in srgb, var(--project) 6%, var(--bg-1));
   border-right: 1px solid var(--line);
   min-height: 0;
 }
@@ -65,9 +66,40 @@
   gap: 6px;
 }
 .session-row .name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* a session opened by another session's agent: indented under its parent, with a guide line
+   where the parent's own indentation is, as a tree menu draws it */
+.session.child {
+  position: relative;
+  padding-left: calc(12px + var(--depth) * var(--indent));
+}
+.session.child::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(12px + (var(--depth) - 1) * var(--indent) + 4px);
+  border-left: 1px solid var(--line-strong);
+}
+.session-row .fold {
+  flex: none;
+  width: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+.session-row .fold:hover {
+  color: var(--fg);
+}
+.session-meta .children-count {
+  color: var(--fg-dim);
 }
 .session-meta {
   display: flex;

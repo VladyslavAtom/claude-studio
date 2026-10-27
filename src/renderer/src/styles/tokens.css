@@ -15,6 +15,13 @@
 /* not a colour, so it is theme-independent and stays out of the blocks below */
 :root {
   --radius: 6px;
+  /* no project on screen: everything mixed with it stays the plain surface */
+  --project: transparent;
+  /* set inline per project tab; the default leaves a tab unmarked */
+  --tab-color: transparent;
+  /* a session's nesting level, set inline per row, and the step one level indents by */
+  --depth: 0;
+  --indent: 14px;
 }
 
 /* the neutral dark grey the user is already used to in their own terminal */
@@ -118,6 +125,17 @@
   /* --- scrollbars --- */
   --scrollbar-thumb: #454a4f;
   --scrollbar-thumb-hover: #565c62;
+
+  /* --- project colours: what marks the window with the project it shows (lib/projectColor).
+     Muted on purpose — they sit next to add/del/warn and must not be read as states --- */
+  --project-blue: #6f9fd4;
+  --project-teal: #5fb0a6;
+  --project-green: #82b27c;
+  --project-olive: #aaa866;
+  --project-amber: #cfa35e;
+  --project-terracotta: #c88468;
+  --project-pink: #c682a5;
+  --project-violet: #9c8bcf;
 }
 
 /* Light: designed, not inverted. Body text clears WCAG AA (4.5:1) on every surface it lands
@@ -214,6 +232,16 @@
   /* --- scrollbars --- */
   --scrollbar-thumb: #c1c8ce;
   --scrollbar-thumb-hover: #a8b0b8;
+
+  /* --- project colours: dark enough for the 3:1 a marking line needs on the light panels --- */
+  --project-blue: #3d6fae;
+  --project-teal: #2c7d74;
+  --project-green: #4a8244;
+  --project-olive: #737330;
+  --project-amber: #9a6d1c;
+  --project-terracotta: #a5583a;
+  --project-pink: #a3507a;
+  --project-violet: #6c5aae;
 }
 
 * {

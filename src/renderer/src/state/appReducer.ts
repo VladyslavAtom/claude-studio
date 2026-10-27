@@ -4,6 +4,7 @@ import type {
   ArchivedSession,
   LayoutConfig,
   Project,
+  ProjectColor,
   Session,
   Settings,
   TerminalTab,
@@ -28,6 +29,7 @@ export type Action =
   /** sessions whose directory vanished while the project was closed; they move to its history */
   | { type: 'projectSessionsPruned'; projectId: string; sessionIds: string[]; prunedAt: number }
   | { type: 'projectRenamed'; projectId: string; name: string }
+  | { type: 'projectColored'; projectId: string; color: ProjectColor }
   | { type: 'projectsReordered'; from: number; to: number }
   | { type: 'sessionCreated'; projectId: string; session: Session }
   | { type: 'sessionActivated'; projectId: string; sessionId: string }
@@ -83,6 +85,12 @@ function withTerminal(
     ...s,
     terminals: s.terminals.map((t) => (t.id === a.terminalId ? fn(t) : t)),
   }))
+}
+
+/** a session under a new parent; none makes it top-level, with no `parentId` key left behind */
+function reparent(s: Session, parentId: string | undefined): Session {
+  const { parentId: _old, ...rest } = s
+  return parentId ? { ...rest, parentId } : rest
 }
 
 function findSession(state: AppState, projectId: string, sessionId: string): Session | undefined {
@@ -185,6 +193,9 @@ export function appReducer(state: AppState, action: Action): AppState {
     case 'projectRenamed':
       return withProject(state, action.projectId, (p) => ({ ...p, name: action.name }))
 
+    case 'projectColored':
+      return withProject(state, action.projectId, (p) => ({ ...p, color: action.color }))
+
     case 'projectsReordered':
       return { ...state, projects: moveItem(state.projects, action.from, action.to) }
 
@@ -208,7 +219,10 @@ export function appReducer(state: AppState, action: Action): AppState {
         worktreeRemoved: action.worktreeRemoved,
       }
       return withProject(state, action.projectId, (p) => {
-        const sessions = p.sessions.filter((s) => s.id !== action.sessionId)
+        // children left open move up to the closed session's own parent, so the tree stays whole
+        const sessions = p.sessions
+          .filter((s) => s.id !== action.sessionId)
+          .map((s) => (s.parentId === action.sessionId ? reparent(s, session.parentId) : s))
         return {
           ...p,
           sessions,

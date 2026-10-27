@@ -12,6 +12,8 @@ interface ItemBase {
   disabled?: boolean
   /** a divider above this item: groups are drawn, not inferred */
   sep?: boolean
+  /** a colour sample before the label: a CSS value, a token through `var()` */
+  swatch?: string
 }
 
 /** a command, or a group that opens a submenu (`New ▸`, `Git ▸`) — never both */
@@ -67,7 +69,14 @@ function Rows({
               item.onPick()
             }}
           >
-            {item.label}
+            {item.swatch ? (
+              <span className="with-swatch">
+                <span className="swatch" style={{ background: item.swatch }} aria-hidden="true" />
+                {item.label}
+              </span>
+            ) : (
+              item.label
+            )}
             {item.hint && <span className="muted small">{item.hint}</span>}
           </Item>
         </Fragment>

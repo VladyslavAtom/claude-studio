@@ -57,9 +57,10 @@ function req(extra: Record<string, unknown>): string {
 
 describe('parseToolRequest', () => {
   it('takes a request with the fields the tool sends', () => {
-    expect(tools.parseToolRequest(req({ name: 'Parser', isolate: false }))).toEqual({
+    expect(tools.parseToolRequest(req({ tool: 'open', name: 'Parser', isolate: false }))).toEqual({
       id: ID,
       terminalId: TAB,
+      tool: 'open',
       task: 'ship the parser',
       name: 'Parser',
       isolate: false,
@@ -97,8 +98,35 @@ describe('parseToolRequest', () => {
 
   it('trims the task and the name, and caps the name', () => {
     const parsed = tools.parseToolRequest(req({ task: '  ship it  ', name: ` ${'n'.repeat(300)} ` }))
-    expect(parsed?.task).toBe('ship it')
-    expect(parsed?.name).toHaveLength(200)
+    expect(parsed).toMatchObject({ tool: 'open', task: 'ship it' })
+    expect(parsed?.tool === 'open' && parsed.name).toHaveLength(200)
+  })
+
+  it('reads a request without a tool as an open: the shape it had before the tool had siblings', () => {
+    expect(tools.parseToolRequest(req({}))?.tool).toBe('open')
+  })
+
+  it('takes the tools that act on a child, and refuses a session id that is not one', () => {
+    const head = { id: ID, terminalId: TAB }
+    expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'list' }))).toEqual({ ...head, tool: 'list' })
+    expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'close', session: TAB, force: true }))).toEqual({
+      ...head,
+      tool: 'close',
+      session: TAB,
+      force: true,
+    })
+    expect(
+      tools.parseToolRequest(JSON.stringify({ ...head, tool: 'close', session: TAB, force: 'yes' })),
+    ).not.toHaveProperty('force')
+    expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'send', session: TAB, text: 'yes' }))).toEqual({
+      ...head,
+      tool: 'send',
+      session: TAB,
+      text: 'yes',
+    })
+    expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'close', session: '../x' }))).toBeNull()
+    expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'send', session: TAB, text: '  ' }))).toBeNull()
+    expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'rm -rf' }))).toBeNull()
   })
 
   it('drops an isolate that is not a boolean instead of reading it as one', () => {
@@ -188,7 +216,7 @@ async function firstRequest(): Promise<AgentToolRequest> {
 }
 
 describe('the MCP server', () => {
-  it('answers the handshake and offers one tool', async () => {
+  it('answers the handshake and offers the four tools', async () => {
     await tools.toolConfigPath()
     const requests = join(dir, 'agent-tools', 'requests')
     const cli = talk(join(dir, 'agent-tools', 'open-session.js'), requests, TAB)
@@ -197,7 +225,12 @@ describe('the MCP server', () => {
       cli.send({ jsonrpc: '2.0', method: 'notifications/initialized' })
       cli.send({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
       expect((await cli.reply(1)).result).toBeTruthy()
-      expect((await cli.reply(2)).result?.tools?.map((t) => t.name)).toEqual(['open_session'])
+      expect((await cli.reply(2)).result?.tools?.map((t) => t.name)).toEqual([
+        'open_session',
+        'list_sessions',
+        'close_session',
+        'send_to_session',
+      ])
     } finally {
       cli.stop()
     }
@@ -219,11 +252,45 @@ describe('the MCP server', () => {
       // main answers exactly this way: the renderer's result, written next to the request
       await tools.replyToolRequest(written.id, {
         ok: true,
-        session: { name: 'Parser', cwd: '/repo/.worktrees/parser', branch: 'claude/parser', started: true },
+        session: { id: TAB, name: 'Parser', cwd: '/repo/.worktrees/parser', branch: 'claude/parser', started: true },
       })
       const answer = await cli.reply(7)
       expect(answer.result?.isError).toBe(false)
       expect(answer.result?.content?.[0]?.text).toContain('claude/parser')
+      expect(answer.result?.content?.[0]?.text).toContain(`session id: ${TAB}`)
+    } finally {
+      cli.stop()
+    }
+  })
+
+  it("a child tool carries its arguments, and its answer is the window's text", async () => {
+    await tools.toolConfigPath()
+    const requests = join(dir, 'agent-tools', 'requests')
+    const cli = talk(join(dir, 'agent-tools', 'open-session.js'), requests, TAB)
+    try {
+      cli.send({
+        jsonrpc: '2.0',
+        id: 8,
+        method: 'tools/call',
+        params: { name: 'close_session', arguments: { session: ID, force: true } },
+      })
+      const written = await firstRequest()
+      expect(written).toMatchObject({ terminalId: TAB, tool: 'close', session: ID, force: true })
+      await tools.replyToolRequest(written.id, { ok: true, text: 'Closed "Parser".' })
+      expect((await cli.reply(8)).result?.content?.[0]?.text).toBe('Closed "Parser".')
+    } finally {
+      cli.stop()
+    }
+  })
+
+  it('a child tool without its session is refused before anything is written', async () => {
+    await tools.toolConfigPath()
+    const requests = join(dir, 'agent-tools', 'requests')
+    const cli = talk(join(dir, 'agent-tools', 'open-session.js'), requests, TAB)
+    try {
+      cli.send({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'send_to_session', arguments: {} } })
+      expect((await cli.reply(9)).result?.isError).toBe(true)
+      expect(emitted).toHaveLength(0)
     } finally {
       cli.stop()
     }

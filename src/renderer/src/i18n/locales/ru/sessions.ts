@@ -54,4 +54,13 @@ export const sessions: SessionsArea = {
   'history.forget': 'Удалить из истории',
   'history.forget.aria': 'Удалить «{name}» из истории',
   'history.worktreeRemoved': 'worktree удалён',
+  'child.of': 'открыта сессией «{name}»',
+  'children.count': {
+    one: '{count} дочерняя',
+    few: '{count} дочерние',
+    many: '{count} дочерних',
+    other: '{count} дочерних',
+  },
+  'children.collapse': 'Скрыть открытые ею сессии',
+  'children.expand': 'Показать открытые ею сессии',
 }
