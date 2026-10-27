@@ -63,8 +63,8 @@ export const changes = {
   'op.conflict': ': conflict',
   'op.step': ' (step {step})',
   'op.openMerge': 'Open the merge editor',
-  'op.takeOurs': 'Take our side whole',
-  'op.takeTheirs': 'Take their side whole',
+  'op.takeOurs': 'Take your version of the whole file',
+  'op.takeTheirs': 'Take the incoming version of the whole file',
   'op.continue': 'Continue',
   'op.continue.title': 'Continue the interrupted operation',
   'op.continue.blocked': 'Resolve the conflicts in every file first',
@@ -152,8 +152,6 @@ export const changes = {
   'merge.sideFailed': 'could not take the side',
 
   /** the same action in the conflict row of the panel and in the head of the merge editor */
-  takeOurs: 'Take ours',
-  takeTheirs: 'Take theirs',
 } as const
 
 export type ChangesArea = AreaOf<typeof changes>

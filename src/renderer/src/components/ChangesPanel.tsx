@@ -662,19 +662,28 @@ export default function ChangesPanel({
                     <button className="link" onClick={() => onOpenMerge(cwd, f)} title={t('changes.op.openMerge')}>
                       {f}
                     </button>
+                    {/* «yours» is git's `theirs` during a rebase: the same naming as the merge tab */}
                     <button
                       className="ghost"
                       title={t('changes.op.takeOurs')}
-                      onClick={() => void window.api.git.acceptSide(cwd, f, 'ours').then(invalidate)}
+                      onClick={() =>
+                        void window.api.git
+                          .acceptSide(cwd, f, repo.operation === 'rebase' ? 'theirs' : 'ours')
+                          .then(invalidate)
+                      }
                     >
-                      {t('changes.takeOurs')}
+                      {t('changes.merge.takeYours')}
                     </button>
                     <button
                       className="ghost"
                       title={t('changes.op.takeTheirs')}
-                      onClick={() => void window.api.git.acceptSide(cwd, f, 'theirs').then(invalidate)}
+                      onClick={() =>
+                        void window.api.git
+                          .acceptSide(cwd, f, repo.operation === 'rebase' ? 'ours' : 'theirs')
+                          .then(invalidate)
+                      }
                     >
-                      {t('changes.takeTheirs')}
+                      {t('changes.merge.takeIncoming')}
                     </button>
                   </div>
                 ))}

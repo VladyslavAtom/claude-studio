@@ -58,8 +58,8 @@ export const changes: ChangesArea = {
   'op.conflict': ': конфлікт',
   'op.step': ' (крок {step})',
   'op.openMerge': 'Відкрити редактор злиття',
-  'op.takeOurs': 'Взяти свою сторону цілком',
-  'op.takeTheirs': 'Взяти чужу сторону цілком',
+  'op.takeOurs': 'Взяти вашу версію всього файлу',
+  'op.takeTheirs': 'Взяти вхідну версію всього файлу',
   'op.continue': 'Продовжити',
   'op.continue.title': 'Продовжити перервану операцію',
   'op.continue.blocked': 'Спершу розв’яжіть конфлікти в усіх файлах',
@@ -146,6 +146,4 @@ export const changes: ChangesArea = {
   'merge.addFailed': 'git add не пройшов',
   'merge.sideFailed': 'не вдалося прийняти сторону',
 
-  takeOurs: 'Взяти свої',
-  takeTheirs: 'Взяти чужі',
 }
