@@ -184,6 +184,7 @@ function Workspace({ project }: { project: Project }): JSX.Element {
               <div className="pane" style={{ width: sizes.files }}>
                 <FileTree
                   root={activeSession.cwd}
+                  terminals={activeSession.terminals}
                   changed={changedFiles}
                   selected={
                     activeSession.terminals.find((t) => t.id === activeSession.activeTerminalId)?.filePath ?? null

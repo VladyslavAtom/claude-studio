@@ -4,7 +4,9 @@ import type { ChangeStatus, DirEntry, OpResult, ReadDirResult, TerminalTab } fro
 import { isValidName } from '../../../shared/fileNames'
 import type { TKey } from '../i18n'
 import { useT } from '../i18n'
-import { changesInvalidated } from '../lib/changesRefresh'
+import { useChangesRefresh } from '../hooks/useChangesRefresh'
+import { changesInvalidated, sameJson } from '../lib/changesRefresh'
+import { filterTree } from '../lib/fileFilter'
 import { fileBadge, statusClass } from '../lib/fileIcons'
 import { basename } from '../lib/util'
 import InlineRename from '../ui/InlineRename'
@@ -20,6 +22,8 @@ type DiffSpec = NonNullable<TerminalTab['diff']>
 
 interface Props {
   root: string
+  /** the session's tabs: what they are decides whether the tree also polls (see useChangesRefresh) */
+  terminals: readonly TerminalTab[]
   selected: string | null
   /** git state per file: the key is the path relative to the root of the tree */
   changed: Record<string, ChangeStatus>
@@ -93,8 +97,12 @@ interface TreeCtx {
   changed: Record<string, ChangeStatus>
   /** directories with something changed inside: marked without being expanded */
   dirtyDirs: Set<string>
-  /** refresh counter: bumping it re-reads the subdirectories that are open, too */
-  version: number
+  /** every directory read so far, the root included, by absolute path */
+  listings: ReadonlyMap<string, ReadDirResult>
+  /** read a directory into `listings` */
+  load: (dir: string) => void
+  /** what the filter leaves on screen; null while there is no filter */
+  shown: Set<string> | null
   expanded: Set<string>
   picked: Set<string>
   cut: Set<string>
@@ -136,22 +144,14 @@ function NewRow({ depth, type }: { depth: number; type: 'file' | 'dir' }): JSX.E
 function FileNode({ entry, depth }: { entry: DirEntry; depth: number }): JSX.Element {
   const t = useT()
   const tree = useTree()
-  const { root, selected, changed, dirtyDirs, version, picked, cut, edit } = tree
+  const { root, selected, changed, dirtyDirs, picked, cut, edit, load, shown } = tree
   const open = entry.isDir && tree.expanded.has(entry.path)
-  const [children, setChildren] = useState<ReadDirResult | null>(null)
+  const children = tree.listings.get(entry.path) ?? null
 
-  // re-read on every expand and on every refresh of the panel: a file the agent created inside
-  // an already open folder would otherwise never show up
+  // read on every expand; later re-reads of the open folders are the tree's refresh
   useEffect(() => {
-    if (!open) return
-    let alive = true
-    void window.api.files.readDir(entry.path).then((res) => {
-      if (alive) setChildren(res)
-    })
-    return () => {
-      alive = false
-    }
-  }, [open, entry.path, version])
+    if (open) load(entry.path)
+  }, [open, entry.path, load])
 
   const pad = { paddingLeft: 6 + depth * 12 }
   const rel = entry.path.startsWith(root + '/') ? entry.path.slice(root.length + 1) : entry.path
@@ -238,13 +238,18 @@ function FileNode({ entry, depth }: { entry: DirEntry; depth: number }): JSX.Ele
           {t(FAILED[children.code])}
         </div>
       )}
-      {open && children?.ok && children.entries.map((c) => <FileNode key={c.path} entry={c} depth={depth + 1} />)}
+      {open &&
+        children?.ok &&
+        children.entries
+          .filter((c) => !shown || shown.has(c.path))
+          .map((c) => <FileNode key={c.path} entry={c} depth={depth + 1} />)}
     </>
   )
 }
 
 export default function FileTree({
   root,
+  terminals,
   selected,
   changed,
   onOpen,
@@ -255,11 +260,12 @@ export default function FileTree({
   onInfo,
 }: Props): JSX.Element {
   const t = useT()
-  /** null while the root is still being read: an empty list and "not read yet" are different */
-  const [result, setResult] = useState<ReadDirResult | null>(null)
+  /**
+   * Every directory read so far, the root included. One map in the tree rather than a state per
+   * folder: a refresh re-reads all open folders at once, and the filter searches all of them.
+   */
+  const [listings, setListings] = useState<ReadonlyMap<string, ReadDirResult>>(() => new Map())
   const [filter, setFilter] = useState('')
-  /** ↻, a change of root and every operation of the tree's own: subdirectories re-read off this */
-  const [version, setVersion] = useState(0)
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   /** the rows Ctrl/Shift+click gathered; Delete, Cut, Copy and the Git items act on all of them */
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
@@ -288,12 +294,8 @@ export default function FileTree({
   const treeRef = useRef<HTMLDivElement>(null)
   const onTreeKeys = useRovingFocus(treeRef, '.fnode')
 
-  const reload = useCallback(() => setVersion((v) => v + 1), [])
-  // a file operation of our own: the tree re-reads, and the changes panel hears of it at once
-  const afterOperation = useCallback(() => {
-    reload()
-    changesInvalidated(root)
-  }, [reload, root])
+  // a file operation of our own: this tree and the changes panel both re-read off the invalidation
+  const afterOperation = useCallback(() => changesInvalidated(root), [root])
   const { run } = useGitAction({ onError, onInfo, onRefresh: afterOperation })
 
   // cleared while rendering rather than from the effect below: an effect runs after the paint,
@@ -303,7 +305,7 @@ export default function FileTree({
   const [readFor, setReadFor] = useState(root)
   if (readFor !== root) {
     setReadFor(root)
-    setResult(null)
+    setListings(new Map())
     setExpanded(new Set())
     setPicked(new Set())
     setAnchor(null)
@@ -312,16 +314,58 @@ export default function FileTree({
     setDialog(null)
   }
 
+  /** the root of the moment: the answer for the previous root may arrive after the new one */
+  const rootNow = useRef(root)
   useEffect(() => {
-    // the answer for the previous root arrives after the new one: only apply our own
-    let alive = true
-    void window.api.files.readDir(root).then((res) => {
-      if (alive) setResult(res)
-    })
-    return () => {
-      alive = false
-    }
-  }, [root, version])
+    rootNow.current = root
+  }, [root])
+
+  /** an unchanged directory keeps its object, so an idle refresh re-renders nothing */
+  const read = useCallback(
+    async (dirs: readonly string[]): Promise<void> => {
+      const results = await Promise.all(dirs.map((d) => window.api.files.readDir(d)))
+      if (rootNow.current !== root) return
+      setListings((prev) => {
+        let next: Map<string, ReadDirResult> | null = null
+        dirs.forEach((d, i) => {
+          const res = results[i]
+          if (res === undefined || sameJson(prev.get(d), res)) return
+          next ??= new Map(prev)
+          next.set(d, res)
+        })
+        return next ?? prev
+      })
+    },
+    [root],
+  )
+  const load = useCallback((dir: string) => void read([dir]), [read])
+
+  useEffect(() => {
+    void read([root])
+  }, [read, root])
+
+  /**
+   * ↻, and every event the changes panel re-reads on — a turn end, focus, the app's own writes:
+   * a file an agent or a terminal created shows up without ↻. Open folders are re-read too.
+   */
+  const refresh = useCallback(() => read([root, ...expanded]), [read, root, expanded])
+  useChangesRefresh({ cwd: root, terminals, enabled: true, refresh })
+  const reload = (): void => void refresh()
+
+  /** null while the root is still being read: an empty list and "not read yet" are different */
+  const result = listings.get(root) ?? null
+  const shown = useMemo(
+    () =>
+      filterTree(
+        result?.ok ? result.entries : [],
+        (dir) => {
+          const res = expanded.has(dir) ? listings.get(dir) : undefined
+          return res?.ok ? res.entries : undefined
+        },
+        filter,
+      ),
+    [result, listings, expanded, filter],
+  )
 
   const rel = useCallback(
     (path: string): string => (path.startsWith(root + '/') ? path.slice(root.length + 1) : path),
@@ -459,7 +503,13 @@ export default function FileTree({
 
   const diffOf = (path: string, extra: Pick<DiffSpec, 'mode'> & Partial<Pick<DiffSpec, 'baseRef'>>): DiffSpec => {
     const status = changed[rel(path)] ?? 'modified'
-    return { cwd: root, path: rel(path), status, untracked: extra.mode === 'working' && status === 'untracked', ...extra }
+    return {
+      cwd: root,
+      path: rel(path),
+      status,
+      untracked: extra.mode === 'working' && status === 'untracked',
+      ...extra,
+    }
   }
 
   const ignore = (paths: string[]): void => {
@@ -616,7 +666,9 @@ export default function FileTree({
     selected,
     changed,
     dirtyDirs,
-    version,
+    listings,
+    load,
+    shown,
     expanded,
     picked,
     cut: new Set(clip?.mode === 'cut' ? clip.paths : []),
@@ -629,7 +681,7 @@ export default function FileTree({
   }
 
   const list: DirEntry[] = result?.ok ? result.entries : []
-  const visible = filter.trim() ? list.filter((e) => e.name.toLowerCase().includes(filter.trim().toLowerCase())) : list
+  const visible = shown ? list.filter((e) => shown.has(e.path)) : list
 
   return (
     <aside className="files">

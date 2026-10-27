@@ -467,8 +467,11 @@ registered roots: the entry operated on by `entryWithin` — its directory resol
 directory something lands in by `realWithin`, links followed. A root itself is never a source.
 Nothing overwrites: create, rename and move refuse a taken name, a copy takes ` copy`,
 ` copy 2`… (`shared/fileNames.ts`), and copies keep symlinks as links. Delete is
-`shell.trashItem`. After its own operations the tree bumps its refresh counter; the changes
-panel sees the result on its next poll.
+`shell.trashItem`. After its own operations the tree calls `changesInvalidated(root)`; it re-reads
+through `useChangesRefresh` like the changes panel, so a file an agent or a terminal created
+shows up on a turn end, on focus or on the fallback poll — the root and every open folder are
+read again, and an unchanged listing keeps its object. The filter searches every open folder
+(`lib/fileFilter`) and keeps a match's ancestors on screen; closed folders are not walked.
 
 Git ▸ Show diff and Compare with branch… open the ordinary diff tab — the latter with
 `mode: 'base'` and the picked ref (a local branch as `refs/heads/<name>`, or the base resolution
