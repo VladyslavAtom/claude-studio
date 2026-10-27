@@ -1,6 +1,7 @@
 /** What changed: parsing of `status`/`--name-status`, and the diff of a single file. */
+import { stat } from 'node:fs/promises'
 import { join, resolve as resolvePath } from 'node:path'
-import type { ChangedFile, ChangeStatus, DiffMode, GitStatusResult } from '../../shared/types'
+import type { ChangedFile, ChangeStatus, DiffMode, FileDiffStat, GitStatusResult } from '../../shared/types'
 import { git, literal, literals } from './exec'
 import { currentBranch, repoRoot, resolveBaseRef, upstreamOf } from './refs'
 import { listWorktrees } from './worktree'
@@ -169,6 +170,84 @@ export async function status(cwd: string, mode: DiffMode, baseRef?: string): Pro
   return { files, branch, ahead, behind, upstream, unpushed, unpulled }
 }
 
+/**
+ * Which revision a file's diff is taken against: the session base in base mode, HEAD otherwise
+ * (null). The same choice as the file list makes — otherwise the file is there in the panel
+ * while its diff is empty. The base still has to go through `resolveBaseRef`.
+ */
+export function diffBase(mode: DiffMode, baseRef: string | undefined): string | null {
+  return mode === 'base' && baseRef ? baseRef : null
+}
+
+async function diffRef(cwd: string, mode: DiffMode, baseRef: string | undefined): Promise<string> {
+  const base = diffBase(mode, baseRef)
+  return base ? resolveBaseRef(cwd, base) : 'HEAD'
+}
+
+/**
+ * Sums `git diff --numstat -z`. A record is `added\tremoved\tpath\0`, or for a detected rename
+ * `added\tremoved\t\0old\0new\0`; a binary file counts `-` for both. Summing rather than taking
+ * the first record keeps a rename git did not pair up (a deletion plus an addition) honest.
+ */
+export function parseNumstat(stdout: string): { added: number; removed: number; binary: boolean } {
+  const parts = stdout.split('\0')
+  let added = 0
+  let removed = 0
+  let binary = false
+  for (let i = 0; i < parts.length; i++) {
+    const m = /^(\d+|-)\t(\d+|-)\t(.*)$/s.exec(parts[i] ?? '')
+    if (!m) continue
+    const [, a = '-', r = '-', path = ''] = m
+    if (a === '-' || r === '-') binary = true
+    else {
+      added += parseInt(a, 10)
+      removed += parseInt(r, 10)
+    }
+    // the two paths of a rename follow in fields of their own and must not be read as records
+    if (path === '') i += 2
+  }
+  return { added, removed, binary }
+}
+
+async function fileSize(path: string): Promise<number> {
+  try {
+    const st = await stat(path)
+    return st.isFile() ? st.size : 0
+  } catch {
+    // a deleted file has no working side; that is a size of nothing, not an error
+    return 0
+  }
+}
+
+/**
+ * The size of one file's diff, for the gate in front of the diff view. Rename-aware: with the
+ * old path in the pathspec git pairs the two up and counts the edit, not a whole-file addition.
+ */
+export async function fileDiffStat(
+  cwd: string,
+  file: string,
+  oldPath: string | undefined,
+  mode: DiffMode,
+  baseRef: string | undefined,
+  untracked: boolean,
+): Promise<FileDiffStat> {
+  const abs = join(cwd, file)
+  if (untracked) {
+    // --no-index exits 1 when the files differ, which is the normal case here
+    const r = await git(cwd, ['diff', '--no-index', '--numstat', '-z', '--', '/dev/null', abs])
+    return { ...parseNumstat(r.stdout), bytes: await fileSize(abs), ref: 'HEAD' }
+  }
+  const ref = await diffRef(cwd, mode, baseRef)
+  const paths = oldPath && oldPath !== file ? [oldPath, file] : [file]
+  const [numstat, blob, size] = await Promise.all([
+    git(cwd, ['diff', '--numstat', '-z', '--find-renames', ref, '--', ...literals(paths)]),
+    git(cwd, ['cat-file', '-s', `${ref}:${oldPath ?? file}`]),
+    fileSize(abs),
+  ])
+  const blobSize = blob.code === 0 ? parseInt(blob.stdout.trim(), 10) || 0 : 0
+  return { ...parseNumstat(numstat.stdout), bytes: Math.max(size, blobSize), ref }
+}
+
 export async function fileDiff(
   cwd: string,
   file: string,
@@ -183,8 +262,7 @@ export async function fileDiff(
     if (r.stdout) return r.stdout
     return r.stderr || ''
   }
-  // the same ref as in the file list: otherwise the file is there in the panel while its diff is empty
-  const ref = mode === 'base' && baseRef ? await resolveBaseRef(cwd, baseRef) : 'HEAD'
+  const ref = await diffRef(cwd, mode, baseRef)
   const r = await git(cwd, ['diff', ref, '--', literal(file)])
   if (r.code !== 0 && !r.stdout) return r.stderr || ''
   return r.stdout

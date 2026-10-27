@@ -391,6 +391,28 @@ The editor saves on a pause and when the tab is closed, not only on Ctrl+S. Writ
 atomic: a temporary file plus a rename. File operations are limited to the registered roots,
 and `openExternal` lets through only http/https.
 
+### The diff tab
+
+`DiffView` is `@codemirror/merge`: a `MergeView` side by side by default (left = the file at
+HEAD or at the resolved session base, read from `oldPath` for a rename; right = the working
+file), `unifiedMergeView` as the other layout. Both sides are the editor's own CodeMirror with
+`languageFor` and `EDITOR_THEMES`, recoloured through the shared `themeSlot`. The change colours
+are PyCharm's by kind — modified, inserted, deleted, with word-level marks inside a modified
+block — as `--diff-*` tokens painted by `diffTheme` (`lib/editor.ts`). The divider carries
+IntelliJ's curved bands (an SVG over the merge view's revert column, geometry in
+`lib/diffBands.ts`, ported from `DiffDividerDrawUtil`/`DiffDrawUtil`) and a `»` per change that
+replaces the right side's text with the left's, as an ordinary undoable edit.
+
+Before any content is read, `git:fileDiffStat` returns numstat against the same ref, the larger
+side's size and the resolved ref; `lib/diffGate.ts` decides: binary → a message, over 2 MB → a
+message, lockfile/generated, over 500 changed lines or over 512 KB → a "Load diff" button.
+
+The right side is editable when it is an existing text file, and it saves through
+`useCheckedFile` — the same checked write, autosave and conflict UI as the file editor. The
+five-second re-read swaps texts into the live view while the ref stays the same and never
+overwrites unsaved edits: a disk that moved under them is shown as the editor's conflict. A
+hidden diff tab stays mounted only while it has unsaved edits.
+
 ### Shift+Enter is a newline
 
 A terminal cannot say «Shift was held» on Return — the classic encoding has no room for a

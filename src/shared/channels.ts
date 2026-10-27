@@ -50,6 +50,7 @@ export const CHANNELS = {
     currentBranch: 'git:currentBranch',
     status: 'git:status',
     fileDiff: 'git:fileDiff',
+    fileDiffStat: 'git:fileDiffStat',
     commit: 'git:commit',
     draftCommitMessage: 'git:draftCommitMessage',
     diffSummary: 'git:diffSummary',

@@ -17,6 +17,18 @@ export function register(): void {
     (_e, cwd: string, file: string, mode: DiffMode, baseRef: string | undefined, untracked: boolean) =>
       git.fileDiff(cwd, file, mode, baseRef, untracked),
   )
+  ipcMain.handle(
+    CH.fileDiffStat,
+    (
+      _e,
+      cwd: string,
+      file: string,
+      oldPath: string | undefined,
+      mode: DiffMode,
+      baseRef: string | undefined,
+      untracked: boolean,
+    ) => git.fileDiffStat(cwd, file, oldPath, mode, baseRef, untracked),
+  )
   ipcMain.handle(CH.commit, (_e, cwd: string, files: string[], message: string) => git.commit(cwd, files, message))
   ipcMain.handle(CH.draftCommitMessage, (_e, cwd: string, files: string[], cfg: CommitDraftConfig, ref?: string) =>
     git.draftCommitMessage(cwd, files, cfg, ref),

@@ -80,11 +80,13 @@
   --op-bg: #3a2f1c;
 
   /* --- diff and merge --- */
-  --diff-lineno: #5b6272;
-  --diff-add-bg: rgba(126, 231, 135, 0.09);
-  --diff-add-fg: #b7f2bd;
-  --diff-del-bg: rgba(255, 107, 107, 0.09);
-  --diff-del-fg: #ffb3b3;
+  /* PyCharm Darcula's DIFF_MODIFIED / DIFF_INSERTED / DIFF_DELETED backgrounds, verbatim. The
+     modified line is IntelliJ's "ignored" strength: the full colour mixed 40/60 with the editor
+     background (#1c1f21), so the differing words inside it stand out in the full colour. */
+  --diff-modified: #385570;
+  --diff-modified-line: #273541;
+  --diff-inserted: #294436;
+  --diff-deleted: #484a4a;
   --merge-ours-bg: rgba(126, 231, 135, 0.08);
   --merge-theirs-bg: rgba(121, 184, 255, 0.08);
 
@@ -103,21 +105,6 @@
   --ft-conf: #a5f3f6;
   --ft-muted: #6b7278;
   --ft-dir: #7d858c;
-
-  /* --- syntax: Darcula, the palette the editor uses --- */
-  --tok-keyword: #cc7832;
-  --tok-string: #6a8759;
-  --tok-number: #6897bb;
-  --tok-comment: #808080;
-  --tok-doc: #629755;
-  --tok-fn: #ffc66d;
-  --tok-attr: #bababa;
-  --tok-field: #9876aa;
-  --tok-annotation: #bbb529;
-  --tok-tag: #e8bf6a;
-  --tok-heading: #ffc66d;
-  --tok-link: #287bde;
-  --tok-invalid: #ff6b68;
 
   /* --- elevation: the whole shadow is the token, so a light theme can change its geometry
          and not only its colour --- */
@@ -190,13 +177,12 @@
   --op-bg: #fff8c5;
 
   /* --- diff and merge --- */
-  --diff-lineno: #656d76;
-  /* opaque tints, not translucent ones: pale enough to read syntax colours through,
-     distinct enough to tell an added row from a removed one at a glance */
-  --diff-add-bg: #e6ffec;
-  --diff-add-fg: #103d21;
-  --diff-del-bg: #ffebe9;
-  --diff-del-fg: #5c1a1a;
+  /* IntelliJ Light's diff backgrounds, verbatim; the modified line is the full colour mixed
+     40/60 with white, as above */
+  --diff-modified: #c2d8f2;
+  --diff-modified-line: #e7effa;
+  --diff-inserted: #bee6be;
+  --diff-deleted: #d6d6d6;
   --merge-ours-bg: #e6ffec;
   --merge-theirs-bg: #ddf4ff;
 
@@ -215,21 +201,6 @@
   --ft-conf: #0f6f7a;
   --ft-muted: #5f6670;
   --ft-dir: #656d76;
-
-  /* --- syntax: IntelliJ Light, role for role against the Darcula palette above --- */
-  --tok-keyword: #0033b3;
-  --tok-string: #067d17;
-  --tok-number: #1750eb;
-  --tok-comment: #656d76;
-  --tok-doc: #3a6a2a;
-  --tok-fn: #00627a;
-  --tok-attr: #3d444d;
-  --tok-field: #871094;
-  --tok-annotation: #7d6c00;
-  --tok-tag: #a03000;
-  --tok-heading: #7a3e00;
-  --tok-link: #0757ba;
-  --tok-invalid: #c01c28;
 
   /* --- elevation: darkness cannot hide an edge on white, so the shadows are real and soft,
          and each carries a hairline ring that keeps a white popup off a white page --- */

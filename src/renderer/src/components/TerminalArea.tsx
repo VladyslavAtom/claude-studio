@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { AgentActivity, AgentRun, Session, Settings, TerminalStatus, TerminalTab } from '../../../shared/types'
 import TerminalPane from './TerminalPane'
 import SleepScreen from './SleepScreen'
@@ -76,50 +76,6 @@ const STATUS_HINT = {
   dead: 'terminal.status.dead',
 } as const satisfies Record<TerminalStatus, TKey>
 
-/** the diff tab: its content is fetched from the tab's spec and refreshed on demand */
-function DiffTab({ spec, onClose }: { spec: NonNullable<TerminalTab['diff']>; onClose: () => void }): JSX.Element {
-  const [text, setText] = useState<string>('')
-
-  useEffect(() => {
-    let cancelled = false
-    const load = (): void => {
-      // a hidden tab shows nothing — do not run git for it
-      if (document.hidden) return
-      void window.api.git
-        .fileDiff(spec.cwd, spec.path, spec.mode, spec.baseRef, spec.untracked)
-        .then((d) => !cancelled && setText(d))
-    }
-    load()
-    const t = window.setInterval(load, 5000)
-    const onVisible = (): void => {
-      if (!document.hidden) load()
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      cancelled = true
-      window.clearInterval(t)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-  }, [spec.cwd, spec.path, spec.mode, spec.baseRef, spec.untracked])
-
-  return (
-    <DiffView
-      file={{
-        path: spec.path,
-        // left out entirely rather than set to undefined: only a rename has an old path
-        ...(spec.oldPath === undefined ? {} : { oldPath: spec.oldPath }),
-        status: spec.status,
-        staged: false,
-        untracked: spec.untracked,
-      }}
-      diff={text}
-      cwd={spec.cwd}
-      oldRef={spec.mode === 'base' && spec.baseRef ? spec.baseRef : 'HEAD'}
-      onClose={onClose}
-    />
-  )
-}
-
 export default function TerminalArea({
   session,
   settings,
@@ -161,6 +117,10 @@ export default function TerminalArea({
    * main paints its buffer back, which is the opposite of what was asked for.
    */
   const [clearSeqs, setClearSeqs] = useState<Record<string, number>>({})
+  /** diff tabs whose right side has unsaved edits: they stay mounted while hidden */
+  const [dirtyDiffs, setDirtyDiffs] = useState<Record<string, boolean>>({})
+  const markDirtyDiff = (id: string, dirty: boolean): void =>
+    setDirtyDiffs((prev) => (!!prev[id] === dirty ? prev : { ...prev, [id]: dirty }))
   /** the tab's process is restarting: the old pane is gone, the new one waits for `launched` */
   const [restarting, setRestarting] = useState<Set<string>>(new Set())
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -197,6 +157,7 @@ export default function TerminalArea({
     setNonces(prune)
     setDead(prune)
     setClearSeqs(prune)
+    setDirtyDiffs(prune)
     setRestarting((prev) => {
       const next = new Set([...prev].filter((id) => alive.has(id)))
       return next.size === prev.size ? prev : next
@@ -565,8 +526,20 @@ export default function TerminalArea({
             ) : null
           }
           if (tab.kind === 'diff') {
-            return tab.id === activeId && tab.diff ? (
-              <DiffTab key={tab.id} spec={tab.diff} onClose={() => onCloseTerminal(tab.id)} />
+            // mounted while visible, and while hidden only as long as its right side holds
+            // edits not yet on disk: unmounting would throw them away, and keeping every diff
+            // tab ever opened alive would keep two editors each for nothing
+            const visible = tab.id === activeId
+            return tab.diff && (visible || dirtyDiffs[tab.id]) ? (
+              <DiffView
+                key={tab.id}
+                spec={tab.diff}
+                editor={settings.editor}
+                active={visible}
+                onClose={() => onCloseTerminal(tab.id)}
+                onError={onError}
+                onDirty={(d) => markDirtyDiff(tab.id, d)}
+              />
             ) : null
           }
 

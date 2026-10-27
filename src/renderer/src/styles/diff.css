@@ -1,4 +1,5 @@
-/* Diff overlay: header, diff table, added/removed/hunk rows, syntax highlighting. */
+/* Diff view: header with the toolbar, and the @codemirror/merge view below it. The colours of
+   the changes themselves live in lib/editor.ts (diffTheme), as custom properties from tokens. */
 
 .diff-overlay {
   position: absolute;
@@ -8,7 +9,6 @@
   flex-direction: column;
   background: var(--bg);
   border-right: 1px solid var(--line);
-  z-index: 20;
 }
 .diff-head {
   display: flex;
@@ -34,6 +34,11 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
 }
+.diff-head .file .dirty {
+  color: var(--warn);
+  margin-left: 6px;
+  font-size: 10px;
+}
 .diff-head .stat {
   font-size: 11px;
 }
@@ -43,101 +48,78 @@
 .diff-head .stat.del {
   color: var(--del);
 }
-.diff-body {
-  flex: 1;
-  overflow: auto;
-  min-height: 0;
+.diff-head .diff-count {
+  white-space: nowrap;
+  min-width: 4em;
+  text-align: center;
 }
-.diff-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-family: 'JetBrains Mono', 'DejaVu Sans Mono', monospace;
-  font-size: 12px;
-}
-.diff-table td {
-  padding: 0 6px;
-  vertical-align: top;
-  white-space: pre;
-}
-.diff-body.wrap .diff-table td.code {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.diff-table td.no {
-  width: 1%;
-  text-align: right;
-  color: var(--diff-lineno);
-  user-select: none;
-  background: var(--bg-1);
-  border-right: 1px solid var(--line);
-}
-.diff-table td.sign {
-  width: 1%;
-  color: var(--fg-dim);
-  user-select: none;
-}
-.dl.add td.code,
-.dl.add td.sign {
-  background: var(--diff-add-bg);
-  color: var(--diff-add-fg);
-}
-.dl.del td.code,
-.dl.del td.sign {
-  background: var(--diff-del-bg);
-  color: var(--diff-del-fg);
-}
-.dl.hunk td {
-  background: var(--bg-2);
+.diff-head button.on {
   color: var(--accent);
 }
-.dl.meta td {
+.diff-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+}
+
+/* the merge view scrolls as one: both editors and the divider between them move together */
+.diff-host {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.diff-host > .cm-mergeView,
+.diff-host > .cm-editor {
+  height: 100%;
+}
+.diff-host .cm-mergeViewEditors {
+  position: relative;
+  min-height: 100%;
+}
+
+/* the divider: its own background, the bands above it, the » buttons above the bands */
+.diff-host .cm-merge-revert {
+  width: 36px;
+  background: var(--bg-1);
+}
+.diff-bands {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
+}
+.diff-bands .modified {
+  fill: var(--diff-modified);
+}
+.diff-bands .inserted {
+  fill: var(--diff-inserted);
+}
+.diff-bands .deleted {
+  fill: var(--diff-deleted);
+}
+/* the library places a button at the line's top within the document, which starts below
+   CodeMirror's 4px content padding; the margin puts the arrow level with the line */
+.diff-host .cm-merge-revert button.diff-revert {
+  margin-top: 4px;
+}
+.diff-host .cm-merge-revert button.diff-revert,
+.diff-host .cm-deletedChunk button.diff-revert {
+  z-index: 2;
+  padding: 0;
   color: var(--fg-dim);
+  font-size: 14px;
+  line-height: 19px;
 }
-
-/* --- token colours, the same Darcula palette the editor uses --- */
-
-/* highlighting inside the diff: the same Darcula colours as in the editor */
-.diff-table .tok-keyword {
-  color: var(--tok-keyword);
+.diff-host .cm-merge-revert button.diff-revert:hover,
+.diff-host .cm-deletedChunk button.diff-revert:hover {
+  color: var(--accent);
 }
-.diff-table .tok-string {
-  color: var(--tok-string);
-}
-.diff-table .tok-number {
-  color: var(--tok-number);
-}
-.diff-table .tok-comment {
-  color: var(--tok-comment);
-  font-style: italic;
-}
-.diff-table .tok-doc {
-  color: var(--tok-doc);
-  font-style: italic;
-}
-.diff-table .tok-fn {
-  color: var(--tok-fn);
-}
-.diff-table .tok-attr {
-  color: var(--tok-attr);
-}
-.diff-table .tok-field,
-.diff-table .tok-constant {
-  color: var(--tok-field);
-}
-.diff-table .tok-annotation {
-  color: var(--tok-annotation);
-}
-.diff-table .tok-tag {
-  color: var(--tok-tag);
-}
-.diff-table .tok-heading {
-  color: var(--tok-heading);
-  font-weight: bold;
-}
-.diff-table .tok-link {
-  color: var(--tok-link);
-  text-decoration: underline;
-}
-.diff-table .tok-invalid {
-  color: var(--tok-invalid);
+.diff-host .cm-deletedChunk button.diff-revert {
+  border: none;
+  background: none;
+  cursor: pointer;
 }

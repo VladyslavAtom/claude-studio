@@ -548,6 +548,25 @@ export interface ChangedFile {
   untracked: boolean
 }
 
+/**
+ * The size of one file's diff, asked for before any of its content is fetched: a lockfile or a
+ * minified bundle is refused here rather than after it has been read, parsed and painted.
+ */
+export interface FileDiffStat {
+  added: number
+  removed: number
+  /** git counts no lines for it (`-\t-` in numstat): there is no text to compare */
+  binary: boolean
+  /** the larger of the two sides in bytes: the working file and the blob at `ref` */
+  bytes: number
+  /**
+   * The revision the left side is read from, already resolved: `HEAD`, or the session base as
+   * the file list resolves it. A left side read from anything else is a different diff from
+   * the one these numbers describe.
+   */
+  ref: string
+}
+
 export interface GitStatusResult {
   files: ChangedFile[]
   branch: string | null

@@ -35,7 +35,25 @@ export const editor = {
   'diff.wrap.off': '⤶ off',
   'diff.external': 'Open the file in the external editor',
   'diff.close.aria': 'Close the diff (Esc)',
-  'diff.empty': 'Nothing to show',
+  'diff.loading': 'Comparing…',
+  'diff.binary': 'Binary file: there is no text to compare',
+  'diff.tooLarge': 'The file is too large to compare here ({sizeKb} KB)',
+  'diff.gate.large': 'A large diff ({lines} changed lines, {sizeKb} KB) is not loaded on its own',
+  'diff.gate.generated': 'A lockfile or a generated file: its diff is not loaded on its own',
+  'diff.gate.load': 'Load diff',
+  'diff.readOnly': 'read only',
+  'diff.prev': 'Previous difference (Shift+F7)',
+  'diff.next': 'Next difference (F7)',
+  'diff.count': { zero: 'no differences', one: '{count} difference', other: '{count} differences' },
+  'diff.position': '{current} of {total}',
+  'diff.layout.split': 'Side by side',
+  'diff.layout.unified': 'Unified',
+  'diff.layout.title': 'Switch between the side-by-side and the unified view',
+  'diff.collapse': 'Collapse unchanged',
+  'diff.collapse.title': 'Fold the unchanged lines between differences',
+  'diff.revert': 'Replace this change with the original text (Ctrl+Z undoes it)',
+  // CodeMirror's own phrase: `$` is its placeholder for the number, not ours
+  'diff.unchanged': '$ unchanged lines',
 } as const
 
 export type EditorArea = AreaOf<typeof editor>

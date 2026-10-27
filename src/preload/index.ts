@@ -15,6 +15,7 @@ import type {
   ExternalSession,
   ExternalSessionQuery,
   FileContent,
+  FileDiffStat,
   GitOpResult,
   GitStatusResult,
   OpResult,
@@ -81,6 +82,16 @@ const api = {
       baseRef: string | undefined,
       untracked: boolean,
     ): Promise<string> => ipcRenderer.invoke(CHANNELS.git.fileDiff, cwd, file, mode, baseRef, untracked),
+    /** the size of one file's diff against the same ref `fileDiff` uses; asked before the content */
+    fileDiffStat: (
+      cwd: string,
+      file: string,
+      oldPath: string | undefined,
+      mode: DiffMode,
+      baseRef: string | undefined,
+      untracked: boolean,
+    ): Promise<FileDiffStat> =>
+      ipcRenderer.invoke(CHANNELS.git.fileDiffStat, cwd, file, oldPath, mode, baseRef, untracked),
     commit: (cwd: string, files: string[], message: string): Promise<GitOpResult> =>
       ipcRenderer.invoke(CHANNELS.git.commit, cwd, files, message),
     draftCommitMessage: (

@@ -899,3 +899,28 @@ Not done: a setting to refuse the tool, and any per-request confirmation in our 
 CLI asks about an unfamiliar tool itself, and a second gate of ours would ask about the same
 thing in a different place. If a tab ever opens sessions nobody asked for, that is the moment to
 add one.
+
+## 2026-10-27 — The diff is PyCharm's, on `@codemirror/merge`, and it edits
+
+The hand-rolled read-only unified table (`DiffView` + `lib/highlight.ts`) is replaced by
+`@codemirror/merge`: the same CodeMirror, lezer grammars and palette the editor already ships,
+about 10 KB of its own code, no workers. The user asked for "almost a full copy of PyCharm", view
+plus edit: side by side by default, PyCharm's colours by kind with word-level marks, IntelliJ's
+curved bands between the panes, `»` per change, F7/Shift+F7, folded unchanged lines, and an
+editable right side.
+
+**What stays the library's.** `MergeView` aligns the two sides with spacer widgets, so unchanged
+lines always sit level and a band only curves where one side of a change is taller. IntelliJ
+scrolls the two editors separately and the bands slant; that is not possible without forking the
+library, and the library is kept.
+
+**A large diff waits for a click** — numstat, rename-aware, against the same ref as the file
+list, before any content is read (lockfiles, generated files, over 500 changed lines, over
+512 KB). Peers learned this one the hard way.
+
+**The save is the editor's save.** The checked write, autosave and conflict UI moved out of
+`FileEditor` into `useCheckedFile` and both use it, rather than a copy that drifts. The
+five-second re-read never writes over unsaved edits; a hidden diff tab with unsaved edits stays
+mounted until they are on disk.
+
+Rejected: `@pierre/diffs` (a second highlighter, a worker pool, reported leaks), Monaco.

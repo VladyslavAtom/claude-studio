@@ -1,5 +1,5 @@
 import { EditorView } from '@codemirror/view'
-import type { Extension } from '@codemirror/state'
+import { Compartment, type Extension } from '@codemirror/state'
 import { HighlightStyle, syntaxHighlighting, StreamLanguage, type LanguageSupport } from '@codemirror/language'
 import { tags as t } from '@lezer/highlight'
 import type { ThemeName } from '../../../shared/types'
@@ -89,14 +89,13 @@ const C: Palette = {
  * fields and constants purple, annotations mustard. It is a scheme drawn for dark ink on paper,
  * not an inversion of Darcula; inverting would have given pale keywords on white.
  *
- * The syntax colours are not chosen here twice over: they are the `--tok-*` light values from
- * `styles/tokens.css`, the same ones the diff view paints with. The same file shown in the diff
- * and in the editor has to be coloured identically, and two copies of a palette drift apart on
- * the first correction to either.
+ * The diff view is built from these same editors (`@codemirror/merge`), so a file shown in the
+ * diff and in the editor is coloured identically by construction — there is no second copy of
+ * this palette to drift.
  *
  * Same discipline as above for the greys: the surface is the app's `--editor-bg` (white in
- * light), the gutter `--bg-1`, the active line `--bg-2`, and the line numbers `--diff-lineno`,
- * which is what numbers a line everywhere else in the app.
+ * light), the gutter `--bg-1`, the active line `--bg-2`, and the line numbers the app's muted
+ * grey (#656d76).
  *
  * Comments sit at 5.2:1 — quieter than code at 15:1, but nowhere near IntelliJ's own #8c8c8c,
  * which is 3.0:1 on white and genuinely hard to read. Nothing that carries meaning is below
@@ -196,6 +195,54 @@ export const intellijLight: Extension = [intellijLightTheme, syntaxHighlighting(
  * by identity, so a fresh object per render would reconfigure the editor on every keystroke.
  */
 export const EDITOR_THEMES: Record<ThemeName, Extension> = { dark: darcula, light: intellijLight }
+
+/**
+ * The slot the editor colours occupy in the configuration. A compartment is how CodeMirror lets
+ * one extension be swapped on a running view: everything else in the state — the document, the
+ * undo history, the selection, the pending autosave — is untouched by the reconfigure, which a
+ * rebuilt `EditorView` would throw away. One instance for every editor (the file editor and
+ * both sides of a diff) is correct: a compartment is only an identity, and each state resolves
+ * it against its own contents.
+ */
+export const themeSlot = new Compartment()
+
+/**
+ * The diff colours, PyCharm's: modified blue, inserted green, deleted grey, each in two
+ * strengths — the line of a modified change is the muted one and the words that differ inside
+ * it carry the full colour, as IntelliJ paints them. Unlike the syntax palette above these do
+ * live in CSS (`--diff-*` in `styles/tokens.css`), so the rules only name the custom
+ * properties and a theme switch recolours them without touching the view.
+ *
+ * The selectors are as specific as `@codemirror/merge`'s own base theme (three classes) on
+ * purpose: a theme is mounted after the base theme, so on a tie ours wins.
+ */
+export const diffTheme: Extension = EditorView.theme({
+  '& .cm-line.cs-diff-modified': { backgroundColor: 'var(--diff-modified-line)' },
+  '& .cm-line.cs-diff-inserted': { backgroundColor: 'var(--diff-inserted)' },
+  '& .cm-line.cs-diff-deleted': { backgroundColor: 'var(--diff-deleted)' },
+  '& .cm-gutterElement.cs-diff-modified': { backgroundColor: 'var(--diff-modified-line)' },
+  '& .cm-gutterElement.cs-diff-inserted': { backgroundColor: 'var(--diff-inserted)' },
+  '& .cm-gutterElement.cs-diff-deleted': { backgroundColor: 'var(--diff-deleted)' },
+  '& .cs-diff-word-modified': { backgroundColor: 'var(--diff-modified)' },
+  '& .cs-diff-word-inserted': { backgroundColor: 'var(--diff-inserted)' },
+  '& .cs-diff-word-deleted': { backgroundColor: 'var(--diff-deleted)' },
+  // the library's own word marks: ours above already say the same thing, by kind
+  '&.cm-merge-a .cm-changedText, &.cm-merge-b .cm-changedText': { background: 'none' },
+  // unified view: the removed lines are a widget above the change, coloured by what follows it
+  '& .cm-deletedChunk': { backgroundColor: 'var(--diff-deleted)' },
+  '& .cm-deletedChunk:has(+ .cm-line.cs-diff-modified)': { backgroundColor: 'var(--diff-modified-line)' },
+  '& .cm-deletedChunk .cm-deletedText': { background: 'none' },
+  '& .cm-deletedChunk:has(+ .cm-line.cs-diff-modified) .cm-deletedText': {
+    backgroundColor: 'var(--diff-modified)',
+  },
+  '& .cm-deletedChunk .cm-chunkButtons': { insetInlineEnd: '8px' },
+  '& .cm-collapsedLines': {
+    color: 'var(--fg-dim)',
+    background: 'var(--bg-1)',
+    fontFamily: 'inherit',
+  },
+  '& .cm-collapsedLines:hover': { color: 'var(--fg)' },
+})
 
 const yamlLike = StreamLanguage.define<{ inString: boolean }>({
   startState: () => ({ inString: false }),

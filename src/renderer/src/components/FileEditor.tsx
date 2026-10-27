@@ -1,25 +1,17 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { Compartment, EditorState, type Extension } from '@codemirror/state'
+import { EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { bracketMatching, indentOnInput, foldGutter, foldKeymap } from '@codemirror/language'
 import { searchKeymap, highlightSelectionMatches, search } from '@codemirror/search'
 import { useT } from '../i18n'
 import { resultMessage } from '../ui/useGitAction'
-import { EDITOR_THEMES, languageFor } from '../lib/editor'
+import { EDITOR_THEMES, languageFor, themeSlot } from '../lib/editor'
 import { basename } from '../lib/util'
 import { useThemed } from '../theme/themeContext'
+import { editedByUser, useCheckedFile } from '../hooks/useCheckedFile'
 import type { EditorConfig } from '../../../shared/types'
-
-/**
- * The slot the editor colours occupy in the configuration. A compartment is how CodeMirror lets
- * one extension be swapped on a running view: everything else in the state — the document, the
- * undo history, the selection, the pending autosave — is untouched by the reconfigure, which a
- * rebuilt `EditorView` would throw away. One instance for all editors is correct: a compartment
- * is only an identity, and each state resolves it against its own contents.
- */
-const themeSlot = new Compartment()
 
 /**
  * Put the caret on a line and scroll it into view. Clamped rather than trusted: the line comes
@@ -66,14 +58,11 @@ export default function FileEditor({
   const editorColours = useThemed(EDITOR_THEMES)
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
-  const savedTextRef = useRef('')
-  const [dirty, setDirty] = useState(false)
-  const [savedAt, setSavedAt] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
-  const autoSaveTimer = useRef<number | null>(null)
   const [readOnlyNote, setReadOnlyNote] = useState<string | null>(null)
-  /** file changed under us (an agent rewrote it): writing would drop that change */
-  const [conflict, setConflict] = useState(false)
+  /** the checked save, the autosave and the conflict with the disk — shared with the diff view */
+  const file = useCheckedFile({ path, editor, viewRef, onError, ...(onSaved ? { onSaved } : {}) })
+  const { dirty, conflict, savedAt } = file
   /**
    * A picture is shown, never edited: main answers with a data URL instead of text, and the
    * whole editor below — CodeMirror, autosave, the conflict check — is simply not built. Half a
@@ -88,10 +77,7 @@ export default function FileEditor({
    * away. Nothing reads them synchronously during that first commit — the view itself is built
    * inside a promise callback — so the one-commit delay costs nothing.
    */
-  const editorRef = useRef(editor)
-  const conflictRef = useRef(conflict)
-  // the unmount flush reports its own conflicts, and by then the component is gone
-  const onErrorRef = useRef(onError)
+  const fileRef = useRef(file)
   const activeRef = useRef(active)
   // the wording changes when the language does, and the load effect must not re-read the file
   // for that: it is a spelling of the same message, not a different file
@@ -101,11 +87,8 @@ export default function FileEditor({
   const coloursRef = useRef(editorColours)
   // the file is read before the view exists, so the line to go to has to survive that wait
   const lineRef = useRef(line)
-  const save = useRef(async (): Promise<void> => {})
   useEffect(() => {
-    editorRef.current = editor
-    conflictRef.current = conflict
-    onErrorRef.current = onError
+    fileRef.current = file
     activeRef.current = active
     tRef.current = t
     coloursRef.current = editorColours
@@ -122,15 +105,12 @@ export default function FileEditor({
     setOpenFor(path)
     setLoading(true)
     setReadOnlyNote(null)
-    setConflict(false)
+    file.reset()
     setImage(null)
   }
 
   useEffect(() => {
     let disposed = false
-    // the mirror effect above has not run for this commit yet, and the load below must not see
-    // the previous file's conflict
-    conflictRef.current = false
 
     void window.api.files.read(path).then((res) => {
       if (disposed || !hostRef.current) return
@@ -144,7 +124,7 @@ export default function FileEditor({
         return
       }
 
-      savedTextRef.current = res.content
+      fileRef.current.loaded(res.content)
       const lang = languageFor(path)
       const extensions: Extension[] = [
         lineNumbers(),
@@ -160,7 +140,7 @@ export default function FileEditor({
           {
             key: 'Mod-s',
             run: () => {
-              void save.current()
+              void fileRef.current.save()
               return true
             },
           },
@@ -172,14 +152,7 @@ export default function FileEditor({
         ]),
         themeSlot.of(coloursRef.current),
         EditorView.updateListener.of((u) => {
-          if (!u.docChanged) return
-          setDirty(u.state.doc.toString() !== savedTextRef.current)
-          // autosave: written after a pause in typing; Ctrl+S stays as the manual way
-          if (!editorRef.current.autoSave) return
-          // a pending conflict is resolved by hand: retrying on every keystroke would only spam
-          if (conflictRef.current) return
-          if (autoSaveTimer.current) window.clearTimeout(autoSaveTimer.current)
-          autoSaveTimer.current = window.setTimeout(() => void save.current(), editorRef.current.delayMs)
+          if (editedByUser(u)) fileRef.current.changed(u.state.doc.toString())
         }),
       ]
       if (lang) extensions.push(lang as Extension)
@@ -197,26 +170,9 @@ export default function FileEditor({
 
     return () => {
       disposed = true
-      if (autoSaveTimer.current) window.clearTimeout(autoSaveTimer.current)
-      // unsaved work is flushed when the file closes, or autosave would be a lie
-      if (editorRef.current.autoSave && !conflictRef.current && viewRef.current) {
-        const text = viewRef.current.state.doc.toString()
-        const expected = savedTextRef.current
-        // the tab is going away, so the check runs detached: on a mismatch we keep the
-        // file as the agent left it and only report it
-        if (text !== expected) {
-          void window.api.files.read(path).then((disk) => {
-            if (disk.ok && disk.content !== undefined && disk.content !== expected) {
-              onErrorRef.current(tRef.current('editor.conflict.unsaved', { file: basename(path) }))
-              return
-            }
-            void window.api.files.write(path, text)
-          })
-        }
-      }
+      fileRef.current.flush(path)
       viewRef.current?.destroy()
       viewRef.current = null
-      setDirty(false)
     }
   }, [path])
 
@@ -247,65 +203,6 @@ export default function FileEditor({
   useEffect(() => {
     viewRef.current?.dispatch({ effects: themeSlot.reconfigure(editorColours) })
   }, [editorColours])
-
-  /**
-   * A checked write: while the tab was open, an agent may have rewritten the file. A blind
-   * write would erase its version, so the contents on disk are compared with what we read, and
-   * on a mismatch nothing is written — it is shown instead. Overwriting stays its own button.
-   */
-  const write = async (text: string, force: boolean): Promise<void> => {
-    if (!force) {
-      const disk = await window.api.files.read(path)
-      if (disk.ok && disk.content !== undefined && disk.content !== savedTextRef.current) {
-        setConflict(true)
-        conflictRef.current = true
-        onError(t('editor.conflict.cancelled', { file: basename(path) }))
-        return
-      }
-    }
-    const res = await window.api.files.write(path, text)
-    if (!res.ok) {
-      onError(resultMessage(t, res, t('editor.save.failed')))
-      return
-    }
-    savedTextRef.current = text
-    setConflict(false)
-    conflictRef.current = false
-    setDirty(false)
-    setSavedAt(Date.now())
-    onSaved?.(path)
-  }
-
-  useEffect(() => {
-    save.current = async (): Promise<void> => {
-      const view = viewRef.current
-      if (!view) return
-      await write(view.state.doc.toString(), false)
-    }
-  })
-
-  /** the conflict was settled for our buffer: write over what is on disk */
-  const overwrite = async (): Promise<void> => {
-    const view = viewRef.current
-    if (!view) return
-    await write(view.state.doc.toString(), true)
-  }
-
-  /** the conflict was settled for the disk: re-read the file, our edits go */
-  const reload = async (): Promise<void> => {
-    const view = viewRef.current
-    const disk = await window.api.files.read(path)
-    if (!view || !disk.ok || disk.content === undefined) {
-      onError(resultMessage(t, disk, t('editor.reload.failed')))
-      return
-    }
-    // before dispatch: the change listener then compares against the new «saved» text at once
-    savedTextRef.current = disk.content
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: disk.content } })
-    setConflict(false)
-    conflictRef.current = false
-    setDirty(false)
-  }
 
   /** "@src/lib/jwt.ts:20-40" — what both CLIs understand as a file reference */
   const sendToAgent = (): void => {
@@ -371,16 +268,20 @@ export default function FileEditor({
         </button>
         {conflict && (
           <>
-            <button className="primary danger" onClick={() => void overwrite()} title={t('editor.overwrite.title')}>
+            <button
+              className="primary danger"
+              onClick={() => void file.overwrite()}
+              title={t('editor.overwrite.title')}
+            >
               {t('editor.overwrite')}
             </button>
-            <button onClick={() => void reload()} title={t('editor.reload.title')}>
+            <button onClick={() => void file.reload()} title={t('editor.reload.title')}>
               {t('editor.reload')}
             </button>
           </>
         )}
         {!editor.autoSave && !conflict && !image && (
-          <button onClick={() => void save.current()} disabled={!dirty} title={t('editor.save.title')}>
+          <button onClick={() => void file.save()} disabled={!dirty} title={t('editor.save.title')}>
             {t('editor.save')}
           </button>
         )}

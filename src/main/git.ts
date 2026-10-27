@@ -19,8 +19,18 @@
  */
 export { git, type GitRunResult } from './git/exec'
 export { currentBranch, defaultBranch, fileAtRef, hasUpstream, repoRoot, resolveBaseRef } from './git/refs'
-/** mapStatusCode/parseNameStatus/renameSources parse git's output; exported for the tests */
-export { diffSummary, fileDiff, mapStatusCode, parseNameStatus, renameSources, status } from './git/status'
+/** mapStatusCode/parseNameStatus/parseNumstat/renameSources/diffBase are pure; exported for the tests */
+export {
+  diffBase,
+  diffSummary,
+  fileDiff,
+  fileDiffStat,
+  mapStatusCode,
+  parseNameStatus,
+  parseNumstat,
+  renameSources,
+  status,
+} from './git/status'
 export { commit, commitFiles, listCommits, revertFiles } from './git/commit'
 export {
   checkout,
