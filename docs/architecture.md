@@ -421,6 +421,35 @@ The editor saves on a pause and when the tab is closed, not only on Ctrl+S. Writ
 atomic: a temporary file plus a rename. File operations are limited to the registered roots,
 and `openExternal` lets through only http/https.
 
+### The file tree's menu
+
+Right click on a row or on the space below the rows, Shift+F10 or the menu key on the focused
+row opens the shared `ContextMenu`, modelled on PyCharm's project view: New ▸, Cut / Copy /
+Paste / Duplicate, Copy Path ▸, Rename… (F2), Delete… (Del), Open in ▸, Git ▸. `ContextMenu`
+draws a submenu as a sibling of the menu inside one wrapper — the wrapper is the outside-click
+boundary, the sibling keeps the menu's arrow keys on its own rows — and a submenu sits one
+overlay level deeper, so Escape closes it first.
+
+Ctrl+click and Shift+click gather rows; Delete, Cut, Copy, Copy Path, Revert and Add to
+.gitignore act on all of them, the rest on one row. Cut and Copy fill an in-app clipboard of
+paths, never the system one. Rename and New use the shared `InlineRename` in the row itself.
+
+Every operation is checked in main (`main/fileOps.ts`, `main/git/ignore.ts`) against the
+registered roots: the entry operated on by `entryWithin` — its directory resolved through
+`realpath`, the entry itself not, because a symlink is renamed or trashed as the link — and the
+directory something lands in by `realWithin`, links followed. A root itself is never a source.
+Nothing overwrites: create, rename and move refuse a taken name, a copy takes ` copy`,
+` copy 2`… (`shared/fileNames.ts`), and copies keep symlinks as links. Delete is
+`shell.trashItem`. After its own operations the tree bumps its refresh counter; the changes
+panel sees the result on its next poll.
+
+Git ▸ Show diff and Compare with branch… open the ordinary diff tab — the latter with
+`mode: 'base'` and the picked ref (a local branch as `refs/heads/<name>`, or the base resolution
+would turn `main` into `origin/main`). Show history lists `git log -- :(literal)<path>`; a click
+compares that revision with the working file, because the diff tab's right side is always the
+working file. Revert is `git:revertFiles` behind the same `RevertConfirmModal` as the changes
+panel. Open in ▸ Terminal is a shell tab with its own `shellCwd`.
+
 ### The diff tab
 
 `DiffView` is `@codemirror/merge`: a `MergeView` side by side by default (left = the file at

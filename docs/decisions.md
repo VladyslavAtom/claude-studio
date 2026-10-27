@@ -955,3 +955,20 @@ it is not, because that call is about the thread today.
 
 A Notification also refreshes: the person is about to look, and an agent stopped on a permission
 prompt has usually written something already.
+
+## 2026-10-27 — The file tree gets PyCharm's menu; main checks every path, links included
+
+The tree had no context menu and main had no file operations beyond read, write and readDir.
+The menu follows PyCharm's project view (issue 1). Decided along the way:
+
+- **Paths are checked where they really are.** `isAllowed` compares resolved strings, which stops
+  `..` but not a symlinked directory inside a project. The new operations resolve the parent of
+  the entry (`entryWithin`) or the destination directory itself (`realWithin`) through
+  `realpath` before comparing with the roots, and refuse a root as the thing operated on.
+- **Nothing overwrites.** A taken name is a refusal; a copy takes PyCharm's ` copy` suffix. A
+  move that collides is refused rather than renamed: a cut file that reappears as `x copy` would
+  be a surprise.
+- **Revert keeps its name.** The menu item is the changes panel's `changes.revert`, not
+  PyCharm's «Rollback»: one operation, one key.
+- **Show history compares with the working file.** The diff tab's right side is always the file
+  on disk, so a commit's own patch (`hash^` against `hash`) is not something it can show yet.

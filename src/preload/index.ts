@@ -134,6 +134,11 @@ const api = {
       ipcRenderer.invoke(CHANNELS.git.listCommits, cwd, range),
     commitFiles: (cwd: string, hash: string): Promise<ChangedFile[]> =>
       ipcRenderer.invoke(CHANNELS.git.commitFiles, cwd, hash),
+    /** the newest commits touching `path` (relative to `cwd`), taken literally rather than as a glob */
+    fileHistory: (cwd: string, path: string): Promise<CommitInfo[]> =>
+      ipcRenderer.invoke(CHANNELS.git.fileHistory, cwd, path),
+    /** append the path to the .gitignore at its repository's root; a note when it is listed already */
+    addToGitignore: (path: string): Promise<OpResult> => ipcRenderer.invoke(CHANNELS.git.addToGitignore, path),
     pull: (cwd: string, strategy: 'merge' | 'rebase'): Promise<GitOpResult> =>
       ipcRenderer.invoke(CHANNELS.git.pull, cwd, strategy),
     merge: (cwd: string, branch: string): Promise<GitOpResult> => ipcRenderer.invoke(CHANNELS.git.merge, cwd, branch),
@@ -173,6 +178,19 @@ const api = {
      * click is the intent, and it buys one file, not its directory. Refuses a directory.
      */
     openFromTerminal: (path: string): Promise<OpResult> => ipcRenderer.invoke(CHANNELS.files.openFromTerminal, path),
+    // the file tree's operations, all limited to the registered roots by main; nothing overwrites
+    create: (dir: string, name: string, kind: 'file' | 'dir'): Promise<OpResult & { path?: string }> =>
+      ipcRenderer.invoke(CHANNELS.files.create, dir, name, kind),
+    rename: (path: string, name: string): Promise<OpResult> => ipcRenderer.invoke(CHANNELS.files.rename, path, name),
+    move: (paths: string[], destDir: string): Promise<OpResult> =>
+      ipcRenderer.invoke(CHANNELS.files.move, paths, destDir),
+    /** a taken name gets « copy», « copy 2»…: Duplicate is a copy into the entry's own folder */
+    copy: (paths: string[], destDir: string): Promise<OpResult> =>
+      ipcRenderer.invoke(CHANNELS.files.copy, paths, destDir),
+    /** to the system trash, not unlinked */
+    trash: (paths: string[]): Promise<OpResult> => ipcRenderer.invoke(CHANNELS.files.trash, paths),
+    reveal: (path: string): Promise<OpResult> => ipcRenderer.invoke(CHANNELS.files.reveal, path),
+    openDefault: (path: string): Promise<OpResult> => ipcRenderer.invoke(CHANNELS.files.openDefault, path),
   },
   app: {
     /** the window is closing: the renderer has to flush the state and answer with quitReady */

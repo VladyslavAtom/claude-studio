@@ -54,6 +54,8 @@ export function diffTab(diff: NonNullable<TerminalTab['diff']>): TerminalTab {
 
 export interface TerminalActions {
   addTerminal: (project: Project, session: Session, agentId: string | null) => void
+  /** a plain shell started in `dir` rather than the session's directory (the tree's Open in ▸ Terminal) */
+  openShellAt: (project: Project, session: Session, dir: string) => void
   closeTerminal: (project: Project, session: Session, terminalId: string) => Promise<void>
   /** wake a sleeping tab once we know whether its conversation exists */
   wakeTerminal: (project: Project, session: Session, terminalId: string) => Promise<void>
@@ -87,6 +89,15 @@ export function useTerminalActions(): TerminalActions {
   const addTerminal = useCallback(
     (project: Project, session: Session, agentId: string | null) => {
       const terminal = newTerminal(settingsRef.current, agentId, session.terminals)
+      wake(terminal.id)
+      dispatch({ type: 'terminalAdded', projectId: project.id, sessionId: session.id, terminal })
+    },
+    [dispatch, settingsRef, wake],
+  )
+
+  const openShellAt = useCallback(
+    (project: Project, session: Session, dir: string) => {
+      const terminal: TerminalTab = { ...newTerminal(settingsRef.current, null, session.terminals), shellCwd: dir }
       wake(terminal.id)
       dispatch({ type: 'terminalAdded', projectId: project.id, sessionId: session.id, terminal })
     },
@@ -261,6 +272,7 @@ export function useTerminalActions(): TerminalActions {
   return useMemo(
     () => ({
       addTerminal,
+      openShellAt,
       closeTerminal,
       wakeTerminal,
       sleepTerminal,
@@ -277,6 +289,7 @@ export function useTerminalActions(): TerminalActions {
     }),
     [
       addTerminal,
+      openShellAt,
       closeTerminal,
       wakeTerminal,
       sleepTerminal,

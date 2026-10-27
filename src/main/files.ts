@@ -85,6 +85,53 @@ function isAllowed(path: string): boolean {
   return false
 }
 
+/** the roots as they really are on disk: a root opened through a symlinked path is still that root */
+async function realRoots(): Promise<string[]> {
+  return Promise.all([...allowedRoots].map((root) => fs.realpath(root).catch(() => root)))
+}
+
+/** the real path lies in a root: below it, or — when `orRoot` — the root itself */
+async function realInside(real: string, orRoot: boolean): Promise<boolean> {
+  for (const root of await realRoots()) {
+    if ((orRoot && real === root) || real.startsWith(root + sep)) return true
+  }
+  return false
+}
+
+/**
+ * An entry the tree is about to rename, move, copy or trash, checked where it really is.
+ *
+ * `isAllowed` compares resolved strings, so `..` cannot walk out, but a symlinked directory
+ * inside a project can: `proj/link/x` with `link → /etc` reads as inside. The directory holding
+ * the entry is therefore resolved through `realpath`; the entry itself is not, because a
+ * symlink is renamed or trashed as the link, never as what it points at. A root itself is
+ * refused — the tree never shows it as a row, so only a crafted call names it.
+ *
+ * Answers the real path to operate on, or the reason it may not be touched.
+ */
+export async function entryWithin(path: string): Promise<{ real: string } | { code: 'path-outside-roots' | 'file-is-root' }> {
+  if (!isAllowed(path)) return { code: 'path-outside-roots' }
+  const target = resolve(path)
+  if (allowedRoots.has(target)) return { code: 'file-is-root' }
+  const dir = await fs.realpath(dirname(target)).catch(() => null)
+  if (!dir) return { code: 'path-outside-roots' }
+  const real = join(dir, basename(target))
+  if ((await realRoots()).includes(real)) return { code: 'file-is-root' }
+  return (await realInside(real, false)) ? { real } : { code: 'path-outside-roots' }
+}
+
+/**
+ * A directory something is created or pasted into, or a path handed to the desktop (reveal,
+ * open): resolved all the way, links included, since that is where the bytes land or what the
+ * desktop opens. A root itself qualifies. Null when it is outside or does not exist.
+ */
+export async function realWithin(path: string): Promise<string | null> {
+  if (!isAllowed(path)) return null
+  const real = await fs.realpath(path).catch(() => null)
+  if (!real) return null
+  return (await realInside(real, true)) ? real : null
+}
+
 /**
  * A failure is told apart from an empty directory. A bare array made «permission denied», «not
  * a directory», «outside the allowed roots» and «genuinely empty» indistinguishable, and the

@@ -15,12 +15,12 @@ import type { TreeFolder, TreeRow } from '../lib/changesTree'
 import { buildChangesTree, flattenTree, folderCheck, toggleFolder } from '../lib/changesTree'
 import { changesInvalidated, sameJson } from '../lib/changesRefresh'
 import { useChangesRefresh } from '../hooks/useChangesRefresh'
-import Modal from '../ui/Modal'
 import { useRovingFocus } from '../ui/rows'
 import { resultMessage, useGitAction } from '../ui/useGitAction'
 import BranchActions from './BranchActions'
 import ChangedFileRow from './ChangedFileRow'
 import PushModal from './PushModal'
+import RevertConfirmModal from './RevertConfirmModal'
 
 interface Props {
   session: Session
@@ -829,23 +829,11 @@ export default function ChangesPanel({
       )}
 
       {confirmRevert && (
-        <Modal title={t.plural('changes.revert.confirm', picked.length)} onClose={() => setConfirmRevert(false)}>
-          <p className="hint warn">{t('changes.revert.warn')}</p>
-          <ul className="revert-list">
-            {picked.slice(0, 12).map((f) => (
-              <li key={f.path}>{f.path}</li>
-            ))}
-            {picked.length > 12 && <li className="muted">{t('changes.revert.more', { count: picked.length - 12 })}</li>}
-          </ul>
-          <div className="modal-actions">
-            <button data-testid="modal-cancel" onClick={() => setConfirmRevert(false)}>
-              {t('common.cancel')}
-            </button>
-            <button className="primary danger" onClick={() => void revert()}>
-              {t('changes.revert')}
-            </button>
-          </div>
-        </Modal>
+        <RevertConfirmModal
+          paths={picked.map((f) => f.path)}
+          onCancel={() => setConfirmRevert(false)}
+          onConfirm={() => void revert()}
+        />
       )}
     </>
   )
