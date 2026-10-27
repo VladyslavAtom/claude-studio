@@ -246,6 +246,7 @@ function Workspace({ project }: { project: Project }): JSX.Element {
               onPullStrategy={(pullStrategy) => dispatch({ type: 'settingsPatched', patch: { pullStrategy } })}
               collapsed={changesCollapsed}
               onToggleCollapsed={(collapsed) => layout.setPanel('changesCollapsed', collapsed)}
+              onChangesView={(changesView) => dispatch({ type: 'layoutChanged', patch: { changesView } })}
               onError={setError}
               onInfo={setBusy}
             />

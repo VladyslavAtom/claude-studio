@@ -14,6 +14,7 @@ import {
   THEME_CHOICES,
   STATE_VERSION,
   type AppState,
+  type LayoutConfig,
   type SaveResult,
   type StateLoadOutcome,
   type TerminalConfig,
@@ -335,7 +336,9 @@ function migrate(state: StoredState): AppState {
   const pullStrategy = state.settings?.pullStrategy ?? 'ask'
   const notifications = state.settings?.notifications ?? defaultNotifications
   // the layout is filled in field by field: a state written by an older build has no new keys
-  const layout = { ...defaultLayout, ...(state.settings?.layout ?? {}) }
+  const storedLayout = { ...defaultLayout, ...(state.settings?.layout ?? {}) }
+  // junk from a hand-edited file would leave the panel in neither mode
+  const layout: LayoutConfig = { ...storedLayout, changesView: storedLayout.changesView === 'tree' ? 'tree' : 'list' }
   const editor = state.settings?.editor ?? defaultEditor
   /**
    * The scrollback limit, in lines. Anything that is not a positive number — an absent setting, a

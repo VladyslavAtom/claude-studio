@@ -67,7 +67,14 @@ function appState(over: Partial<AppState> = {}): AppState {
       startup: 'ask',
       pullStrategy: 'ask',
       notifications: { enabled: false, sound: false, onlyWhenUnfocused: true },
-      layout: { sessions: 232, files: 260, changes: 340, filesOpen: false, changesCollapsed: false },
+      layout: {
+        sessions: 232,
+        files: 260,
+        changes: 340,
+        filesOpen: false,
+        changesCollapsed: false,
+        changesView: 'list',
+      },
       editor: { autoSave: false, delayMs: 800 },
       terminal: { scrollbackLines: null },
     },
@@ -454,6 +461,15 @@ describe('migrate', () => {
     await fs.writeFile(statePath, stateFile({ settings: { lastAgentId: 'codex' } }))
     const store = await freshStore()
     expect((await store.loadState()).settings.lastAgentId).toBe('codex')
+  })
+
+  it('keeps the changes panel view, and reads an absent or junk one as the list', async () => {
+    await fs.writeFile(statePath, stateFile({ settings: { layout: { changesView: 'tree' } } }))
+    expect((await (await freshStore()).loadState()).settings.layout.changesView).toBe('tree')
+    for (const layout of [{}, { changesView: 'forest' }]) {
+      await fs.writeFile(statePath, stateFile({ settings: { layout } }))
+      expect((await (await freshStore()).loadState()).settings.layout.changesView).toBe('list')
+    }
   })
 
   it('stamps the loaded state with the current version', async () => {

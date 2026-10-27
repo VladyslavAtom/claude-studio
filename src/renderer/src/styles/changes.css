@@ -180,6 +180,33 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  /* one nesting level of the tree view */
+  --tree-indent: 14px;
+}
+/* list/tree switch: a pressed toggle reads as pressed, not only by its tooltip */
+.section-head .view-toggle {
+  padding: 0 4px;
+  font-size: 11px;
+}
+.section-head .view-toggle[aria-pressed='true'] {
+  background: var(--bg-3);
+  color: var(--fg);
+}
+/* a folder row of the tree view: the caret takes the status letter's column, so heights match */
+.change.folder .caret {
+  width: 14px;
+  flex: none;
+  text-align: center;
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+.change.folder .path .name {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.change.folder .small {
+  flex: none;
 }
 .change {
   display: flex;

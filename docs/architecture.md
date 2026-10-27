@@ -354,6 +354,15 @@ The worktree path is in the tooltip of the branch button. During an unfinished r
 bottom of the panel is taken by the block for that operation («Continue / Skip the commit /
 Abort») instead of the commit field.
 
+The list can be shown as a tree grouped by folder (the switch in the «To commit» head,
+`layout.changesView`, default `list`). `lib/changesTree.ts` builds it: single-child folder chains
+are one row (`src/renderer/src`), folders before files, a rename under its new path. A folder's
+checkbox is all / some / none of the files under it (`aria-checked="mixed"` for some) and is
+derived from the same `checked` set; clicking it checks them all unless all were checked. File
+rows are the same `ChangedFileRow`, showing only the name. Keys on a folder row: Left/Right fold
+and unfold (Left on a folded row goes to its parent), Space checks, Enter folds; Up/Down walk
+all rows. Folded folders are component state.
+
 A rebase/merge/pull stopping on a conflict is a normal outcome, not an error: git returns a
 non-zero code, the panel catches it and writes «Rebase stopped on a conflict…». Red output stays
 for real failures.

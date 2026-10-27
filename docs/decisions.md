@@ -924,3 +924,16 @@ five-second re-read never writes over unsaved edits; a hidden diff tab with unsa
 mounted until they are on disk.
 
 Rejected: `@pierre/diffs` (a second highlighter, a worker pool, reported leaks), Monaco.
+
+## 2026-10-27 — The changes panel can show a tree, and it starts as a list
+
+A list/tree switch in the «To commit» head, remembered as `layout.changesView`. **The default
+stays `list`**: nobody's panel changes under them until they press the switch. The tree is
+hand-rolled — `lib/changesTree.ts` groups, compresses single-child folder chains, sorts (folders
+first, then files, case-insensitive with a raw tie-break) and derives a folder's all / some / none
+from the same `checked` set the list uses, so commit and revert do not know which view picked the
+files. No tree library: the candidates either had no checkboxes or brought a second rendering
+engine.
+
+Folded folders live in component state, not in settings: they describe this look at these
+changes, and the paths stop existing once the files are committed.

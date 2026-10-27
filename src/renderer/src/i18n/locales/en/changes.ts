@@ -36,6 +36,14 @@ export const changes = {
   'empty.in': 'No changes in ',
   include: 'Include in the commit',
   'include.aria': 'Include «{path}» in the commit',
+  // the tree view: files grouped by folder
+  'view.tree': 'Group by folder',
+  'folder.include': 'Include every file in the folder',
+  'folder.include.aria': 'Include every file in «{path}» in the commit',
+  'folder.aria': {
+    one: 'Folder «{path}», {count} file',
+    other: 'Folder «{path}», {count} files',
+  },
   resolve: 'Mark as resolved (git add)',
   'resolve.aria': 'Mark «{path}» as resolved',
   staged: 'In the index',

@@ -1,8 +1,18 @@
-import type { JSX } from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ChangedFile, DiffMode, GitStatusResult, RepoState, Session, Settings } from '../../../shared/types'
+import type { JSX, KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type {
+  ChangedFile,
+  ChangesView,
+  DiffMode,
+  GitStatusResult,
+  RepoState,
+  Session,
+  Settings,
+} from '../../../shared/types'
 import { COMMIT_VIA_SERVICE, COMMIT_VIA_TAB, SERVICE_ARGS } from '../../../shared/types'
 import { useT } from '../i18n'
+import type { TreeFolder, TreeRow } from '../lib/changesTree'
+import { buildChangesTree, flattenTree, folderCheck, toggleFolder } from '../lib/changesTree'
 import Modal from '../ui/Modal'
 import { useRovingFocus } from '../ui/rows'
 import { resultMessage, useGitAction } from '../ui/useGitAction'
@@ -16,6 +26,8 @@ interface Props {
   projectPath: string
   collapsed: boolean
   onToggleCollapsed: (collapsed: boolean) => void
+  /** list or tree: remembered in the layout settings */
+  onChangesView: (view: ChangesView) => void
   settings: Settings
   onError: (msg: string) => void
   onInfo: (msg: string | null) => void
@@ -60,6 +72,7 @@ export default function ChangesPanel({
   settings,
   collapsed,
   onToggleCollapsed,
+  onChangesView,
   onError,
   onInfo,
   onOpenDiff,
@@ -91,7 +104,13 @@ export default function ChangesPanel({
   /** which working directory is shown: the session's own or the project root */
   const [scope, setScope] = useState<'session' | 'project'>('session')
   const listRef = useRef<HTMLDivElement>(null)
-  const onListKeys = useRovingFocus(listRef, '.change[role="button"]')
+  const ROW = '.change[role="button"]'
+  const onListKeys = useRovingFocus(listRef, ROW)
+  /**
+   * Folders folded in the tree view, by path. Component state, not a setting: which folders are
+   * open is about this look at these changes, and the paths stop existing once they are committed.
+   */
+  const [foldedDirs, setFoldedDirs] = useState<ReadonlySet<string>>(new Set())
 
   const separate = session.cwd !== projectPath
   const cwd = scope === 'project' && separate ? projectPath : session.cwd
@@ -136,6 +155,7 @@ export default function ChangesPanel({
     setStatus(null)
     setLoading(true)
     setChecked(new Set())
+    setFoldedDirs(new Set())
   }
   const [selectedFor, setSelectedFor] = useState(session.id)
   if (selectedFor !== session.id) {
@@ -165,6 +185,9 @@ export default function ChangesPanel({
   }, [agentTabId])
 
   const files = status?.files ?? []
+  const tree = settings.layout.changesView === 'tree'
+  const treeNodes = useMemo(() => buildChangesTree(status?.files ?? []), [status])
+  const treeRows = useMemo(() => (tree ? flattenTree(treeNodes, foldedDirs) : []), [tree, treeNodes, foldedDirs])
   const picked = files.filter((f) => checked.has(f.path))
   const busyOp = Boolean(repo && repo.operation !== 'none')
   const { running, run } = useGitAction({ onError, onInfo, onRefresh: () => void refresh() })
@@ -179,6 +202,46 @@ export default function ChangesPanel({
       else next.add(path)
       return next
     })
+
+  const setFolded = (path: string, folded: boolean): void =>
+    setFoldedDirs((prev) => {
+      if (prev.has(path) === folded) return prev
+      const next = new Set(prev)
+      if (folded) next.add(path)
+      else next.delete(path)
+      return next
+    })
+
+  /** moves the list's single Tab stop along with the focus, as the roving arrows do */
+  const focusRow = (el: HTMLElement): void => {
+    for (const row of listRef.current?.querySelectorAll<HTMLElement>(ROW) ?? []) row.tabIndex = row === el ? 0 : -1
+    el.focus()
+  }
+
+  /** Left/Right fold and unfold, Left on a folded row goes up to its parent, Space checks, Enter folds */
+  const onFolderKey = (
+    e: KeyboardEvent<HTMLDivElement>,
+    row: TreeRow<ChangedFile>,
+    folder: TreeFolder<ChangedFile>,
+  ): void => {
+    // a key pressed on the checkbox inside the row is the checkbox's
+    if (e.target !== e.currentTarget) return
+    const folded = foldedDirs.has(folder.path)
+    if (e.key === 'ArrowRight') {
+      if (folded) setFolded(folder.path, false)
+    } else if (e.key === 'ArrowLeft') {
+      if (!folded) setFolded(folder.path, true)
+      else if (row.parent !== null) {
+        const up = listRef.current?.querySelector<HTMLElement>(`[data-folder="${CSS.escape(row.parent)}"]`)
+        if (up) focusRow(up)
+      }
+    } else if (e.key === ' ') {
+      setChecked((prev) => toggleFolder(folder, prev))
+    } else if (e.key === 'Enter') {
+      setFolded(folder.path, !folded)
+    } else return
+    e.preventDefault()
+  }
 
   const toggleAll = (): void =>
     setChecked((prev) => (prev.size === files.length ? new Set() : new Set(files.map((f) => f.path))))
@@ -401,6 +464,93 @@ export default function ChangesPanel({
     })
   }
 
+  /** one file row, the same in the list and in the tree */
+  const fileRow = (f: ChangedFile, depth?: number): JSX.Element => (
+    <ChangedFileRow
+      key={f.path}
+      file={f}
+      {...(depth === undefined ? {} : { depth, nameOnly: true })}
+      className={selected?.path === f.path ? 'active' : undefined}
+      active={selected?.path === f.path}
+      onActivate={() => openFile(f)}
+      lead={
+        <input
+          type="checkbox"
+          checked={checked.has(f.path)}
+          title={t('changes.include')}
+          aria-label={t('changes.include.aria', { path: f.path })}
+          onClick={(e) => e.stopPropagation()}
+          onChange={() => toggle(f.path)}
+        />
+      }
+      trail={
+        <>
+          {f.status === 'conflict' && (
+            <button
+              className="ghost resolve"
+              title={t('changes.resolve')}
+              aria-label={t('changes.resolve.aria', { path: f.path })}
+              onClick={(e) => {
+                e.stopPropagation()
+                void window.api.git.markResolved(cwd, [f.path]).then(() => refresh())
+              }}
+            >
+              ✓
+            </button>
+          )}
+          {f.staged && (
+            <span className="staged" title={t('changes.staged')}>
+              ●
+            </span>
+          )}
+        </>
+      }
+    />
+  )
+
+  /** a folder of the tree view: folds on click, its checkbox covers every file under it */
+  const folderRow = (r: TreeRow<ChangedFile>, folder: TreeFolder<ChangedFile>): JSX.Element => {
+    const folded = foldedDirs.has(folder.path)
+    const state = folderCheck(folder, checked)
+    const count = folder.files.length
+    return (
+      <div
+        key={'dir\0' + folder.path}
+        className="change folder"
+        data-folder={folder.path}
+        role="button"
+        tabIndex={-1}
+        aria-expanded={!folded}
+        aria-label={t.plural('changes.folder.aria', count, { path: folder.path })}
+        title={folder.path}
+        style={r.depth ? { paddingLeft: `calc(10px + ${r.depth} * var(--tree-indent))` } : undefined}
+        onClick={() => setFolded(folder.path, !folded)}
+        onKeyDown={(e) => onFolderKey(e, r, folder)}
+      >
+        <input
+          type="checkbox"
+          ref={(el) => {
+            // «some» has no HTML attribute: it is a property, and it is what paints the dash
+            if (el) el.indeterminate = state === 'some'
+          }}
+          checked={state === 'all'}
+          aria-checked={state === 'some' ? 'mixed' : state === 'all'}
+          title={t('changes.folder.include')}
+          aria-label={t('changes.folder.include.aria', { path: folder.path })}
+          onClick={(e) => e.stopPropagation()}
+          onChange={() => setChecked((prev) => toggleFolder(folder, prev))}
+        />
+        <span className="caret" aria-hidden="true">
+          {folded ? '▸' : '▾'}
+        </span>
+        <span className="path">
+          <span className="name">{folder.name}</span>
+        </span>
+        <span className="muted small">{count}</span>
+      </div>
+    )
+  }
+
   return (
     <>
       <aside className="changes">
@@ -547,6 +697,16 @@ export default function ChangesPanel({
             </label>
             <span className="section-title">{t('changes.toCommit')}</span>
             <span className="muted small">{files.length}</span>
+            <div className="spacer" />
+            <button
+              className="ghost view-toggle"
+              title={t('changes.view.tree')}
+              aria-label={t('changes.view.tree')}
+              aria-pressed={tree}
+              onClick={() => onChangesView(tree ? 'list' : 'tree')}
+            >
+              🗂
+            </button>
           </div>
 
           {!status?.error && files.length === 0 && loading && (
@@ -561,47 +721,9 @@ export default function ChangesPanel({
           )}
 
           {/* the key is the path alone: with the status in it the row was recreated and lost focus */}
-          {files.map((f) => (
-            <ChangedFileRow
-              key={f.path}
-              file={f}
-              className={selected?.path === f.path ? 'active' : undefined}
-              active={selected?.path === f.path}
-              onActivate={() => openFile(f)}
-              lead={
-                <input
-                  type="checkbox"
-                  checked={checked.has(f.path)}
-                  title={t('changes.include')}
-                  aria-label={t('changes.include.aria', { path: f.path })}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={() => toggle(f.path)}
-                />
-              }
-              trail={
-                <>
-                  {f.status === 'conflict' && (
-                    <button
-                      className="ghost resolve"
-                      title={t('changes.resolve')}
-                      aria-label={t('changes.resolve.aria', { path: f.path })}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        void window.api.git.markResolved(cwd, [f.path]).then(() => refresh())
-                      }}
-                    >
-                      ✓
-                    </button>
-                  )}
-                  {f.staged && (
-                    <span className="staged" title={t('changes.staged')}>
-                      ●
-                    </span>
-                  )}
-                </>
-              }
-            />
-          ))}
+          {!tree && files.map((f) => fileRow(f))}
+
+          {tree && treeRows.map((r) => (r.node.kind === 'file' ? fileRow(r.node.file, r.depth) : folderRow(r, r.node)))}
         </div>
 
         {busyOp && repo ? (

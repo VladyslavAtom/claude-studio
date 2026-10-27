@@ -96,7 +96,11 @@ export interface LayoutConfig {
   filesOpen: boolean
   /** the changes panel is collapsed */
   changesCollapsed: boolean
+  /** the changes panel shows a flat list or a tree grouped by folder; 'list' is the default */
+  changesView: ChangesView
 }
+
+export type ChangesView = 'list' | 'tree'
 
 export interface EditorConfig {
   /** save edits automatically, without Ctrl+S */
@@ -142,6 +146,7 @@ export const defaultLayout: LayoutConfig = {
   changes: 340,
   filesOpen: false,
   changesCollapsed: false,
+  changesView: 'list',
 }
 
 /** UI languages; English is the source of the catalogue and the fallback */

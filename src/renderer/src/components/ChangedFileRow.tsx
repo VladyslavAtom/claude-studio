@@ -17,6 +17,10 @@ interface Props {
   lead?: ReactNode
   /** goes after the path — «resolve» and the staged dot */
   trail?: ReactNode
+  /** the tree view: the folder row above already names the directory, so only the name is shown */
+  nameOnly?: boolean
+  /** the tree view: nesting depth, as extra left padding */
+  depth?: number
 }
 
 /**
@@ -24,7 +28,16 @@ interface Props {
  * in the changes panel and in the push window — the markup and the letter map used to be
  * copied into both.
  */
-export default function ChangedFileRow({ file, className, onActivate, active, lead, trail }: Props): JSX.Element {
+export default function ChangedFileRow({
+  file,
+  className,
+  onActivate,
+  active,
+  lead,
+  trail,
+  nameOnly,
+  depth,
+}: Props): JSX.Element {
   const t = useT()
   const [dir, name] = splitPath(file.path)
   const title = file.oldPath ? `${file.oldPath} → ${file.path}` : file.path
@@ -39,13 +52,14 @@ export default function ChangedFileRow({ file, className, onActivate, active, le
       tabIndex={onActivate ? -1 : undefined}
       aria-label={onActivate ? `${statusTitle(t, file.status)}: ${title}` : undefined}
       aria-current={onActivate && active ? true : undefined}
+      style={depth ? { paddingLeft: `calc(10px + ${depth} * var(--tree-indent))` } : undefined}
     >
       {lead}
       <span className={'st ' + file.status} aria-hidden="true">
         {STATUS_LABEL[file.status]}
       </span>
       <span className="path">
-        <span className="dir">{dir}</span>
+        {!nameOnly && <span className="dir">{dir}</span>}
         <span className="name">{name}</span>
       </span>
       {trail}
