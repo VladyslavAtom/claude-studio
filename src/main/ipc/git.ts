@@ -75,5 +75,6 @@ export function register(): void {
     git.removeWorktree(repoPath, worktreePath, branch),
   )
   ipcMain.handle(CH.worktrees, (_e, repoPath: string) => git.listWorktrees(repoPath))
+  ipcMain.handle(CH.checkBranchName, (_e, cwd: string, name: string) => git.isValidBranchName(cwd, name))
   ipcMain.handle(CH.clone, (_e, url: string, parentDir: string, name?: string) => cloneRepo(url, parentDir, name))
 }

@@ -33,7 +33,8 @@ interface Props {
   /** base for the worktree, when the session is opened from a branch menu */
   initialBase?: string | undefined
   onCancel: () => void
-  onConfirm: (res: NewSessionResult) => void
+  /** resolves to the failure in the interface's words, or null once the session exists */
+  onConfirm: (res: NewSessionResult) => Promise<string | null>
 }
 
 /**
@@ -150,18 +151,56 @@ export default function NewSessionModal({ project, agents, initialBase, onCancel
     }
   }, [project.path, warnOnBusy, effectiveBranch])
 
-  const submit = (): void => {
-    if (!name.trim()) return
-    onConfirm({
-      name: name.trim(),
-      nameAuto: !nameTouched,
-      createWorktree: isolated && project.isGit,
-      branch: effectiveBranch.trim(),
-      baseRef,
-      worktreePath: effectivePath.trim(),
-      agentId,
-      startPrompt: startPrompt.trim(),
+  const createWorktree = isolated && project.isGit
+  /** a branch name git refuses, checked as it is typed; null while unknown or fine */
+  const [badBranch, setBadBranch] = useState<string | null>(null)
+  useEffect(() => {
+    if (!createWorktree || !branchTouched) return
+    let alive = true
+    const typed = effectiveBranch.trim()
+    void window.api.git.checkBranchName(project.path, typed).then((ok) => {
+      if (alive) setBadBranch(ok ? null : typed)
     })
+    return () => {
+      alive = false
+    }
+  }, [createWorktree, branchTouched, effectiveBranch, project.path])
+  const branchError =
+    createWorktree && branchTouched && badBranch !== null && badBranch === effectiveBranch.trim()
+      ? t('modals.newSession.branch.invalid', { branch: badBranch })
+      : null
+
+  /** why the last «Create» failed: shown here, with everything typed still in place */
+  const [failure, setFailure] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  const submit = async (): Promise<void> => {
+    if (!name.trim() || creating || branchError) return
+    const branchName = effectiveBranch.trim()
+    setFailure(null)
+    setCreating(true)
+    try {
+      // checked again on submit: the check while typing may not have answered yet
+      if (createWorktree && !(await window.api.git.checkBranchName(project.path, branchName))) {
+        setFailure(t('modals.newSession.branch.invalid', { branch: branchName }))
+        return
+      }
+      const error = await onConfirm({
+        name: name.trim(),
+        nameAuto: !nameTouched,
+        createWorktree,
+        branch: branchName,
+        baseRef,
+        worktreePath: effectivePath.trim(),
+        agentId,
+        startPrompt: startPrompt.trim(),
+      })
+      if (error) setFailure(error)
+    } catch (e) {
+      setFailure(e instanceof Error ? e.message : String(e))
+    } finally {
+      setCreating(false)
+    }
   }
 
   const shortPath = effectivePath.startsWith(project.path + '/')
@@ -179,7 +218,9 @@ export default function NewSessionModal({ project, agents, initialBase, onCancel
             setNameTouched(true)
             setName(e.target.value)
           }}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void submit()
+          }}
         />
       </label>
 
@@ -212,7 +253,7 @@ export default function NewSessionModal({ project, agents, initialBase, onCancel
           value={startPrompt}
           onChange={(e) => setStartPrompt(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit()
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void submit()
           }}
         />
       </label>
@@ -245,6 +286,12 @@ export default function NewSessionModal({ project, agents, initialBase, onCancel
                 {t('modals.newSession.summary.dir')}
                 <code>{shortPath}</code>
               </div>
+
+              {branchError && (
+                <p className="hint warn" role="alert">
+                  {branchError}
+                </p>
+              )}
 
               {warnOnBusy && busyBranch && (
                 <p className="hint warn">
@@ -355,11 +402,17 @@ export default function NewSessionModal({ project, agents, initialBase, onCancel
         <p className="hint">{t('modals.newSession.notGit')}</p>
       )}
 
+      {failure && (
+        <p className="hint warn" role="alert" data-testid="new-session-error">
+          {failure}
+        </p>
+      )}
+
       <div className="modal-actions">
         <button data-testid="modal-cancel" onClick={onCancel}>
           {t('common.cancel')}
         </button>
-        <button className="primary" onClick={submit}>
+        <button className="primary" disabled={creating || branchError !== null} onClick={() => void submit()}>
           {t('modals.newSession.create')}
         </button>
       </div>

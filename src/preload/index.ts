@@ -162,6 +162,8 @@ const api = {
       ipcRenderer.invoke(CHANNELS.git.worktreeRemove, repoPath, worktreePath, branch),
     worktrees: (repoPath: string): Promise<{ path: string; branch: string | null }[]> =>
       ipcRenderer.invoke(CHANNELS.git.worktrees, repoPath),
+    checkBranchName: (cwd: string, name: string): Promise<boolean> =>
+      ipcRenderer.invoke(CHANNELS.git.checkBranchName, cwd, name),
     clone: (url: string, parentDir: string, name?: string): Promise<OpResult & { path?: string }> =>
       ipcRenderer.invoke(CHANNELS.git.clone, url, parentDir, name),
   },

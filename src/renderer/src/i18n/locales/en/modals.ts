@@ -41,6 +41,13 @@ export const modals = {
   'closeSession.child.unknown': 'state unknown',
   'closeSession.child.clean': 'no uncommitted changes',
   'closeSession.child.dirty': { one: '{count} uncommitted file', other: '{count} uncommitted files' },
+  /** the session's own worktree: what closing it with both boxes ticked would throw away */
+  'closeSession.own.unmerged': {
+    one: '{count} commit not merged into {base}',
+    other: '{count} commits not merged into {base}',
+  },
+  'closeSession.own.clean': 'no uncommitted changes, every commit is in {base}',
+  'closeSession.own.keep': 'The session holds unfinished work: nothing is removed unless you tick it.',
 
   'newSession.title': 'New session',
   'newSession.name': 'Name',
@@ -70,6 +77,7 @@ export const modals = {
   'newSession.inPlace.warn': 'The agent will change files in the working directory of the project: {path}',
   'newSession.notGit': 'The project is not a git repository — the session will open right in the project folder.',
   'newSession.create': 'Create',
+  'newSession.branch.invalid': 'git does not accept “{branch}” as a branch name.',
 
   'clone.title': 'Clone a repository',
   'clone.busy': 'Cloning the repository…',

@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AgentActivity,
   ClosedProject,
@@ -47,6 +47,8 @@ interface Props {
   /** what each claude tab's own CLI says it is doing, for the tabs anything answers for */
   agentActivity: Map<string, AgentActivity>
   activeId: string | null
+  /** project folders that are not on disk */
+  missing: ReadonlySet<string>
   onSelect: (id: string) => void
   onClose: (id: string) => void
   onReopen: (id: string) => void
@@ -72,6 +74,7 @@ export default function ProjectTabs({
   busyIds,
   agentActivity,
   activeId,
+  missing,
   onSelect,
   onClose,
   onReopen,
@@ -137,84 +140,108 @@ export default function ProjectTabs({
     return byProject
   }, [projects, awake, attention, busyIds, agentActivity])
 
+  // the strip scrolls on its own and keeps the tab on screen in view; the window root never does
+  useEffect(() => {
+    tabsRef.current?.querySelector('.tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [activeId, projects.length])
+
   return (
-    <div className="project-tabs" ref={tabsRef} onKeyDown={onTabKeys}>
-      {projects.map((p, i) => {
-        const pulse = pulses[p.id] ?? []
-        // one sentence, and the only one: the tooltip and the accessible name are the same words,
-        // so what a person hovers and what a screen reader hears cannot drift apart
-        const status = pulse.map((part) => t.plural(PULSE_LOOK[part.status].key, part.count)).join(' · ')
-        return (
-          <div
-            key={p.id}
-            className={'tab' + (p.id === activeId ? ' active' : '')}
-            style={{ '--tab-color': colorVar(colorOf(p)) }}
-            role="button"
-            aria-current={p.id === activeId}
-            aria-label={
-              status
-                ? t('projects.tab.aria.status', { name: p.name, status })
-                : t('projects.tab.aria', { name: p.name })
-            }
-            onClick={() => onSelect(p.id)}
-            onKeyDown={activateOnKey(() => onSelect(p.id))}
-            title={p.isGit ? t('projects.tab.title.git', { path: p.path }) : t('projects.tab.title', { path: p.path })}
-            {...dragHandlers('project', i, onReorder)}
-            {...middleClickClose(() => onClose(p.id))}
-            onContextMenu={(e) => {
-              e.preventDefault()
-              setMenuAt({ x: e.clientX, y: e.clientY, id: p.id, name: p.name })
-            }}
-          >
-            {/* the dots repeat the accessible name, so they are hidden from it rather than read
-                twice; the title is for the pointer, which has no other way to ask */}
-            <span className="pulse" aria-hidden="true" title={status || undefined}>
-              {pulse.length === 0 ? (
-                <span className="dot" />
-              ) : (
-                pulse.map((part) => <span key={part.status} className={'dot ' + PULSE_LOOK[part.status].cls} />)
-              )}
-            </span>
-            {editing?.id === p.id ? (
-              <InlineRename
-                className="tab-rename"
-                label={t('projects.rename.label')}
-                value={editing.initial}
-                onCommit={(name) => {
-                  onRename(p.id, name)
-                  setEditing(null)
-                }}
-                onCancel={() => setEditing(null)}
-              />
-            ) : (
-              <span
-                className="label"
-                onDoubleClick={(e) => {
-                  e.stopPropagation()
-                  setEditing({ id: p.id, initial: p.name })
-                }}
-              >
-                {p.name}
-              </span>
-            )}
-            {/* one meaning per element: the dots say what is happening, the badge says how big the
-                project is. It used to turn amber and count the calling tabs, which is what the dots
-                now say — two shapes for one fact, and the reader had to work out they agreed. */}
-            {p.sessions.length > 0 ? <span className="count">{p.sessions.length}</span> : null}
-            <button
-              className="close"
-              title={t('projects.close')}
-              aria-label={t('projects.close.aria', { name: p.name })}
-              onClick={(e) => {
-                e.stopPropagation()
-                onClose(p.id)
+    <div className="project-tabs">
+      {/* only the tabs scroll: «+», the git menu and settings stay pinned at any number of projects.
+          A vertical wheel walks the strip sideways — it has no other way to go */}
+      <div
+        className="tab-strip"
+        ref={tabsRef}
+        onKeyDown={onTabKeys}
+        onWheel={(e) => {
+          if (e.deltaY && !e.deltaX) e.currentTarget.scrollLeft += e.deltaY
+        }}
+      >
+        {projects.map((p, i) => {
+          const pulse = pulses[p.id] ?? []
+          // one sentence, and the only one: the tooltip and the accessible name are the same words,
+          // so what a person hovers and what a screen reader hears cannot drift apart
+          const status = pulse.map((part) => t.plural(PULSE_LOOK[part.status].key, part.count)).join(' · ')
+          const gone = missing.has(p.path)
+          return (
+            <div
+              key={p.id}
+              className={'tab' + (p.id === activeId ? ' active' : '') + (gone ? ' missing' : '')}
+              style={{ '--tab-color': colorVar(colorOf(p)) }}
+              role="button"
+              aria-current={p.id === activeId}
+              aria-label={
+                status
+                  ? t('projects.tab.aria.status', { name: p.name, status })
+                  : t('projects.tab.aria', { name: p.name })
+              }
+              onClick={() => onSelect(p.id)}
+              onKeyDown={activateOnKey(() => onSelect(p.id))}
+              title={
+                gone
+                  ? t('sessions.missing.title', { path: p.path })
+                  : p.isGit
+                    ? t('projects.tab.title.git', { path: p.path })
+                    : t('projects.tab.title', { path: p.path })
+              }
+              {...dragHandlers('project', i, onReorder)}
+              {...middleClickClose(() => onClose(p.id))}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                setMenuAt({ x: e.clientX, y: e.clientY, id: p.id, name: p.name })
               }}
             >
-              ×
-            </button>
-          </div>
-        )
-      })}
+              {/* the dots repeat the accessible name, so they are hidden from it rather than read
+                twice; the title is for the pointer, which has no other way to ask */}
+              <span className="pulse" aria-hidden="true" title={status || undefined}>
+                {pulse.length === 0 ? (
+                  <span className="dot" />
+                ) : (
+                  pulse.map((part) => <span key={part.status} className={'dot ' + PULSE_LOOK[part.status].cls} />)
+                )}
+              </span>
+              {editing?.id === p.id ? (
+                <InlineRename
+                  className="tab-rename"
+                  label={t('projects.rename.label')}
+                  value={editing.initial}
+                  onCommit={(name) => {
+                    onRename(p.id, name)
+                    setEditing(null)
+                  }}
+                  onCancel={() => setEditing(null)}
+                />
+              ) : (
+                <span
+                  className="label"
+                  onDoubleClick={(e) => {
+                    e.stopPropagation()
+                    setEditing({ id: p.id, initial: p.name })
+                  }}
+                >
+                  {p.name}
+                </span>
+              )}
+              {/* one meaning per element: the dots say what is happening, the badge says how big the
+                project is. It used to turn amber and count the calling tabs, which is what the dots
+                now say — two shapes for one fact, and the reader had to work out they agreed. */}
+              {gone && <span className="missing-badge">{t('sessions.missing')}</span>}
+              {p.sessions.length > 0 ? <span className="count">{p.sessions.length}</span> : null}
+              <button
+                className="close"
+                title={t('projects.close')}
+                aria-label={t('projects.close.aria', { name: p.name })}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose(p.id)
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )
+        })}
+      </div>
 
       {menuAt && (
         <ContextMenu

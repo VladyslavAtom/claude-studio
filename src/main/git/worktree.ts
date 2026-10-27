@@ -7,6 +7,11 @@ import { listBranches } from './refs'
 
 export async function addWorktree(opts: WorktreeAddOptions): Promise<OpResult> {
   const { repoPath, worktreePath, branch, baseRef } = opts
+  // a branch name git rejects, or one that would parse as an option, is refused before the spawn
+  if (!(await isValidBranchName(repoPath, branch))) return refuse({ code: 'branch-name-invalid', params: { branch } })
+  // a worktree whose directory was deleted still holds its branch in git's records until a prune:
+  // recreating it at the same path would be refused as «already used by worktree»
+  await git(repoPath, ['worktree', 'prune'])
   const branches = await listBranches(repoPath)
   const exists = branches.includes(branch)
   const args = exists
@@ -97,6 +102,13 @@ export async function removeWorktree(
     }
   }
   return { ok: true }
+}
+
+/** `git check-ref-format --branch`: the name git itself would accept for a new branch */
+export async function isValidBranchName(cwd: string, name: string): Promise<boolean> {
+  if (!name || name.startsWith('-')) return false
+  const r = await git(cwd, ['check-ref-format', '--branch', name])
+  return r.code === 0
 }
 
 export async function listWorktrees(repoPath: string): Promise<{ path: string; branch: string | null }[]> {

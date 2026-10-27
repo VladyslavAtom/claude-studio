@@ -301,3 +301,31 @@
   background: transparent;
   border: 1px solid var(--dot-asleep-line);
 }
+
+/* a session whose directory was deleted from disk: the row says so and offers the way out */
+.session.missing .name {
+  color: var(--fg-dim);
+  text-decoration: line-through;
+}
+.session-missing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 3px;
+  font-size: 11px;
+}
+.session-missing .link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 11px;
+}
+.session-missing .link:hover {
+  text-decoration: underline;
+}
+.missing-badge {
+  color: var(--warn);
+  font-size: 11px;
+  white-space: nowrap;
+}

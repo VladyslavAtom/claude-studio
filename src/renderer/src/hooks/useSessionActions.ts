@@ -4,6 +4,7 @@ import type { NewSessionResult } from '../components/NewSessionModal'
 import { useT } from '../i18n'
 import { findAgent } from '../lib/agents'
 import { uid } from '../lib/util'
+import { resultMessage } from '../ui/useGitAction'
 import { useDispatch } from '../state/appStateContext'
 import { useRuntimeActions } from '../state/runtimeContext'
 import { useAppStateRef, useSettingsRef } from '../state/selectors'
@@ -15,10 +16,16 @@ import { newTerminal } from './useTerminalActions'
  * tool — and the second one has to be told how it went in words it can pass on. A toast is not
  * an answer to a caller, so the outcome is returned as well as shown.
  */
-export type CreateSessionResult = { ok: true; session: Session } | { ok: false; error: string }
+export type CreateSessionResult =
+  | { ok: true; session: Session }
+  /** `error`: what the tool said, for an agent; `message`: the same failure in the interface's words */
+  | { ok: false; error: string; message: string }
 
 export interface SessionActions {
-  createSession: (project: Project, res: NewSessionResult) => Promise<CreateSessionResult>
+  /** `quiet`: the caller shows the failure itself (the new-session window keeps it inside) — no toast */
+  createSession: (project: Project, res: NewSessionResult, quiet?: boolean) => Promise<CreateSessionResult>
+  /** a worktree whose directory was deleted: put it back at the same path, on the same branch */
+  recreateWorktree: (project: Project, session: Session) => Promise<boolean>
   /** closing a session archives it, so it can be reopened from the project history */
   closeSession: (project: Project, session: Session, removeWorktree: boolean, deleteBranch: boolean) => Promise<void>
   restoreSession: (project: Project, archived: ArchivedSession) => Promise<void>
@@ -54,24 +61,31 @@ export function useSessionActions(): SessionActions {
   )
 
   const createSession = useCallback(
-    async (project: Project, res: NewSessionResult): Promise<CreateSessionResult> => {
+    async (project: Project, res: NewSessionResult, quiet = false): Promise<CreateSessionResult> => {
       setError(null)
       let cwd = project.path
       let worktree: Session['worktree']
 
       if (res.createWorktree) {
         setBusy(t('sessions.busy.worktreeAdd'))
-        const r = await window.api.git.worktreeAdd({
-          repoPath: project.path,
-          worktreePath: res.worktreePath,
-          branch: res.branch,
-          baseRef: res.baseRef,
-        })
-        setBusy(null)
+        let r: Awaited<ReturnType<typeof window.api.git.worktreeAdd>>
+        try {
+          r = await window.api.git.worktreeAdd({
+            repoPath: project.path,
+            worktreePath: res.worktreePath,
+            branch: res.branch,
+            baseRef: res.baseRef,
+          })
+        } finally {
+          setBusy(null)
+        }
         if (!r.ok) {
+          // the agent's tool answers in English with git's own words; the person reads a code the
+          // main process decided on (the branch is held elsewhere) in their language
           const error = r.error ?? 'git worktree add failed'
-          setError(error)
-          return { ok: false, error }
+          const message = resultMessage(t, r, error)
+          if (!quiet) setError(message)
+          return { ok: false, error, message }
         }
         cwd = res.worktreePath
         worktree = { path: res.worktreePath, branch: res.branch, baseRef: res.baseRef }
@@ -136,6 +150,34 @@ export function useSessionActions(): SessionActions {
       })
     },
     [dispatch, forgetTerminals, setBusy, setError, showInfo, stateRef, t],
+  )
+
+  const recreateWorktree = useCallback(
+    async (project: Project, session: Session): Promise<boolean> => {
+      const wt = session.worktree
+      if (!wt) return false
+      setError(null)
+      setBusy(t('sessions.busy.worktreeAdd'))
+      let r: Awaited<ReturnType<typeof window.api.git.worktreeAdd>>
+      try {
+        // the branch is checked out again if it survived, or started anew from the base if not
+        r = await window.api.git.worktreeAdd({
+          repoPath: project.path,
+          worktreePath: wt.path,
+          branch: wt.branch,
+          baseRef: wt.baseRef,
+        })
+      } finally {
+        setBusy(null)
+      }
+      if (!r.ok) {
+        setError(resultMessage(t, r, 'git worktree add failed'))
+        return false
+      }
+      await window.api.files.registerRoot(wt.path)
+      return true
+    },
+    [setBusy, setError, t],
   )
 
   const restoreSession = useCallback(
@@ -263,6 +305,7 @@ export function useSessionActions(): SessionActions {
   return useMemo(
     () => ({
       createSession,
+      recreateWorktree,
       closeSession,
       restoreSession,
       forgetSession,
@@ -273,6 +316,7 @@ export function useSessionActions(): SessionActions {
     }),
     [
       createSession,
+      recreateWorktree,
       closeSession,
       restoreSession,
       forgetSession,

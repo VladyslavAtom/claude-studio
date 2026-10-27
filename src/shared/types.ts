@@ -762,6 +762,8 @@ export type AppMessageCode =
   | 'branch-used-by-worktree'
   /** a worktree cannot be created: another one already holds that branch. {branch} */
   | 'worktree-branch-busy'
+  /** a worktree cannot be created: git does not accept the branch name, or it starts with `-`. {branch} */
+  | 'branch-name-invalid'
   /** `git worktree remove` failed; `leftover` says what survived it. {leftover: 'both'|'record'|'dir'} */
   | 'worktree-remove-failed'
   /** the worktree is gone but its branch could not be deleted — a warning, not a failure */

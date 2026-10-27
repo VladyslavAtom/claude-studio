@@ -48,6 +48,14 @@ export const modals: ModalsArea = {
     many: '{count} незакомічених файлів',
     other: '{count} незакоміченого файлу',
   },
+  'closeSession.own.unmerged': {
+    one: '{count} коміт, якого немає в {base}',
+    few: '{count} коміти, яких немає в {base}',
+    many: '{count} комітів, яких немає в {base}',
+    other: '{count} коміту, яких немає в {base}',
+  },
+  'closeSession.own.clean': 'немає незакомічених змін, усі коміти є в {base}',
+  'closeSession.own.keep': 'У сесії є незавершена робота: нічого не видаляється, доки ви це не позначите.',
 
   'newSession.title': 'Нова сесія',
   'newSession.name': 'Назва',
@@ -76,6 +84,7 @@ export const modals: ModalsArea = {
   'newSession.inPlace.warn': 'Агент змінюватиме файли в робочому каталозі проєкту: {path}',
   'newSession.notGit': 'Проєкт не є git-репозиторієм — сесія відкриється просто в теці проєкту.',
   'newSession.create': 'Створити',
+  'newSession.branch.invalid': 'git не приймає «{branch}» як назву гілки.',
 
   'clone.title': 'Клонувати репозиторій',
   'clone.busy': 'Клоную репозиторій…',

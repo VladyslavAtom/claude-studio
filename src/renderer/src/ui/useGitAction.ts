@@ -128,6 +128,7 @@ const WORDING: Record<AppMessageCode, Wording> = {
   'branch-used-by-worktree': (t, p) =>
     t('git.error.branchUsedByWorktree', { branch: str(p, 'branch'), path: str(p, 'path') }),
   'worktree-branch-busy': (t, p) => t('git.error.worktreeBranchBusy', { branch: str(p, 'branch') }),
+  'branch-name-invalid': (t, p) => t('modals.newSession.branch.invalid', { branch: str(p, 'branch') }),
   'worktree-remove-failed': (t, p) => {
     const leftover = str(p, 'leftover')
     if (leftover === 'both') return t('git.error.worktreeRemoveFailed.both')
