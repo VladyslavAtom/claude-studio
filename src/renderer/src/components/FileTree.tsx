@@ -8,7 +8,8 @@ import { useChangesRefresh } from '../hooks/useChangesRefresh'
 import { changesInvalidated, sameJson } from '../lib/changesRefresh'
 import { filterTree } from '../lib/fileFilter'
 import { fileBadge, statusClass } from '../lib/fileIcons'
-import { basename } from '../lib/util'
+import { pathsMoved } from '../lib/pathEvents'
+import { basename, join } from '../lib/util'
 import InlineRename from '../ui/InlineRename'
 import Modal from '../ui/Modal'
 import { activateOnKey, useRovingFocus } from '../ui/rows'
@@ -451,7 +452,12 @@ export default function FileTree({
         return
       }
       if (current.kind === 'rename') {
-        void run(t('files.run.rename'), () => window.api.files.rename(current.path, name))
+        void run(t('files.run.rename'), async () => {
+          const res = await window.api.files.rename(current.path, name)
+          // open tabs follow the file before the refresh re-reads anything
+          if (res.ok) pathsMoved([{ from: current.path, to: join(dirOf(current.path), name) }])
+          return res
+        })
         return
       }
       let created: string | undefined
@@ -474,9 +480,13 @@ export default function FileTree({
   const paste = (dir: string): void => {
     if (!clip) return
     const { mode, paths } = clip
-    void run(t('files.run.paste'), () =>
-      mode === 'cut' ? window.api.files.move(paths, dir) : window.api.files.copy(paths, dir),
-    ).then((res) => {
+    void run(t('files.run.paste'), async () => {
+      if (mode !== 'cut') return window.api.files.copy(paths, dir)
+      const res = await window.api.files.move(paths, dir)
+      // a move never renames (a clash is refused), so each path lands under its own name
+      if (res.ok) pathsMoved(paths.map((from) => ({ from, to: join(dir, basename(from)) })))
+      return res
+    }).then((res) => {
       // a cut is used up by its paste; a copy can be pasted again
       if (res?.ok && mode === 'cut') setClip(null)
     })
