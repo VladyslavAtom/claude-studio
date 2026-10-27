@@ -1,7 +1,7 @@
 /** Unfinished repository operations: conflicts, continuing, and the shared runner for merge-like commands. */
 import { promises as fs } from 'node:fs'
 import { join } from 'node:path'
-import type { GitOpResult, MessageParams, OpResult, RepoState } from '../../shared/types'
+import type { ConflictInfo, ConflictSide, GitOpResult, MessageParams, OpResult, RepoState } from '../../shared/types'
 import { fail, git, lastLine, literal, literals, refuse } from './exec'
 
 /**
@@ -121,6 +121,77 @@ export async function acceptSide(cwd: string, file: string, side: 'ours' | 'thei
   const add = await git(cwd, ['add', '--', literal(file)])
   if (add.code !== 0) return fail(add)
   return { ok: true }
+}
+
+/** a commit as a label: the branch pointing at it (local first), its short sha and subject */
+async function describeCommit(cwd: string, rev: string): Promise<ConflictSide> {
+  const [log, refs] = await Promise.all([
+    git(cwd, ['log', '-1', '--format=%h%x00%s', rev, '--']),
+    git(cwd, ['for-each-ref', `--points-at=${rev}`, '--format=%(refname:short)', 'refs/heads', 'refs/remotes']),
+  ])
+  const side: ConflictSide = {}
+  if (log.code === 0) {
+    const [sha, subject] = log.stdout.trim().split('\0')
+    if (sha) side.sha = sha
+    if (subject) side.subject = subject
+  }
+  // `origin/HEAD` is an alias, not a name anyone gave the branch
+  const ref = refs.code === 0 ? refs.stdout.split('\n').find((r) => r && !r.endsWith('/HEAD')) : undefined
+  if (ref) side.ref = ref
+  return side
+}
+
+/**
+ * The two sides of a conflicted file as people name them, and its base chunks.
+ *
+ * The labels come from the repository, not from the markers: during a rebase HEAD's marker says
+ * `HEAD` and the other one a sha, while what the person needs is «main (upstream)» and «your
+ * commit». The rebase's `onto` and `head-name` are read from its bookkeeping directory.
+ */
+export async function conflictInfo(cwd: string, file: string): Promise<ConflictInfo> {
+  const state = await repoState(cwd)
+  const gitDir = (await git(cwd, ['rev-parse', '--absolute-git-dir'])).stdout.trim()
+  const read = (rel: string): Promise<string> =>
+    gitDir
+      ? fs.readFile(join(gitDir, rel), 'utf8').then(
+          (s) => s.trim(),
+          () => '',
+        )
+      : Promise.resolve('')
+
+  let ours: ConflictSide = {}
+  let theirs: ConflictSide = {}
+  if (state.operation === 'rebase') {
+    const dir = (await read('rebase-merge/onto')) ? 'rebase-merge' : 'rebase-apply'
+    const [onto, headName] = await Promise.all([read(`${dir}/onto`), read(`${dir}/head-name`)])
+    // read from a file, so checked before it becomes an argument
+    ours = /^[0-9a-f]{7,64}$/.test(onto) ? await describeCommit(cwd, onto) : {}
+    theirs = await describeCommit(cwd, 'REBASE_HEAD')
+    // the commit being replayed belongs to the branch being rebased, whatever else points at it
+    const branch = headName.replace(/^refs\/heads\//, '')
+    if (branch && branch !== 'detached HEAD') theirs.ref = branch
+    else delete theirs.ref
+  } else {
+    const head = await git(cwd, ['symbolic-ref', '--short', '-q', 'HEAD'])
+    ours = await describeCommit(cwd, 'HEAD')
+    if (head.code === 0 && head.stdout.trim()) ours.ref = head.stdout.trim()
+    const other: Partial<Record<RepoState['operation'], string>> = {
+      merge: 'MERGE_HEAD',
+      'cherry-pick': 'CHERRY_PICK_HEAD',
+      revert: 'REVERT_HEAD',
+    }
+    const rev = other[state.operation]
+    if (rev) theirs = await describeCommit(cwd, rev)
+    // a picked or reverted commit is that commit, not whichever branch happens to point at it
+    if (state.operation !== 'merge') delete theirs.ref
+  }
+
+  // `:N:./path` is a revision, not a pathspec: no glob to escape, and `./` keeps it relative to
+  // cwd. git merge-file exits with the number of conflicts, so a positive code is still output.
+  const stage = (n: number): string => `:${n}:./${file}`
+  const merged = await git(cwd, ['merge-file', '-p', '--diff3', '--object-id', stage(2), stage(1), stage(3)])
+  const diff3 = merged.code >= 0 && merged.code < 128 && !merged.problem ? merged.stdout : undefined
+  return { operation: state.operation, ours, theirs, ...(diff3 ? { diff3 } : {}) }
 }
 
 export async function markResolved(cwd: string, files: string[]): Promise<OpResult> {

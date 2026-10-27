@@ -129,14 +129,21 @@ export const changes = {
   'push.willCreate': ' · the branch will be created on origin',
   'push.done': 'Sent',
 
-  // the merge editor. «ours», «theirs» and «base» are git's own names for the sides of a
-  // conflict and stay English in every locale — only what is said around them is translated
-  'merge.side.ours': 'Ours',
-  'merge.side.base': 'Base',
-  'merge.side.theirs': 'Theirs',
-  'merge.take': 'Take',
-  'merge.keepBoth': 'Keep both',
-  'merge.emptySide': '(empty)',
+  // the merge editor. The sides are named by what they are to the person, not by git's
+  // «ours»/«theirs»: during a rebase git's «ours» is the upstream and «theirs» their own commit
+  'merge.side.yours': 'Your changes',
+  'merge.side.yoursOn': 'Your changes · {ref}',
+  'merge.side.yourCommit': 'Your commit {commit}',
+  'merge.side.incoming': 'Incoming changes',
+  'merge.side.incomingFrom': 'Incoming · {ref}',
+  'merge.side.upstream': '{ref} (upstream)',
+  'merge.side.result': 'Result',
+  'merge.takeChange': 'Take this change into the result',
+  'merge.takeYours': 'Take yours',
+  'merge.takeIncoming': 'Take incoming',
+  'merge.wholeFile': 'The whole file, marked resolved at once',
+  'merge.hint':
+    'An unresolved conflict starts from the common base. The arrows take a side; typing inside a conflict resolves it by hand.',
   'merge.reading': 'Reading the file…',
   'merge.conflicts': { zero: 'no conflicts left', one: '{count} conflict', other: '{count} conflicts' },
   'merge.openFailed': 'could not open the file',

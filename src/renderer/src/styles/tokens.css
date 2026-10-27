@@ -94,8 +94,9 @@
   --diff-modified-line: #273541;
   --diff-inserted: #294436;
   --diff-deleted: #484a4a;
-  --merge-ours-bg: rgba(126, 231, 135, 0.08);
-  --merge-theirs-bg: rgba(121, 184, 255, 0.08);
+  /* an unresolved conflict: Darcula's DIFF_CONFLICT (#8f5247) mixed 40/60 with the editor
+     background, like the modified line */
+  --merge-conflict: #4a3330;
 
   /* --- state dots --- */
   --dot-neutral: #4b5361;
@@ -201,8 +202,8 @@
   --diff-modified-line: #e7effa;
   --diff-inserted: #bee6be;
   --diff-deleted: #d6d6d6;
-  --merge-ours-bg: #e6ffec;
-  --merge-theirs-bg: #ddf4ff;
+  /* IntelliJ Light's DIFF_CONFLICT (#ffd5cc) mixed 40/60 with white */
+  --merge-conflict: #ffeeeb;
 
   /* --- state dots --- */
   --dot-neutral: #79818a;

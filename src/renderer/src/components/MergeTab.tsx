@@ -1,8 +1,17 @@
 import type { JSX } from 'react'
-import { useCallback, useEffect, useState } from 'react'
-import { useT } from '../i18n'
+import { useEffect, useRef, useState } from 'react'
+import { EditorState, type Extension } from '@codemirror/state'
+import { EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from '@codemirror/view'
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import type { ConflictInfo } from '../../../shared/types'
+import { useT, type T } from '../i18n'
 import { changesInvalidated } from '../lib/changesRefresh'
+import { EDITOR_THEMES, languageFor, themeSlot } from '../lib/editor'
+import { baseSeeds, layout, parseConflicts, renderResult, sideLabels, type Layout, type SideLabel } from '../lib/merge3'
+import { applySide, mergeTheme, resultExtensions, setSideInfo, sideExtensions } from '../lib/mergeEditor'
+import { gapsFor, regionsField } from '../lib/mergeState'
 import { basename } from '../lib/util'
+import { useThemed } from '../theme/themeContext'
 import { resultMessage } from '../ui/useGitAction'
 
 interface Props {
@@ -13,183 +22,259 @@ interface Props {
   onResolved: () => void
 }
 
-type Block =
-  | { kind: 'text'; text: string }
-  | {
-      kind: 'conflict'
-      ours: string
-      theirs: string
-      base?: string
-      oursLabel: string
-      /** label on the base marker (diff3): needed to hand the file back unchanged */
-      baseLabel?: string
-      theirsLabel: string
-    }
+interface Loaded {
+  layout: Layout
+  info: ConflictInfo
+}
 
-/**
- * Parsing a file with conflict markers. The format is the same for merge and rebase:
- * <<<<<<< our side … ||||||| base … ======= … >>>>>>> their side
- *
- * Every read of `lines[i]` is checked. That is not ceremony: a file whose last line was cut —
- * by a crashed editor, a full disk, a killed agent — ends mid-block, and the index then walks
- * off the end. Bailing out there keeps whatever was parsed so far, which is what the editor
- * can still show; inventing an empty line instead would silently rewrite the file on save.
- */
-function parseConflicts(text: string): Block[] {
-  const lines = text.split('\n')
-  const blocks: Block[] = []
-  let plain: string[] = []
-  let i = 0
-
-  const flush = (): void => {
-    if (plain.length) blocks.push({ kind: 'text', text: plain.join('\n') })
-    plain = []
+function sideText(t: T, label: SideLabel): string {
+  switch (label.kind) {
+    case 'yours':
+      return t('changes.merge.side.yours')
+    case 'yoursOn':
+      return t('changes.merge.side.yoursOn', { ref: label.ref })
+    case 'yourCommit':
+      return t('changes.merge.side.yourCommit', { commit: label.commit })
+    case 'incoming':
+      return t('changes.merge.side.incoming')
+    case 'incomingFrom':
+      return t('changes.merge.side.incomingFrom', { ref: label.ref })
+    case 'upstream':
+      return t('changes.merge.side.upstream', { ref: label.ref })
   }
-
-  while (i < lines.length) {
-    const line = lines[i]
-    if (line === undefined) break
-    if (!line.startsWith('<<<<<<<')) {
-      plain.push(line)
-      i++
-      continue
-    }
-    flush()
-    // a label the marker did not carry is written back into the file on save, so it is git's
-    // own word for the side and never a translated one: the file must not change language
-    const oursLabel = line.slice(7).trim() || 'ours'
-    const ours: string[] = []
-    const base: string[] = []
-    const theirs: string[] = []
-    let where: 'ours' | 'base' | 'theirs' = 'ours'
-    let theirsLabel = 'theirs'
-    let baseLabel: string | undefined
-    i++
-    while (i < lines.length) {
-      const l = lines[i]
-      if (l === undefined) break
-      if (l.startsWith('|||||||')) {
-        where = 'base'
-        baseLabel = l.slice(7).trim()
-        i++
-        continue
-      }
-      if (l.startsWith('=======')) {
-        where = 'theirs'
-        i++
-        continue
-      }
-      if (l.startsWith('>>>>>>>')) {
-        theirsLabel = l.slice(7).trim() || theirsLabel
-        i++
-        break
-      }
-      ;(where === 'ours' ? ours : where === 'base' ? base : theirs).push(l)
-      i++
-    }
-    const conflict = {
-      kind: 'conflict' as const,
-      ours: ours.join('\n'),
-      theirs: theirs.join('\n'),
-      oursLabel,
-      theirsLabel,
-    }
-    // the base marker can sit above an empty chunk, so the marker decides whether there is a
-    // base at all — not the chunk's length. Both fields are therefore added or left out
-    // together, which is also the invariant the base pane and `render` below rely on.
-    blocks.push(baseLabel === undefined ? conflict : { ...conflict, base: base.join('\n'), baseLabel })
-  }
-  flush()
-  return blocks
 }
 
 /**
- * Putting the file back together. An unresolved conflict must come back exactly as it was,
- * base chunk (diff3) included: without it the common ancestor disappears from the file and
- * from the tab when it is reopened.
+ * The three-way merge editor, PyCharm's layout: «yours» on the left, the result in the middle
+ * (editable, starting from the common base in every conflict), the incoming side on the right,
+ * an arrow per conflict on each side. The panes are kept level by spacers and scroll together.
  */
-function render(blocks: Block[]): string {
-  return blocks
-    .map((b) => {
-      if (b.kind === 'text') return b.text
-      // an empty base chunk is a marker with no lines under it; an extra newline would
-      // change the file
-      const marker = b.base === undefined ? '' : `\n||||||| ${b.baseLabel ?? 'base'}`.trimEnd()
-      const base = b.base ? `${marker}\n${b.base}` : marker
-      return `<<<<<<< ${b.oursLabel}\n${b.ours}${base}\n=======\n${b.theirs}\n>>>>>>> ${b.theirsLabel}`
-    })
-    .join('\n')
-}
-
-/** the merge editor: each conflict is settled with a button, the rest is edited by hand */
 export default function MergeTab({ cwd, path, onClose, onError, onResolved }: Props): JSX.Element {
   const t = useT()
-  const [blocks, setBlocks] = useState<Block[] | null>(null)
+  const colours = useThemed(EDITOR_THEMES)
+  const [loaded, setLoaded] = useState<Loaded | null>(null)
+  const [unresolved, setUnresolved] = useState(0)
   const [dirty, setDirty] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  const load = useCallback(() => {
-    void window.api.files.read(path).then((res) => {
+  const leftHost = useRef<HTMLDivElement>(null)
+  const resultHost = useRef<HTMLDivElement>(null)
+  const rightHost = useRef<HTMLDivElement>(null)
+  const viewsRef = useRef<EditorView[]>([])
+  const resultRef = useRef<EditorView | null>(null)
+  /** edits not yet on disk; a ref so the unmount flush sees the last value */
+  const dirtyRef = useRef(false)
+  /** Ctrl+S inside the result, which is built once: the save of the latest render */
+  const saveRef = useRef<(markResolved: boolean) => Promise<void>>(() => Promise.resolve())
+  const coloursRef = useRef(colours)
+  const tRef = useRef(t)
+  const onErrorRef = useRef(onError)
+  useEffect(() => {
+    coloursRef.current = colours
+    tRef.current = t
+    onErrorRef.current = onError
+  })
+
+  const rel = path.startsWith(cwd + '/') ? path.slice(cwd.length + 1) : path
+  const sides = loaded ? sideLabels(loaded.info) : null
+  const yoursIs = sides?.yoursIs ?? 'ours'
+
+  useEffect(() => {
+    let alive = true
+    void Promise.all([window.api.files.read(path), window.api.git.conflictInfo(cwd, rel)]).then(([res, info]) => {
+      if (!alive) return
       if (!res.ok || res.content === undefined) {
         // a refusal the app decided on itself (outside the roots, too large, binary) arrives
         // as a code and is worded here; the filesystem's own message passes through as it is
-        onError(resultMessage(t, res, t('changes.merge.openFailed')))
-        setBlocks([])
+        onErrorRef.current(resultMessage(tRef.current, res, tRef.current('changes.merge.openFailed')))
         return
       }
-      setBlocks(parseConflicts(res.content))
-      setDirty(false)
+      const blocks = parseConflicts(res.content)
+      setLoaded({ layout: layout(blocks, baseSeeds(blocks, info.diff3), sideLabels(info).yoursIs), info })
     })
-  }, [path, onError, t])
+    return () => {
+      alive = false
+    }
+  }, [cwd, path, rel])
 
-  useEffect(load, [load])
-
-  const rel = path.startsWith(cwd + '/') ? path.slice(cwd.length + 1) : path
-  const conflicts = (blocks ?? []).filter((b) => b.kind === 'conflict').length
-
-  const resolveBlock = (index: number, choice: 'ours' | 'theirs' | 'both'): void => {
-    setBlocks((prev) => {
-      if (!prev) return prev
-      const b = prev[index]
-      if (!b || b.kind !== 'conflict') return prev
-      const text = choice === 'ours' ? b.ours : choice === 'theirs' ? b.theirs : `${b.ours}\n${b.theirs}`
-      const next = [...prev]
-      next[index] = { kind: 'text', text }
-      return next
-    })
-    setDirty(true)
+  /** the file as it should be written now: settled conflicts as edited, the rest as markers */
+  const fileText = (): string | null => {
+    const view = resultRef.current
+    if (!view || !loaded) return null
+    const { regions, blocks } = loaded.layout
+    return renderResult(view.state.doc.toString(), regions, view.state.field(regionsField), blocks)
   }
+  const fileTextRef = useRef(fileText)
+  useEffect(() => {
+    fileTextRef.current = fileText
+  })
+
+  // Declared before the views' own effect on purpose: on unmount React runs the cleanups in
+  // this order, so pending edits are written while the result still exists. Unresolved
+  // conflicts go back as markers, so nothing of the conflict is lost by closing the tab.
+  useEffect(
+    () => () => {
+      if (!dirtyRef.current) return
+      const text = fileTextRef.current()
+      if (text !== null) void window.api.files.write(path, text).then(() => changesInvalidated(path))
+    },
+    [path],
+  )
+
+  useEffect(() => {
+    const hosts = [leftHost.current, resultHost.current, rightHost.current]
+    if (!loaded || hosts.some((h) => !h)) return
+    const [leftEl, resultEl, rightEl] = hosts as HTMLDivElement[]
+    const lay = loaded.layout
+    const language = languageFor(path)
+    const common: Extension = [
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      themeSlot.of(coloursRef.current),
+      mergeTheme,
+      language ?? [],
+    ]
+    const take = tRef.current('changes.merge.takeChange')
+
+    const sync = (): void => {
+      const [left, result, right] = viewsRef.current
+      if (!left || !result || !right) return
+      const regions = result.state.field(regionsField)
+      const gaps = gapsFor(result.state, lay)
+      const resolved = regions.map((r) => r.resolved)
+      left.dispatch({
+        effects: setSideInfo.of({ gaps: gaps[0] ?? [], resolved, applied: regions.map((r) => r.yours) }),
+      })
+      right.dispatch({
+        effects: setSideInfo.of({ gaps: gaps[2] ?? [], resolved, applied: regions.map((r) => r.incoming) }),
+      })
+      setUnresolved(regions.filter((r) => !r.resolved).length)
+    }
+
+    const arrow = (side: 'yours' | 'incoming') => (index: number) => {
+      const result = resultRef.current
+      const region = lay.regions[index]
+      if (result && region) applySide(result, index, side, side === 'yours' ? region.yours : region.incoming)
+    }
+
+    const side = (doc: string, parent: HTMLElement, ext: Extension): EditorView =>
+      new EditorView({
+        parent,
+        state: EditorState.create({ doc, extensions: [common, EditorState.readOnly.of(true), ext] }),
+      })
+
+    const left = side(lay.left, leftEl, sideExtensions(lay, 'left', take, arrow('yours')))
+    const right = side(lay.right, rightEl, sideExtensions(lay, 'right', take, arrow('incoming')))
+    const result = new EditorView({
+      parent: resultEl,
+      state: EditorState.create({
+        doc: lay.result,
+        extensions: [
+          common,
+          highlightActiveLine(),
+          history(),
+          keymap.of([
+            {
+              key: 'Mod-s',
+              run: () => {
+                void saveRef.current(false)
+                return true
+              },
+            },
+            indentWithTab,
+            ...defaultKeymap,
+            ...historyKeymap,
+          ]),
+          resultExtensions(lay),
+          EditorView.updateListener.of((u) => {
+            if (u.docChanged) {
+              dirtyRef.current = true
+              setDirty(true)
+            }
+            if (u.docChanged || u.startState.field(regionsField) !== u.state.field(regionsField)) sync()
+          }),
+        ],
+      }),
+    })
+    viewsRef.current = [left, result, right]
+    resultRef.current = result
+    sync()
+
+    // the spacers make the three documents equally tall, so one scrollTop fits all three
+    const scrollers = viewsRef.current.map((v) => v.scrollDOM)
+    const onScroll = (e: Event): void => {
+      const from = e.currentTarget as HTMLElement
+      for (const s of scrollers) {
+        if (s !== from && Math.abs(s.scrollTop - from.scrollTop) > 1) s.scrollTop = from.scrollTop
+        if (s !== from && Math.abs(s.scrollLeft - from.scrollLeft) > 1) s.scrollLeft = from.scrollLeft
+      }
+    }
+    for (const s of scrollers) s.addEventListener('scroll', onScroll)
+    return () => {
+      for (const s of scrollers) s.removeEventListener('scroll', onScroll)
+      for (const v of viewsRef.current) v.destroy()
+      viewsRef.current = []
+      resultRef.current = null
+    }
+  }, [loaded, path])
+
+  // a theme switch recolours the live editors: rebuilding them would lose the result's edits
+  useEffect(() => {
+    for (const v of viewsRef.current) v.dispatch({ effects: themeSlot.reconfigure(colours) })
+  }, [colours])
 
   const save = async (markResolved: boolean): Promise<void> => {
-    if (!blocks) return
-    const res = await window.api.files.write(path, render(blocks))
-    if (!res.ok) {
-      onError(resultMessage(t, res, t('changes.merge.writeFailed')))
-      return
+    const text = fileText()
+    if (text === null) return
+    setBusy(true)
+    try {
+      const res = await window.api.files.write(path, text)
+      if (!res.ok) {
+        onError(resultMessage(t, res, t('changes.merge.writeFailed')))
+        return
+      }
+      dirtyRef.current = false
+      setDirty(false)
+      // the panel and any diff of this file re-read: the markers are gone from disk
+      changesInvalidated(path)
+      if (!markResolved) return
+      const marked = await window.api.git.markResolved(cwd, [rel])
+      if (!marked.ok) {
+        onError(resultMessage(t, marked, t('changes.merge.addFailed')))
+        return
+      }
+      changesInvalidated(path)
+      onResolved()
+      onClose()
+    } finally {
+      setBusy(false)
     }
-    setDirty(false)
-    // the panel and any diff of this file re-read: the markers are gone from disk
-    changesInvalidated(path)
-    if (!markResolved) return
-    const marked = await window.api.git.markResolved(cwd, [rel])
-    if (!marked.ok) {
-      onError(resultMessage(t, marked, t('changes.merge.addFailed')))
-      return
+  }
+  useEffect(() => {
+    saveRef.current = save
+  })
+
+  /** one side for the whole file, through git: «yours» is git's `theirs` during a rebase */
+  const acceptWhole = async (side: 'yours' | 'incoming'): Promise<void> => {
+    const gitSide = side === 'yours' ? yoursIs : yoursIs === 'ours' ? 'theirs' : 'ours'
+    setBusy(true)
+    try {
+      const res = await window.api.git.acceptSide(cwd, rel, gitSide)
+      if (!res.ok) {
+        onError(resultMessage(t, res, t('changes.merge.sideFailed')))
+        return
+      }
+      // git wrote the file: the unmount flush must not write the result over it
+      dirtyRef.current = false
+      changesInvalidated(path)
+      onResolved()
+      onClose()
+    } finally {
+      setBusy(false)
     }
-    changesInvalidated(path)
-    onResolved()
-    onClose()
   }
 
-  const acceptWhole = async (side: 'ours' | 'theirs'): Promise<void> => {
-    const res = await window.api.git.acceptSide(cwd, rel, side)
-    if (!res.ok) {
-      onError(resultMessage(t, res, t('changes.merge.sideFailed')))
-      return
-    }
-    changesInvalidated(path)
-    onResolved()
-    onClose()
-  }
+  const labels = sides ? { yours: sideText(t, sides.yours), incoming: sideText(t, sides.incoming) } : null
 
   return (
     <div className="merge-tab">
@@ -197,18 +282,26 @@ export default function MergeTab({ cwd, path, onClose, onError, onResolved }: Pr
         <span className="file" title={path}>
           {basename(path)}
         </span>
-        <span className="muted small">{t.plural('changes.merge.conflicts', conflicts)}</span>
+        <span className="muted small">{t.plural('changes.merge.conflicts', unresolved)}</span>
         <div className="spacer" />
-        <button onClick={() => void acceptWhole('ours')} title="git checkout --ours">
-          {t('changes.takeOurs')}
+        <button
+          onClick={() => void acceptWhole('yours')}
+          disabled={!loaded || busy}
+          title={t('changes.merge.wholeFile')}
+        >
+          {t('changes.merge.takeYours')}
         </button>
-        <button onClick={() => void acceptWhole('theirs')} title="git checkout --theirs">
-          {t('changes.takeTheirs')}
+        <button
+          onClick={() => void acceptWhole('incoming')}
+          disabled={!loaded || busy}
+          title={t('changes.merge.wholeFile')}
+        >
+          {t('changes.merge.takeIncoming')}
         </button>
-        <button onClick={() => void save(false)} disabled={!dirty}>
+        <button onClick={() => void save(false)} disabled={!dirty || busy}>
           {t('common.save')}
         </button>
-        <button className="primary" onClick={() => void save(true)} disabled={conflicts > 0}>
+        <button className="primary" onClick={() => void save(true)} disabled={!loaded || unresolved > 0 || busy}>
           {t('common.done')}
         </button>
         <button className="ghost" onClick={onClose} title={t('common.close')} aria-label={t('common.close')}>
@@ -216,47 +309,26 @@ export default function MergeTab({ cwd, path, onClose, onError, onResolved }: Pr
         </button>
       </div>
 
-      <div className="merge-body">
-        {blocks === null && <div className="muted pad">{t('changes.merge.reading')}</div>}
-        {blocks?.map((b, i) =>
-          b.kind === 'text' ? (
-            <pre key={i} className="merge-text">
-              {b.text}
-            </pre>
-          ) : (
-            <div key={i} className="merge-conflict">
-              <div className="merge-side ours">
-                <div className="merge-side-head">
-                  <span>
-                    {t('changes.merge.side.ours')} · {b.oursLabel}
-                  </span>
-                  <button onClick={() => resolveBlock(i, 'ours')}>{t('changes.merge.take')}</button>
-                </div>
-                <pre>{b.ours || t('changes.merge.emptySide')}</pre>
-              </div>
-              {b.base !== undefined && (
-                <div className="merge-side base">
-                  <div className="merge-side-head">
-                    <span>{t('changes.merge.side.base')}</span>
-                  </div>
-                  <pre>{b.base || t('changes.merge.emptySide')}</pre>
-                </div>
-              )}
-              <div className="merge-side theirs">
-                <div className="merge-side-head">
-                  <span>
-                    {t('changes.merge.side.theirs')} · {b.theirsLabel}
-                  </span>
-                  <button onClick={() => resolveBlock(i, 'theirs')}>{t('changes.merge.take')}</button>
-                </div>
-                <pre>{b.theirs || t('changes.merge.emptySide')}</pre>
-              </div>
-              <div className="merge-both">
-                <button onClick={() => resolveBlock(i, 'both')}>{t('changes.merge.keepBoth')}</button>
-              </div>
-            </div>
-          ),
-        )}
+      {!loaded && <div className="muted pad">{t('changes.merge.reading')}</div>}
+      <div className="merge-panes" hidden={!loaded} data-testid="merge-panes">
+        <div className="merge-pane">
+          <div className="merge-pane-head yours" title={labels?.yours}>
+            {labels?.yours}
+          </div>
+          <div className="merge-pane-body" ref={leftHost} data-testid="merge-yours" />
+        </div>
+        <div className="merge-pane">
+          <div className="merge-pane-head result" title={t('changes.merge.hint')}>
+            {t('changes.merge.side.result')}
+          </div>
+          <div className="merge-pane-body" ref={resultHost} data-testid="merge-result" />
+        </div>
+        <div className="merge-pane">
+          <div className="merge-pane-head incoming" title={labels?.incoming}>
+            {labels?.incoming}
+          </div>
+          <div className="merge-pane-body" ref={rightHost} data-testid="merge-incoming" />
+        </div>
       </div>
     </div>
   )

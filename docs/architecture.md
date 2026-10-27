@@ -499,6 +499,14 @@ re-read (on the triggers above, not a timer of its own) swaps texts into the liv
 overwrites unsaved edits: a disk that moved under them is shown as the editor's conflict. A
 hidden diff tab stays mounted only while it has unsaved edits.
 
+### The merge tab
+
+Three CodeMirror panes, PyCharm's layout: «yours» on the left, the result in the middle, the incoming side on the right. The working file is parsed by its conflict markers (`lib/merge3.ts`); the text between conflicts is the same in all three panes, each side pane holds its side of every conflict, and the result starts every conflict from the common base. The base comes from the file's own `|||||||` chunk, or else from `git:conflictInfo`, which re-merges stages 1-3 with `git merge-file --diff3 --object-id` and is matched to the file's conflicts by their two sides.
+
+`git:conflictInfo` also names the sides: the current branch and `MERGE_HEAD` / `CHERRY_PICK_HEAD` / `REVERT_HEAD` for a merge-like operation, and for a rebase the `onto` and `head-name` of its bookkeeping directory plus `REBASE_HEAD`. During a rebase git's stage 2 is the upstream and stage 3 the person's commit, so «yours» is stage 3 there (`sideLabels`); the whole-file buttons map to `git checkout --ours/--theirs` the same way.
+
+Each conflict's range and state in the result is a `StateField` (`lib/mergeState.ts`): an arrow replaces the base with its side, the second arrow appends; typing inside a conflict settles it too; undo restores the state with the text (`invertedEffects`). Block spacers keep the three panes level (`spacers`), so one `scrollTop` fits all three. Save writes the result with every unsettled conflict put back as its markers; Done is enabled once none is left, writes, and runs `git add`. Unmounting the tab writes pending edits the same way.
+
 ### Shift+Enter is a newline
 
 A terminal cannot say «Shift was held» on Return — the classic encoding has no room for a

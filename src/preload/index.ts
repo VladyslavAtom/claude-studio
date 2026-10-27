@@ -11,6 +11,7 @@ import type {
   ChangedFile,
   CommitDraftConfig,
   CommitInfo,
+  ConflictInfo,
   DiffMode,
   ExternalSession,
   ExternalSessionQuery,
@@ -121,6 +122,8 @@ const api = {
       ipcRenderer.invoke(CHANNELS.git.acceptSide, cwd, file, side),
     markResolved: (cwd: string, files: string[]): Promise<OpResult> =>
       ipcRenderer.invoke(CHANNELS.git.markResolved, cwd, files),
+    conflictInfo: (cwd: string, file: string): Promise<ConflictInfo> =>
+      ipcRenderer.invoke(CHANNELS.git.conflictInfo, cwd, file),
     repoState: (cwd: string): Promise<RepoState> => ipcRenderer.invoke(CHANNELS.git.repoState, cwd),
     continueOperation: (
       cwd: string,

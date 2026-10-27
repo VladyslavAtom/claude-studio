@@ -61,6 +61,7 @@ export const CHANNELS = {
     createPullRequest: 'git:createPullRequest',
     acceptSide: 'git:acceptSide',
     markResolved: 'git:markResolved',
+    conflictInfo: 'git:conflictInfo',
     repoState: 'git:repoState',
     continueOperation: 'git:continueOperation',
     branchInfo: 'git:branchInfo',
