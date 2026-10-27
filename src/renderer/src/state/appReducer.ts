@@ -11,7 +11,8 @@ import type {
 } from '../../../shared/types'
 import { CLOSED_PROJECTS_KEPT } from '../../../shared/types'
 import { shellTitle } from '../lib/agents'
-import { moveItem } from '../lib/util'
+import { basename, moveItem } from '../lib/util'
+import { movedPath, type PathMove } from '../lib/pathEvents'
 
 /**
  * Every persisted change goes through here. Actions carry ids, never the objects the caller
@@ -44,6 +45,8 @@ export type Action =
   | { type: 'terminalActivated'; projectId: string; sessionId: string; terminalId: string }
   | { type: 'terminalsReordered'; projectId: string; sessionId: string; from: number; to: number }
   | { type: 'terminalRenamed'; projectId: string; sessionId: string; terminalId: string; title: string }
+  /** files were renamed or moved on disk: editor tabs on them follow, in every session */
+  | { type: 'pathsMoved'; moves: readonly PathMove[] }
   /** file / merge / diff tab: focus the one that already shows this target, otherwise append */
   | { type: 'tabOpened'; projectId: string; sessionId: string; tab: TerminalTab }
   /** title seen either in the agent's store (`fromStore`) or in the terminal's OSC title */
@@ -285,6 +288,28 @@ export function appReducer(state: AppState, action: Action): AppState {
         ...s,
         terminals: moveItem(s.terminals, action.from, action.to),
       }))
+
+    case 'pathsMoved': {
+      // untouched sessions keep their objects: nothing re-renders or is saved for them
+      const follow = (t: TerminalTab): TerminalTab => {
+        const to = t.kind === 'editor' && t.filePath ? movedPath(t.filePath, action.moves) : null
+        return to ? { ...t, filePath: to, ...(t.titleManual ? {} : { title: basename(to) }) } : t
+      }
+      let changed = false
+      const projects = state.projects.map((p) => {
+        let touched = false
+        const sessions = p.sessions.map((s) => {
+          const terminals = s.terminals.map(follow)
+          if (terminals.every((t, i) => t === s.terminals[i])) return s
+          touched = true
+          return { ...s, terminals }
+        })
+        if (!touched) return p
+        changed = true
+        return { ...p, sessions }
+      })
+      return changed ? { ...state, projects } : state
+    }
 
     case 'terminalRenamed':
       // the name was given by a person: title tracking never touches it again

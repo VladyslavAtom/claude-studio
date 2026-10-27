@@ -20,7 +20,7 @@ import {
   lineNumbers,
   type DecorationSet,
 } from '@codemirror/view'
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { defaultKeymap, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/search'
 import {
   MergeView,
@@ -40,7 +40,15 @@ import { bandPath, changeKind, chunkAt, type ChangeKind, type Span } from '../li
 import { gateVerdict } from '../lib/diffGate'
 import { join } from '../lib/util'
 import { useThemed } from '../theme/themeContext'
-import { editedByUser, fromDisk, useCheckedFile } from '../hooks/useCheckedFile'
+import {
+  editedByUser,
+  fromDisk,
+  replaceFromDisk,
+  undoHistory,
+  useCheckedFile,
+  type CloseGuard,
+} from '../hooks/useCheckedFile'
+import { toLf } from '../lib/lineEndings'
 import { useChangesRefresh } from '../hooks/useChangesRefresh'
 
 type DiffSpec = NonNullable<TerminalTab['diff']>
@@ -56,6 +64,8 @@ interface Props {
   /** the session's tabs: whether any of them needs the fallback poll (see `useChangesRefresh`) */
   terminals: readonly TerminalTab[]
   onClose: () => void
+  /** what closing would lose, asked before the tab closes; null as the view goes away */
+  onGuard?: (guard: CloseGuard | null) => void
   onError: (msg: string) => void
   /** the right side has edits not yet on disk: the tab must not be unmounted meanwhile */
   onDirty: (dirty: boolean) => void
@@ -245,7 +255,16 @@ function replaceAll(view: EditorView, text: string): void {
   view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, annotations: diskAnnotations })
 }
 
-export default function DiffView({ spec, editor, active, terminals, onClose, onError, onDirty }: Props): JSX.Element {
+export default function DiffView({
+  spec,
+  editor,
+  active,
+  terminals,
+  onClose,
+  onGuard,
+  onError,
+  onDirty,
+}: Props): JSX.Element {
   const t = useT()
   const colours = useThemed(EDITOR_THEMES)
   const abs = join(spec.cwd, spec.path)
@@ -279,7 +298,7 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
   const phraseSlots = useRef<{ view: EditorView; slot: Compartment }[]>([])
 
   const file = useCheckedFile({ path: abs, editor, viewRef: rightRef, onError })
-  const { dirty, conflict, savedAt } = file
+  const { dirty, conflict, gone, savedAt } = file
 
   // mirrors for the CodeMirror callbacks and the poll, written after the commit
   const fileRef = useRef(file)
@@ -289,6 +308,7 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
   const tRef = useRef(t)
   // the parent passes a fresh closure every render: only a change of `dirty` is news to it
   const onDirtyRef = useRef(onDirty)
+  const onGuardRef = useRef(onGuard)
   const syncRef = useRef<(next: Loaded) => void>(() => undefined)
   /** the read of the current spec, while the tab is visible: what the refresh triggers call */
   const tickRef = useRef<(() => Promise<void>) | null>(null)
@@ -299,7 +319,18 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
     collapseRef.current = collapse
     tRef.current = t
     onDirtyRef.current = onDirty
+    onGuardRef.current = onGuard
   })
+
+  useEffect(() => {
+    const register = onGuardRef.current
+    register?.({
+      risk: () => fileRef.current.closeRisk(),
+      // in conflict, or with the file gone, saving is writing over the disk: the dialog said so
+      save: () => (fileRef.current.closeRisk() === 'unsaved' ? fileRef.current.save() : fileRef.current.overwrite()),
+    })
+    return () => register?.(null)
+  }, [])
 
   useEffect(() => {
     onDirtyRef.current(dirty)
@@ -338,13 +369,14 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
         }
       }
       const right = rightRef.current
-      if (!next.editable || !right || next.right === fileRef.current.baseline()) return
+      if (!next.editable || !right || toLf(next.right) === fileRef.current.baseline()) return
       if (fileRef.current.isDirty()) {
         if (!fileRef.current.conflict) fileRef.current.flagConflict()
         return
       }
       fileRef.current.loaded(next.right)
-      replaceAll(right, next.right)
+      // an undo barrier: Ctrl+Z must not bring back the text the disk replaced
+      replaceFromDisk(right, fileRef.current.baseline())
     }
   })
 
@@ -470,7 +502,7 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
     const readOnly: Extension[] = [EditorState.readOnly.of(true), keymap.of(searchKeymap)]
     const right: Extension[] = docs.editable
       ? [
-          history(),
+          undoHistory(),
           keymap.of([
             {
               key: 'Mod-s',
@@ -617,7 +649,6 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
     // a hidden diff keeps its buffer but must not answer keys meant for the visible tab
     if (!active) return
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
       // inside an editor the keymap has already taken it and said so
       if (e.key === 'F7' && !e.defaultPrevented) {
         e.preventDefault()
@@ -626,7 +657,7 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [active, onClose])
+  }, [active])
 
   const verdict = stat ? gateVerdict(stat, spec.path) : null
   // documents exist only once the gate let them through, and from then on the gate is passed
@@ -636,7 +667,17 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
   const sizeKb = stat ? Math.round(stat.bytes / 1024) : 0
 
   return (
-    <div className="diff-overlay" style={{ display: active ? 'flex' : 'none' }}>
+    <div
+      className="diff-overlay"
+      style={{ display: active ? 'flex' : 'none' }}
+      // Escape closes the tab only from inside it, and only when nothing inside took the key
+      // first: CodeMirror's search panel, a multi-selection, a popup
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || e.defaultPrevented) return
+        e.preventDefault()
+        onClose()
+      }}
+    >
       <div className="diff-head">
         <span className={'st ' + spec.status}>{spec.status}</span>
         <span className="file" title={title}>
@@ -657,15 +698,17 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
           <span className="muted small">
             {!docs.editable
               ? t('editor.diff.readOnly')
-              : conflict
-                ? t('editor.status.conflict')
-                : dirty
-                  ? editor.autoSave
-                    ? t('editor.status.saving')
-                    : t('editor.status.unsaved')
-                  : savedAt
-                    ? t('editor.status.saved')
-                    : ''}
+              : gone
+                ? t('editor.status.gone')
+                : conflict
+                  ? t('editor.status.conflict')
+                  : dirty
+                    ? editor.autoSave
+                      ? t('editor.status.saving')
+                      : t('editor.status.unsaved')
+                    : savedAt
+                      ? t('editor.status.saved')
+                      : ''}
           </span>
         )}
         <div className="spacer" />
@@ -721,9 +764,11 @@ export default function DiffView({ spec, editor, active, terminals, onClose, onE
             >
               {t('editor.overwrite')}
             </button>
-            <button onClick={() => void file.reload()} title={t('editor.reload.title')}>
-              {t('editor.reload')}
-            </button>
+            {!gone && (
+              <button onClick={() => void file.reload()} title={t('editor.reload.title')}>
+                {t('editor.reload')}
+              </button>
+            )}
           </>
         )}
         {showView && docs.editable && !editor.autoSave && !conflict && (

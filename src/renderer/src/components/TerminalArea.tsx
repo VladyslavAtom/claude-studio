@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AgentActivity, AgentRun, Session, Settings, TerminalStatus, TerminalTab } from '../../../shared/types'
 import TerminalPane from './TerminalPane'
 import SleepScreen from './SleepScreen'
@@ -17,8 +17,11 @@ import InlineRename from '../ui/InlineRename'
 import { Menu, MenuItem, MenuSep } from '../ui/Menu'
 import { useMenu } from '../ui/useMenu'
 import { activateOnKey, useRovingFocus } from '../ui/rows'
-import { useHookPaths } from '../state/appStateContext'
+import { useDispatch, useHookPaths } from '../state/appStateContext'
 import ContextMenu from './ContextMenu'
+import Modal from '../ui/Modal'
+import type { CloseGuard, CloseRisk } from '../hooks/useCheckedFile'
+import { onPathsMoved } from '../lib/pathEvents'
 
 interface Props {
   session: Session
@@ -76,6 +79,13 @@ const STATUS_HINT = {
   asleep: 'terminal.status.asleep',
   dead: 'terminal.status.dead',
 } as const satisfies Record<TerminalStatus, TKey>
+
+/** why closing asks, per risk */
+const CLOSE_RISK_TEXT = {
+  unsaved: 'editor.close.unsaved',
+  conflict: 'editor.close.conflict',
+  gone: 'editor.close.gone',
+} as const satisfies Record<Exclude<CloseRisk, 'none'>, TKey>
 
 export default function TerminalArea({
   session,
@@ -137,6 +147,42 @@ export default function TerminalArea({
   const { rootRef: historyRootRef, triggerProps: historyTrigger } = historyMenu
   const tabsRef = useRef<HTMLDivElement>(null)
   const onTabKeys = useRovingFocus(tabsRef, '.term-tab', 'horizontal')
+
+  /**
+   * What each mounted editor or diff tab would lose if it closed now. Every close goes through
+   * `requestClose`, and a tab with unsaved or conflicting edits asks Save / Don't save / Cancel
+   * first: closing used to drop them without a word.
+   */
+  // a mutable map, not state: registering a guard is no reason to re-render
+  const [guards] = useState(() => new Map<string, CloseGuard>())
+  const guardFor = (id: string) => (guard: CloseGuard | null) => {
+    if (guard) guards.set(id, guard)
+    else guards.delete(id)
+  }
+  const [closing, setClosing] = useState<{ id: string; risk: Exclude<CloseRisk, 'none'> } | null>(null)
+  const [closeBusy, setCloseBusy] = useState(false)
+  const requestClose = (id: string): void => {
+    const risk = guards.get(id)?.risk() ?? 'none'
+    if (risk === 'none') onCloseTerminal(id)
+    else setClosing({ id, risk })
+  }
+  const saveAndClose = async (id: string): Promise<void> => {
+    const guard = guards.get(id)
+    setCloseBusy(true)
+    try {
+      // a failed write keeps the tab: the toast has said why
+      if (!guard || (await guard.save())) {
+        setClosing(null)
+        onCloseTerminal(id)
+      }
+    } finally {
+      setCloseBusy(false)
+    }
+  }
+
+  // a file renamed or moved by the app: the editor tabs on it follow, in every session
+  const dispatch = useDispatch()
+  useEffect(() => onPathsMoved((moves) => dispatch({ type: 'pathsMoved', moves })), [dispatch])
 
   const activeId = session.activeTerminalId ?? session.terminals[0]?.id ?? null
 
@@ -249,6 +295,7 @@ export default function TerminalArea({
 
   // the run list was rebuilt on every keystroke in the terminal — sort only when it changes
   const runs = useMemo(() => [...(session.runs ?? [])].sort((a, b) => b.startedAt - a.startedAt), [session.runs])
+  const closingTab = closing ? session.terminals.find((tab) => tab.id === closing.id) : undefined
   const activeKind = session.terminals.find((t) => t.id === activeId)?.kind
   const activeIsProcess = activeKind === 'agent' || activeKind === 'shell'
   const enabledAgents = settings.agents.filter((a) => a.enabled)
@@ -284,7 +331,7 @@ export default function TerminalArea({
                 }
                 style={agent ? { borderLeftColor: agent.color } : undefined}
                 {...dragHandlers('term', i, onReorderTerminals)}
-                {...middleClickClose(() => onCloseTerminal(tab.id))}
+                {...middleClickClose(() => requestClose(tab.id))}
                 onContextMenu={(e) => {
                   e.preventDefault()
                   setMenuAt({ x: e.clientX, y: e.clientY, tab })
@@ -332,7 +379,7 @@ export default function TerminalArea({
                   aria-label={t('terminal.tab.close.aria', { title: tabTitle(tab) })}
                   onClick={(e) => {
                     e.stopPropagation()
-                    onCloseTerminal(tab.id)
+                    requestClose(tab.id)
                   }}
                 >
                   ×
@@ -401,7 +448,7 @@ export default function TerminalArea({
                   label: t('terminal.menu.close'),
                   hint: t('terminal.menu.close.hint'),
                   danger: true,
-                  onPick: () => onCloseTerminal(menuAt.tab.id),
+                  onPick: () => requestClose(menuAt.tab.id),
                 },
               ]}
             />
@@ -508,8 +555,10 @@ export default function TerminalArea({
                 cwd={session.cwd}
                 editor={settings.editor}
                 active={tab.id === activeId}
+                terminals={session.terminals}
                 onSend={onSendToAgent}
-                onClose={() => onCloseTerminal(tab.id)}
+                onClose={() => requestClose(tab.id)}
+                onGuard={guardFor(tab.id)}
                 onError={onError}
               />
             ) : null
@@ -538,7 +587,8 @@ export default function TerminalArea({
                 editor={settings.editor}
                 active={visible}
                 terminals={session.terminals}
-                onClose={() => onCloseTerminal(tab.id)}
+                onClose={() => requestClose(tab.id)}
+                onGuard={guardFor(tab.id)}
                 onError={onError}
                 onDirty={(d) => markDirtyDiff(tab.id, d)}
               />
@@ -614,6 +664,34 @@ export default function TerminalArea({
         })}
         {session.terminals.length === 0 && <div className="muted pad">{t('terminal.empty')}</div>}
       </div>
+
+      {closing && (
+        <Modal
+          title={t('editor.close.confirm', { file: closingTab ? tabTitle(closingTab) : '' })}
+          onClose={() => setClosing(null)}
+        >
+          <p className="hint warn">{t(CLOSE_RISK_TEXT[closing.risk])}</p>
+          <div className="modal-actions">
+            <button data-testid="modal-cancel" onClick={() => setClosing(null)}>
+              {t('common.cancel')}
+            </button>
+            <button
+              className="danger"
+              disabled={closeBusy}
+              onClick={() => {
+                const id = closing.id
+                setClosing(null)
+                onCloseTerminal(id)
+              }}
+            >
+              {t('editor.close.discard')}
+            </button>
+            <button className="primary" disabled={closeBusy} onClick={() => void saveAndClose(closing.id)}>
+              {closing.risk === 'unsaved' ? t('editor.save') : t('editor.overwrite')}
+            </button>
+          </div>
+        </Modal>
+      )}
     </section>
   )
 }

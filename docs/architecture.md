@@ -448,6 +448,18 @@ The editor saves on a pause and when the tab is closed, not only on Ctrl+S. Writ
 atomic: a temporary file plus a rename. File operations are limited to the registered roots,
 and `openExternal` lets through only http/https.
 
+The editor and the diff's right side share `useCheckedFile`. A visible editor re-reads on the
+`useChangesRefresh` triggers: a clean buffer takes the disk's text, a dirty one shows the
+conflict, a missing file is marked gone and is never recreated by a keystroke (Overwrite does
+that). Every text from disk goes in through `replaceFromDisk`, which drops the undo history, so
+Ctrl+Z cannot bring back a buffer the disk replaced. The buffer is compared in LF and written
+with the file's own line ending (`lib/lineEndings.ts`). Closing a tab goes through
+`TerminalArea.requestClose`: unsaved edits with autosave off, a conflict, or edits to a deleted
+file ask Save / Don't save / Cancel. Escape closes the tab only from inside it, and only when
+nothing inside (the search panel, a multi-selection) took the key first. A rename or move by the
+app is announced with `pathsMoved` (`lib/pathEvents.ts`) and editor tabs on it follow to the new
+path, keeping their buffer.
+
 ### The file tree's menu
 
 Right click on a row or on the space below the rows, Shift+F10 or the menu key on the focused

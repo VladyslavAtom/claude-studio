@@ -10,6 +10,7 @@ export const editor: EditorArea = {
 
   dirty: 'Не сохранено',
   'status.conflict': 'файл изменился на диске',
+  'status.gone': 'файла больше нет на диске',
   'status.saving': 'сохраняю…',
   'status.unsaved': 'не сохранено — Ctrl+S',
   'status.saved': 'сохранено',
@@ -25,6 +26,11 @@ export const editor: EditorArea = {
   'save.title': 'Сохранить (Ctrl+S)',
   close: 'Закрыть (Esc)',
   'close.editor.aria': 'Закрыть редактор (Esc)',
+  'close.confirm': 'Закрыть «{file}»?',
+  'close.unsaved': 'Правки в этой вкладке не сохранены.',
+  'close.conflict': 'Файл изменился на диске после открытия. «Перезаписать» запишет ваш вариант поверх.',
+  'close.gone': 'Файла больше нет на диске. «Перезаписать» запишет ваш вариант заново.',
+  'close.discard': 'Не сохранять',
 
   'diff.wrap': 'Перенос строк',
   'diff.wrap.on': '⤶ вкл',
