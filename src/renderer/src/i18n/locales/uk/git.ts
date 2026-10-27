@@ -186,5 +186,16 @@ export const git: GitArea = {
   'error.draftEmptyAnswer': 'порожня відповідь',
   'error.serviceNoAnswer': 'службова сесія не відповіла',
 
+  // --- невдалий коміт, погана назва гілки, зміни, що заважають ---
+  'error.commitFailed': 'Коміт не вдався',
+  'error.refLeadingDash': 'назва гілки не може починатися з «-»: «{ref}»',
+  'error.dirtyTree': 'заважають незакомічені зміни',
+  'note.autostashConflict':
+    'ваші зміни під час повернення конфліктують з гілкою — розв’яжіть конфлікт у панелі змін; копія лишилася в stash',
+  'stash.title': 'Незакомічені зміни',
+  'stash.hint':
+    '{what}: заважають незакомічені зміни. Прибрати їх у stash, виконати й повернути зверху — як pull з --autostash.',
+  'stash.confirm': 'Stash і продовжити',
+
   'error.withDetail': '{message}: {detail}',
 }

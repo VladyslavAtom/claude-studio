@@ -571,6 +571,7 @@ export default function ChangesPanel({
             onScope={setScope}
             separate={separate}
             projectPath={projectPath}
+            projectBranch={status ? (status.branch ?? 'detached') : undefined}
             onError={onError}
             onInfo={onInfo}
             onRefresh={invalidate}

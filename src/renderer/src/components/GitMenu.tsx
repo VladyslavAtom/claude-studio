@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { BranchInfo, Project, PullStrategy } from '../../../shared/types'
 import { useT } from '../i18n'
+import { changesInvalidated } from '../lib/changesRefresh'
 import { formatTime } from '../lib/util'
 import Modal from '../ui/Modal'
 import { Menu, MenuItem, MenuSep } from '../ui/Menu'
@@ -10,6 +11,7 @@ import type { GitActionResult } from '../ui/useGitAction'
 import { useGitAction } from '../ui/useGitAction'
 import PullChoiceModal from './PullChoiceModal'
 import RenameBranchModal from './RenameBranchModal'
+import StashChoiceModal from './StashChoiceModal'
 
 interface Props {
   project: Project
@@ -58,6 +60,8 @@ export default function GitMenu({
   const [deleting, setDeleting] = useState<string | null>(null)
   /** the first, force-less delete was refused over unmerged commits — offer -D */
   const [deleteUnmerged, setDeleteUnmerged] = useState(false)
+  /** checkout/merge/rebase refused over a dirty tree: the same call with autostash, if agreed */
+  const [stashing, setStashing] = useState<{ label: string; retry: () => Promise<GitActionResult> } | null>(null)
 
   const closeAll = useCallback((): void => {
     setOpen(false)
@@ -84,12 +88,44 @@ export default function GitMenu({
     if (open) load()
   }, [open, load])
 
-  const { busy, run } = useGitAction({ onError, onInfo, onRefresh: load })
+  /** after an operation: the branch list here, and the changes panel over the same checkout */
+  const refresh = useCallback(() => {
+    load()
+    changesInvalidated(project.path)
+  }, [load, project.path])
 
-  /** run a branch action and, if git was happy with it, fold the menus away */
-  const runAndClose = async (label: string, fn: () => Promise<GitActionResult>): Promise<void> => {
-    const res = await run(label, fn)
+  const { busy, run } = useGitAction({ onError, onInfo, onRefresh: refresh })
+
+  /**
+   * Run a branch action and, if git was happy with it, fold the menus away. `retry` is the same
+   * call with autostash: a refusal over uncommitted edits asks whether to stash them instead of
+   * showing git's complaint.
+   */
+  const runAndClose = async (
+    label: string,
+    fn: () => Promise<GitActionResult>,
+    retry?: () => Promise<GitActionResult>,
+  ): Promise<void> => {
+    const res = await run(label, fn, retry ? { onFail: (_error, r) => r.code === 'dirty-tree' } : {})
+    if (retry && res?.code === 'dirty-tree') {
+      closeAll()
+      setStashing({ label, retry })
+      return
+    }
     if (res?.ok) closeAll()
+  }
+
+  const checkoutBranch = (name: string): void =>
+    void runAndClose(
+      t('git.run.checkout', { branch: name }),
+      () => window.api.git.checkout(project.path, name),
+      () => window.api.git.checkout(project.path, name, true),
+    )
+
+  const createNamed = (): void => {
+    const name = filter.trim()
+    if (!name) return
+    void runAndClose(t('git.run.createBranch', { name }), () => window.api.git.createBranch(project.path, name))
   }
 
   /** starting an action: the ones that ask how to do it open their own dialog first */
@@ -223,14 +259,7 @@ export default function GitMenu({
             label={t('git.branchActions.aria', { branch: b.name })}
             style={{ top: submenu.top, left: submenu.left }}
           >
-            <MenuItem
-              disabled={b.current}
-              onClick={() =>
-                void runAndClose(t('git.run.checkout', { branch: b.name }), () =>
-                  window.api.git.checkout(project.path, b.name),
-                )
-              }
-            >
+            <MenuItem disabled={b.current} onClick={() => checkoutBranch(b.name)}>
               {b.current ? t('git.checkout.current', { branch: b.name }) : t('git.checkout', { branch: b.name })}
             </MenuItem>
             <MenuSep />
@@ -248,8 +277,10 @@ export default function GitMenu({
             <MenuItem
               disabled={b.current}
               onClick={() =>
-                void runAndClose(t('git.run.merge', { branch: b.name }), () =>
-                  window.api.git.merge(project.path, b.name),
+                void runAndClose(
+                  t('git.run.merge', { branch: b.name }),
+                  () => window.api.git.merge(project.path, b.name),
+                  () => window.api.git.merge(project.path, b.name, true),
                 )
               }
             >
@@ -258,8 +289,10 @@ export default function GitMenu({
             <MenuItem
               disabled={b.current}
               onClick={() =>
-                void runAndClose(t('git.run.rebase', { branch: b.name }), () =>
-                  window.api.git.rebaseOnto(project.path, b.name),
+                void runAndClose(
+                  t('git.run.rebase', { branch: b.name }),
+                  () => window.api.git.rebaseOnto(project.path, b.name),
+                  () => window.api.git.rebaseOnto(project.path, b.name, true),
                 )
               }
             >
@@ -316,10 +349,9 @@ export default function GitMenu({
               const first = matched[0]
               const firstAction = visibleActions[0]
               if (firstAction && !matched.length) start(firstAction)
-              else if (first && !first.current)
-                void runAndClose(t('git.run.checkout', { branch: first.name }), () =>
-                  window.api.git.checkout(project.path, first.name),
-                )
+              else if (first && !first.current) checkoutBranch(first.name)
+              // nothing matched at all: the typed text is the name of a new branch
+              else if (!matched.length) createNamed()
             }}
           />
 
@@ -331,26 +363,23 @@ export default function GitMenu({
                   <span className="muted small">{a.hint}</span>
                 </button>
               ))}
-              <button
-                className="git-action"
-                onClick={() => {
-                  const name = filter.trim()
-                  if (!name) {
-                    onError(t('git.newBranch.needName'))
-                    return
-                  }
-                  void runAndClose(t('git.run.createBranch', { name }), () =>
-                    window.api.git.createBranch(project.path, name),
-                  )
-                }}
-              >
-                <span>
-                  {filter.trim() ? t('git.newBranch.named', { name: filter.trim() }) : t('git.newBranch.prompt')}
-                </span>
-                <span className="muted small">{t('git.newBranch.hint')}</span>
-              </button>
             </div>
           )}
+
+          {/* outside the filtered group: the typed text is what names the branch, so it never hides it */}
+          <div className="git-group">
+            <button
+              className="git-action"
+              disabled={busy || !filter.trim()}
+              title={filter.trim() ? undefined : t('git.newBranch.needName')}
+              onClick={createNamed}
+            >
+              <span>
+                {filter.trim() ? t('git.newBranch.named', { name: filter.trim() }) : t('git.newBranch.prompt')}
+              </span>
+              <span className="muted small">{t('git.newBranch.hint')}</span>
+            </button>
+          </div>
 
           <div className="git-list">
             {recent.length > 0 && (
@@ -374,6 +403,17 @@ export default function GitMenu({
             setAsking(false)
             if (remember) onPullStrategy(strategy)
             void runAndClose(t('git.run.pull'), () => window.api.git.pull(project.path, strategy))
+          }}
+        />
+      )}
+
+      {stashing && (
+        <StashChoiceModal
+          what={stashing.label}
+          onClose={() => setStashing(null)}
+          onConfirm={() => {
+            setStashing(null)
+            void runAndClose(stashing.label, stashing.retry)
           }}
         />
       )}

@@ -63,8 +63,7 @@ const api = {
     isFocused: (): Promise<boolean> => ipcRenderer.invoke(CHANNELS.app.isFocused),
     openPath: (path: string): Promise<string> => ipcRenderer.invoke(CHANNELS.shell.openPath, path),
     /** open a web link in the desktop browser; false when the address is not one we let out */
-    openExternal: (url: string): Promise<boolean> =>
-      ipcRenderer.invoke(CHANNELS.shell.openExternal, url),
+    openExternal: (url: string): Promise<boolean> => ipcRenderer.invoke(CHANNELS.shell.openExternal, url),
     showItemInFolder: (path: string): Promise<void> => ipcRenderer.invoke(CHANNELS.shell.showItemInFolder, path),
     homeDir: (): Promise<string> => ipcRenderer.invoke(CHANNELS.app.homeDir),
   },
@@ -108,8 +107,9 @@ const api = {
     push: (cwd: string, branch: string, setUpstream: boolean): Promise<GitOpResult> =>
       ipcRenderer.invoke(CHANNELS.git.push, cwd, branch, setUpstream),
     hasUpstream: (cwd: string): Promise<boolean> => ipcRenderer.invoke(CHANNELS.git.hasUpstream, cwd),
-    syncWithBase: (cwd: string, baseRef: string, mode: 'rebase' | 'merge'): Promise<GitOpResult> =>
-      ipcRenderer.invoke(CHANNELS.git.syncWithBase, cwd, baseRef, mode),
+    /** `autostash`: the person agreed to have uncommitted edits stashed and put back */
+    syncWithBase: (cwd: string, baseRef: string, mode: 'rebase' | 'merge', autostash?: boolean): Promise<GitOpResult> =>
+      ipcRenderer.invoke(CHANNELS.git.syncWithBase, cwd, baseRef, mode, autostash),
     createPullRequest: (
       cwd: string,
       title: string,
@@ -141,15 +141,16 @@ const api = {
     addToGitignore: (path: string): Promise<OpResult> => ipcRenderer.invoke(CHANNELS.git.addToGitignore, path),
     pull: (cwd: string, strategy: 'merge' | 'rebase'): Promise<GitOpResult> =>
       ipcRenderer.invoke(CHANNELS.git.pull, cwd, strategy),
-    merge: (cwd: string, branch: string): Promise<GitOpResult> => ipcRenderer.invoke(CHANNELS.git.merge, cwd, branch),
-    rebaseOnto: (cwd: string, branch: string): Promise<GitOpResult> =>
-      ipcRenderer.invoke(CHANNELS.git.rebaseOnto, cwd, branch),
+    merge: (cwd: string, branch: string, autostash?: boolean): Promise<GitOpResult> =>
+      ipcRenderer.invoke(CHANNELS.git.merge, cwd, branch, autostash),
+    rebaseOnto: (cwd: string, branch: string, autostash?: boolean): Promise<GitOpResult> =>
+      ipcRenderer.invoke(CHANNELS.git.rebaseOnto, cwd, branch, autostash),
     renameBranch: (cwd: string, from: string, to: string): Promise<OpResult> =>
       ipcRenderer.invoke(CHANNELS.git.renameBranch, cwd, from, to),
     deleteBranch: (cwd: string, branch: string, force: boolean): Promise<OpResult> =>
       ipcRenderer.invoke(CHANNELS.git.deleteBranch, cwd, branch, force),
-    checkout: (cwd: string, branch: string): Promise<OpResult> =>
-      ipcRenderer.invoke(CHANNELS.git.checkout, cwd, branch),
+    checkout: (cwd: string, branch: string, autostash?: boolean): Promise<OpResult> =>
+      ipcRenderer.invoke(CHANNELS.git.checkout, cwd, branch, autostash),
     createBranch: (cwd: string, branch: string, baseRef?: string): Promise<OpResult> =>
       ipcRenderer.invoke(CHANNELS.git.createBranch, cwd, branch, baseRef),
     worktreeAdd: (opts: WorktreeAddOptions): Promise<OpResult> => ipcRenderer.invoke(CHANNELS.git.worktreeAdd, opts),

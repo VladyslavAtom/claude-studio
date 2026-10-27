@@ -33,7 +33,7 @@ interface RunOptions {
   /** what the status line says on success; default is git's first output line */
   done?: (res: GitActionResult) => string
   /** return true when this failure is dealt with here and no error toast is wanted */
-  onFail?: (error: string) => boolean
+  onFail?: (error: string, res: GitActionResult) => boolean
 }
 
 export interface GitActionHandle {
@@ -109,6 +109,7 @@ const WORDING: Record<AppMessageCode, Wording> = {
   'commit-already-committed': (t) => t('git.error.commitAlreadyCommitted'),
   'commit-nothing-to-commit': (t) => t('git.error.commitNothingToCommit'),
   'commit-skipped-committed': (t, p) => t.plural('git.note.commitSkipped', num(p, 'count')),
+  'commit-failed': (t) => t('git.error.commitFailed'),
 
   'no-operation-in-progress': (t) => t('git.error.noOperationInProgress'),
   // which operation stopped is data, and so is whether it had a ref to name: six wordings, one
@@ -135,6 +136,10 @@ const WORDING: Record<AppMessageCode, Wording> = {
     return t('git.error.worktreeRemoveFailed.record')
   },
   'worktree-removed-branch-kept': (t) => t('git.warning.worktreeRemovedBranchKept'),
+  'ref-leading-dash': (t, p) => t('git.error.refLeadingDash', { ref: str(p, 'ref') }),
+  // normally answered by the «stash and continue» dialog; the sentence is for a caller without one
+  'dirty-tree': (t) => t('git.error.dirtyTree'),
+  'autostash-conflict': (t) => t('git.note.autostashConflict'),
 
   'no-upstream': (t) => t('git.error.noUpstream'),
   'pr-create-no-url': (t) => t('git.error.prCreateNoUrl'),
@@ -234,7 +239,7 @@ export function useGitAction({ onError, onInfo, onRefresh }: Reporters): GitActi
       if (!res.ok) {
         // the app's own refusals arrive as a code and are worded here; git's own text passes through
         const error = resultMessage(t, res, t('git.run.failed', { label }))
-        if (!options.onFail?.(error)) onError(error)
+        if (!options.onFail?.(error, res)) onError(error)
         return res
       }
       onInfo(options.done?.(res) || resultMessage(t, res) || t('git.run.done', { label }))

@@ -187,6 +187,18 @@ export const git = {
   'error.draftEmptyAnswer': 'an empty answer',
   'error.serviceNoAnswer': 'the service session gave no answer',
 
+  // --- a failed commit, a bad ref, a dirty tree in the way ---
+  'error.commitFailed': 'Commit failed',
+  'error.refLeadingDash': 'a branch name cannot begin with «-»: “{ref}”',
+  'error.dirtyTree': 'uncommitted changes are in the way',
+  'note.autostashConflict':
+    'your changes conflicted with the branch on the way back — resolve them in the changes panel; a copy stays in the stash',
+  /** the shared «stash and continue» dialog of the project menu and the session branch menu */
+  'stash.title': 'Uncommitted changes',
+  'stash.hint':
+    '{what}: uncommitted changes are in the way. Stash them, run it, and put them back on top — the way pull does with --autostash.',
+  'stash.confirm': 'Stash and continue',
+
   /** an app-authored sentence with the tool's own text behind it */
   'error.withDetail': '{message}: {detail}',
 } as const
