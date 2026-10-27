@@ -536,6 +536,7 @@ export default function TerminalArea({
                 spec={tab.diff}
                 editor={settings.editor}
                 active={visible}
+                terminals={session.terminals}
                 onClose={() => onCloseTerminal(tab.id)}
                 onError={onError}
                 onDirty={(d) => markDirtyDiff(tab.id, d)}

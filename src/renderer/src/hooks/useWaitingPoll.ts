@@ -2,6 +2,7 @@ import type { RefObject } from 'react'
 import { useEffect, useRef } from 'react'
 import type { AgentActivity, Project, Session } from '../../../shared/types'
 import { findAgent } from '../lib/agents'
+import { changesInvalidated } from '../lib/changesRefresh'
 import { useDispatch, useLoaded } from '../state/appStateContext'
 import { useAppStateRef } from '../state/selectors'
 import { storeDir, useAgentTitleSync } from './useAgentTracking'
@@ -164,6 +165,12 @@ export function useWaitingPoll({ awake, attentionRef, onBell, onSilent, onActivi
               for (let i = 0; i < rings; i++) {
                 onBell(project, session, terminal.id)
               }
+
+              // A finished turn is the moment the agent's edits are complete, and a call for
+              // attention the moment the person looks: the changes panel and an open diff of this
+              // session's tree re-read now instead of polling for it. Every session is covered,
+              // the ones off screen too — their views are not mounted and simply do not listen.
+              if (report.stops || report.notifications) changesInvalidated(session.cwd)
 
               // The name is re-read only when a turn has ended and the tab's id has settled: on
               // the tick that rebinds it the state still carries the old one, and reading the

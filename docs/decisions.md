@@ -937,3 +937,21 @@ engine.
 
 Folded folders live in component state, not in settings: they describe this look at these
 changes, and the paths stop existing once the files are committed.
+
+## 2026-10-27 — Changes refresh on events, with a fallback poll only where nothing reports
+
+The panel polled git every 4 s and a diff tab re-read every 5 s, for every session, while the app
+already hears most of what moves a working tree: a claude turn ends (`Stop`, read by
+`useWaitingPoll`), the window comes back, the app writes a file itself. Those now refresh at once
+through one renderer bus, `changesInvalidated(path)`; any later writer (the file tree's own
+operations) calls the same function.
+
+**The poll stays only where it is the sole signal.** 30 s for an awake tab that cannot report a
+turn end — codex reports its thread but no event per turn, a shell reports nothing, a claude tab
+with its hooks off is already marked silent. 10 s while a tab is running, since edits land
+mid-turn and the turn end only tells about the last of them. Nothing at all while every awake tab
+is a reporting claude tab sitting idle. A codex turn end could be read from its notify call later;
+it is not, because that call is about the thread today.
+
+A Notification also refreshes: the person is about to look, and an agent stopped on a permission
+prompt has usually written something already.

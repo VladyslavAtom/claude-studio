@@ -13,6 +13,8 @@ import { COMMIT_VIA_SERVICE, COMMIT_VIA_TAB, SERVICE_ARGS } from '../../../share
 import { useT } from '../i18n'
 import type { TreeFolder, TreeRow } from '../lib/changesTree'
 import { buildChangesTree, flattenTree, folderCheck, toggleFolder } from '../lib/changesTree'
+import { changesInvalidated, sameJson } from '../lib/changesRefresh'
+import { useChangesRefresh } from '../hooks/useChangesRefresh'
 import Modal from '../ui/Modal'
 import { useRovingFocus } from '../ui/rows'
 import { resultMessage, useGitAction } from '../ui/useGitAction'
@@ -51,8 +53,6 @@ interface Props {
     baseRef?: string
   }) => void
 }
-
-const POLL_MS = 4000
 
 /**
  * The changes panel.
@@ -96,6 +96,8 @@ export default function ChangesPanel({
   const [confirmRevert, setConfirmRevert] = useState(false)
   // request token: a slower reply for a previous session must not overwrite the current one
   const reqId = useRef(0)
+  /** what the file tree was last handed: an unchanged map is not handed again */
+  const sentChanged = useRef<string | null>(null)
   /**
    * When the agent tab last printed anything. The panel has no "is the agent busy" prop, so
    * busyness is measured the way the running indicator measures it — by how fresh the output is.
@@ -125,14 +127,19 @@ export default function ChangesPanel({
       window.api.git.repoState(cwd),
     ])
     if (req !== reqId.current) return
-    setStatus(res)
+    // the same answer keeps the same object: an unchanged list is not re-rendered
+    setStatus((prev) => (sameJson(prev, res) ? prev : res))
     setLoading(false)
-    setRepo(state)
+    setRepo((prev) => (sameJson(prev, state) ? prev : state))
     // the file tree colours its rows from this same status: it needs no git poll of its own
     if (scope === 'session') {
       const map: Record<string, ChangedFile['status']> = {}
       for (const f of res.files) map[f.path] = f.status
-      onChangedFiles(map)
+      const key = JSON.stringify(map)
+      if (key !== sentChanged.current) {
+        sentChanged.current = key
+        onChangedFiles(map)
+      }
     }
     // drop selections for files that are no longer changed
     setChecked((prev) => {
@@ -163,18 +170,16 @@ export default function ChangesPanel({
     setSelected(null)
   }
 
+  // the first read for this directory; every later one comes from an event (see useChangesRefresh)
   useEffect(() => {
     void refresh()
-    const t = window.setInterval(() => void refresh(), POLL_MS)
-    const onVisible = (): void => {
-      if (!document.hidden) void refresh()
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      window.clearInterval(t)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
   }, [refresh])
+
+  // On while collapsed too: the file tree takes its colours from this same status.
+  useChangesRefresh({ cwd, terminals: session.terminals, enabled: true, refresh })
+
+  /** after a write of ours: this panel and every diff tab over the same tree re-read */
+  const invalidate = useCallback(() => changesInvalidated(cwd), [cwd])
 
   useEffect(() => {
     if (!agentTabId) return
@@ -190,7 +195,7 @@ export default function ChangesPanel({
   const treeRows = useMemo(() => (tree ? flattenTree(treeNodes, foldedDirs) : []), [tree, treeNodes, foldedDirs])
   const picked = files.filter((f) => checked.has(f.path))
   const busyOp = Boolean(repo && repo.operation !== 'none')
-  const { running, run } = useGitAction({ onError, onInfo, onRefresh: () => void refresh() })
+  const { running, run } = useGitAction({ onError, onInfo, onRefresh: invalidate })
   /** the name of the commit call: the commit button reads it back to know it is the busy one */
   const commitLabel = t('changes.commit')
   const committing = running === commitLabel
@@ -408,7 +413,7 @@ export default function ChangesPanel({
       done: (r) => resultMessage(t, r) || t('changes.run.done'),
     })
     // a refused continue leaves the repository in a different state than before: re-read it too
-    if (!res?.ok) void refresh()
+    if (!res?.ok) invalidate()
   }
 
   const revert = async (): Promise<void> => {
@@ -492,7 +497,7 @@ export default function ChangesPanel({
               aria-label={t('changes.resolve.aria', { path: f.path })}
               onClick={(e) => {
                 e.stopPropagation()
-                void window.api.git.markResolved(cwd, [f.path]).then(() => refresh())
+                void window.api.git.markResolved(cwd, [f.path]).then(invalidate)
               }}
             >
               ✓
@@ -568,7 +573,7 @@ export default function ChangesPanel({
             projectPath={projectPath}
             onError={onError}
             onInfo={onInfo}
-            onRefresh={() => void refresh()}
+            onRefresh={invalidate}
           />
           {!session.worktree && status?.branch && (
             <span className="branch-name static" title={cwd}>
@@ -612,7 +617,7 @@ export default function ChangesPanel({
             className="ghost"
             title={t('common.refresh')}
             aria-label={t('changes.refresh.aria')}
-            onClick={() => void refresh()}
+            onClick={invalidate}
           >
             ↻
           </button>
@@ -659,14 +664,14 @@ export default function ChangesPanel({
                     <button
                       className="ghost"
                       title={t('changes.op.takeOurs')}
-                      onClick={() => void window.api.git.acceptSide(cwd, f, 'ours').then(() => refresh())}
+                      onClick={() => void window.api.git.acceptSide(cwd, f, 'ours').then(invalidate)}
                     >
                       {t('changes.takeOurs')}
                     </button>
                     <button
                       className="ghost"
                       title={t('changes.op.takeTheirs')}
-                      onClick={() => void window.api.git.acceptSide(cwd, f, 'theirs').then(() => refresh())}
+                      onClick={() => void window.api.git.acceptSide(cwd, f, 'theirs').then(invalidate)}
                     >
                       {t('changes.takeTheirs')}
                     </button>
@@ -819,7 +824,7 @@ export default function ChangesPanel({
           onClose={() => setPushOpen(false)}
           onError={onError}
           onInfo={onInfo}
-          onDone={() => void refresh()}
+          onDone={invalidate}
         />
       )}
 

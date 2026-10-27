@@ -363,6 +363,27 @@ rows are the same `ChangedFileRow`, showing only the name. Keys on a folder row:
 and unfold (Left on a folded row goes to its parent), Space checks, Enter folds; Up/Down walk
 all rows. Folded folders are component state.
 
+### When the panel re-reads
+
+There is no fixed poll. The panel and a visible diff tab re-read on events, through
+`hooks/useChangesRefresh` and the bus in `lib/changesRefresh.ts`:
+
+| trigger                                           | where it comes from                                                                                                                   |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| a claude turn ends, or the CLI calls for a person | `useWaitingPoll`, on the pass it already makes: `changesInvalidated(session.cwd)`                                                     |
+| the window gains focus or becomes visible         | `focus` / `visibilitychange`                                                                                                          |
+| the app writes                                    | `changesInvalidated(path)` from commit, revert, pull/push, resolve, merge-tab save, and every `useCheckedFile` save (editor and diff) |
+
+An invalidation reaches every view whose directory overlaps the path, either way round. A trigger
+that lands during a read asks for one more read after it, never a second one beside it.
+
+What remains is a fallback poll, decided by `fallbackPollMs` from the session's tabs: 10 s while
+any awake agent or shell tab is running (to show edits arriving mid-turn), 30 s while an awake tab
+cannot report its turn end (codex, a plain shell, a claude tab marked silent), none otherwise.
+Sleeping tabs and the app's own editor/diff/merge tabs never keep it alive. An identical status or
+repository state keeps the previous object, so an unchanged list is not re-rendered, and the file
+tree is handed the change map only when it differs.
+
 A rebase/merge/pull stopping on a conflict is a normal outcome, not an error: git returns a
 non-zero code, the panel catches it and writes «Rebase stopped on a conflict…». Red output stays
 for real failures.
@@ -418,7 +439,7 @@ message, lockfile/generated, over 500 changed lines or over 512 KB → a "Load d
 
 The right side is editable when it is an existing text file, and it saves through
 `useCheckedFile` — the same checked write, autosave and conflict UI as the file editor. The
-five-second re-read swaps texts into the live view while the ref stays the same and never
+re-read (on the triggers above, not a timer of its own) swaps texts into the live view while the ref stays the same and never
 overwrites unsaved edits: a disk that moved under them is shown as the editor's conflict. A
 hidden diff tab stays mounted only while it has unsaved edits.
 

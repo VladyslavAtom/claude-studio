@@ -5,6 +5,7 @@ import type { EditorView, ViewUpdate } from '@codemirror/view'
 import type { EditorConfig } from '../../../shared/types'
 import { useT } from '../i18n'
 import { resultMessage } from '../ui/useGitAction'
+import { changesInvalidated } from '../lib/changesRefresh'
 import { basename } from '../lib/util'
 
 /** marks a transaction that put the disk's text into the buffer: not an edit, nothing to save */
@@ -105,6 +106,8 @@ export function useCheckedFile({ path, editor, viewRef, onError, onSaved }: Opti
     const now = viewRef.current?.state.doc.toString()
     setDirty(now !== undefined && now !== text)
     setSavedAt(Date.now())
+    // the changes panel and every diff of this tree re-read now, not on their next poll
+    changesInvalidated(file)
     live.current.onSaved?.(file)
   }
 
@@ -178,7 +181,9 @@ export function useCheckedFile({ path, editor, viewRef, onError, onSaved }: Opti
               report(tr('editor.conflict.unsaved', { file: basename(file) }))
               return
             }
-            void window.api.files.write(file, text)
+            void window.api.files.write(file, text).then((res) => {
+              if (res.ok) changesInvalidated(file)
+            })
           })
         }
       }

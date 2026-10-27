@@ -1,6 +1,7 @@
 import type { JSX } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useT } from '../i18n'
+import { changesInvalidated } from '../lib/changesRefresh'
 import { basename } from '../lib/util'
 import { resultMessage } from '../ui/useGitAction'
 
@@ -166,12 +167,15 @@ export default function MergeTab({ cwd, path, onClose, onError, onResolved }: Pr
       return
     }
     setDirty(false)
+    // the panel and any diff of this file re-read: the markers are gone from disk
+    changesInvalidated(path)
     if (!markResolved) return
     const marked = await window.api.git.markResolved(cwd, [rel])
     if (!marked.ok) {
       onError(resultMessage(t, marked, t('changes.merge.addFailed')))
       return
     }
+    changesInvalidated(path)
     onResolved()
     onClose()
   }
@@ -182,6 +186,7 @@ export default function MergeTab({ cwd, path, onClose, onError, onResolved }: Pr
       onError(resultMessage(t, res, t('changes.merge.sideFailed')))
       return
     }
+    changesInvalidated(path)
     onResolved()
     onClose()
   }

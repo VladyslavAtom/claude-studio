@@ -41,6 +41,7 @@ import { gateVerdict } from '../lib/diffGate'
 import { join } from '../lib/util'
 import { useThemed } from '../theme/themeContext'
 import { editedByUser, fromDisk, useCheckedFile } from '../hooks/useCheckedFile'
+import { useChangesRefresh } from '../hooks/useChangesRefresh'
 
 type DiffSpec = NonNullable<TerminalTab['diff']>
 
@@ -49,9 +50,11 @@ interface Props {
   editor: EditorConfig
   /**
    * The tab is the visible one. A hidden diff with unsaved edits stays mounted (see
-   * TerminalArea): unmounting it would throw the buffer away. It does not poll while hidden.
+   * TerminalArea): unmounting it would throw the buffer away. It does not re-read while hidden.
    */
   active: boolean
+  /** the session's tabs: whether any of them needs the fallback poll (see `useChangesRefresh`) */
+  terminals: readonly TerminalTab[]
   onClose: () => void
   onError: (msg: string) => void
   /** the right side has edits not yet on disk: the tab must not be unmounted meanwhile */
@@ -71,8 +74,6 @@ interface Loaded {
 interface Docs extends Loaded {
   seq: number
 }
-
-const POLL_MS = 5000
 
 // ---------------------------------------------------------------------------------------------
 // Change colours inside the editors
@@ -244,7 +245,7 @@ function replaceAll(view: EditorView, text: string): void {
   view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, annotations: diskAnnotations })
 }
 
-export default function DiffView({ spec, editor, active, onClose, onError, onDirty }: Props): JSX.Element {
+export default function DiffView({ spec, editor, active, terminals, onClose, onError, onDirty }: Props): JSX.Element {
   const t = useT()
   const colours = useThemed(EDITOR_THEMES)
   const abs = join(spec.cwd, spec.path)
@@ -289,6 +290,8 @@ export default function DiffView({ spec, editor, active, onClose, onError, onDir
   // the parent passes a fresh closure every render: only a change of `dirty` is news to it
   const onDirtyRef = useRef(onDirty)
   const syncRef = useRef<(next: Loaded) => void>(() => undefined)
+  /** the read of the current spec, while the tab is visible: what the refresh triggers call */
+  const tickRef = useRef<(() => Promise<void>) | null>(null)
   useEffect(() => {
     fileRef.current = file
     coloursRef.current = colours
@@ -347,8 +350,8 @@ export default function DiffView({ spec, editor, active, onClose, onError, onDir
 
   /**
    * The gate first, the content only if the gate lets it through: a lockfile is refused on its
-   * numbers, before anything of it is read. Then both sides, every five seconds while the tab
-   * is the visible one and the window is not hidden.
+   * numbers, before anything of it is read. Then both sides, whenever `useChangesRefresh` says
+   * the tree may have moved — while the tab is the visible one and the window is not hidden.
    */
   useEffect(() => {
     if (!active) return
@@ -385,18 +388,22 @@ export default function DiffView({ spec, editor, active, onClose, onError, onDir
       const text = right.ok ? right.content : undefined
       syncRef.current({ left: left ?? '', right: text ?? '', editable: text !== undefined, ref: s.ref })
     }
+    tickRef.current = tick
     void tick()
-    const timer = window.setInterval(() => void tick(), POLL_MS)
-    const onVisible = (): void => {
-      if (!document.hidden) void tick()
-    }
-    document.addEventListener('visibilitychange', onVisible)
     return () => {
       alive = false
-      window.clearInterval(timer)
-      document.removeEventListener('visibilitychange', onVisible)
+      tickRef.current = null
     }
   }, [active, forced, abs, leftPath, spec.cwd, spec.path, spec.oldPath, spec.mode, spec.baseRef, spec.untracked])
+
+  useChangesRefresh({
+    cwd: spec.cwd,
+    terminals,
+    enabled: active,
+    refresh: async () => {
+      await tickRef.current?.()
+    },
+  })
 
   // Declared before the view's own effect on purpose: on unmount React runs the cleanups in
   // this order, so the pending autosave is written while the buffer still exists.
