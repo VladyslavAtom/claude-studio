@@ -680,6 +680,30 @@ export interface RepoState {
   step?: string
 }
 
+/** one side of a conflict, for a label: the branch pointing at it when there is one, else the commit */
+export interface ConflictSide {
+  ref?: string
+  /** abbreviated */
+  sha?: string
+  subject?: string
+}
+
+/**
+ * Who the two sides of a conflicted file are. `ours` is git's stage 2 (HEAD), `theirs` stage 3.
+ * During a rebase HEAD is the commit being built on and stage 3 is the person's own commit, so
+ * the renderer swaps them to show «yours» on the left.
+ */
+export interface ConflictInfo {
+  operation: RepoState['operation']
+  ours: ConflictSide
+  theirs: ConflictSide
+  /**
+   * The three stages merged again with diff3 markers, for the base chunks the working file's
+   * markers lack. Absent when a stage is missing (add/add) or git could not merge them.
+   */
+  diff3?: string
+}
+
 export interface BranchInfo {
   /** the short name: main, feature/x, origin/main */
   name: string

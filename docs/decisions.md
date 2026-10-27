@@ -1024,3 +1024,17 @@ the pane would have passed and no size — the pane re-attaches later, as it doe
 Only for sessions an agent opened: a restored or a person's session still starts on first look,
 which is what keeps a cold start from launching every agent at once.
 
+
+## 2026-10-27 — The merge tab is a three-way editor, and its sides are named by meaning
+
+The old tab listed each conflict as two `<pre>` blocks with Take / Keep both: no editable result, no base, so lines from both sides could not be combined (#25). It also labelled the sides with git's words, and during a rebase git's «ours» is the upstream: the person's own commit was shown as «Theirs» (#24).
+
+**Layout.** PyCharm's: yours left, result middle, incoming right, an arrow per conflict on each side; the first arrow replaces the base with that side, the second appends. Not `@codemirror/merge`: `MergeView` has two panes, and three aligned panes with a shared conflict model did not fit it. Three plain CodeMirror views kept level by block spacers are about 300 lines and reuse the editor's theme slot and languages.
+
+**The side panes show the merged file with that side's version of each conflict**, not stage 2/3 verbatim. Text outside conflicts is what git already merged, so the three panes align block by block with no diff of their own. The cost: a non-conflicting change from the other side also appears in «yours». Accepted — the panes exist to pick conflict content, and the result is what gets written.
+
+**The result starts from the base**, as in PyCharm. A file written without diff3 markers has no base chunk, so main re-merges the three index stages with `git merge-file --diff3 --object-id` (no temp files) and the renderer matches its conflicts to the file's by their two sides; one that does not match starts empty.
+
+**A half-done merge survives.** Save, and closing the tab, write unsettled conflicts back as their original markers, so the tab reopens where it was. «Settled» is an arrow or an edit inside the conflict; undo reverts that state along with the text.
+
+**Labels come from the repository, not the markers**: `onto`/`head-name`/`REBASE_HEAD` for a rebase («Your commit <sha> <subject>», «main (upstream)»), the current branch and `MERGE_HEAD` for a merge. The whole-file buttons follow the same mapping (yours = `--theirs` during a rebase). The changes panel's own Take ours / Take theirs row buttons still use git's words; they belong to the panel and were not changed here.

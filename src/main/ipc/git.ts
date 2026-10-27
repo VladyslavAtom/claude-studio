@@ -47,6 +47,7 @@ export function register(): void {
     git.acceptSide(cwd, file, side),
   )
   ipcMain.handle(CH.markResolved, (_e, cwd: string, files: string[]) => git.markResolved(cwd, files))
+  ipcMain.handle(CH.conflictInfo, (_e, cwd: string, file: string) => git.conflictInfo(cwd, file))
   ipcMain.handle(CH.repoState, (_e, cwd: string) => git.repoState(cwd))
   ipcMain.handle(
     CH.continueOperation,
