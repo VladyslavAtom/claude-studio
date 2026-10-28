@@ -665,6 +665,28 @@ export interface ExternalSession {
   updatedAt: number
 }
 
+/** one conversation to look inside: the id and where its agent keeps it */
+export interface ConversationRef {
+  id: string
+  kind: 'claude' | 'codex'
+  configDir?: string
+}
+
+/** a place in a conversation where the searched text was said */
+export interface ConversationMatch {
+  role: 'user' | 'assistant'
+  /** the text around the match, on one line */
+  snippet: string
+  at: number
+}
+
+/** what a search found in one conversation: the first few places, and how many there were */
+export interface ConversationHits {
+  id: string
+  matches: ConversationMatch[]
+  total: number
+}
+
 export interface ExternalSessionQuery {
   agentId: string
   kind: 'claude' | 'codex'

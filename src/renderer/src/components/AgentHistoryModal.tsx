@@ -1,6 +1,13 @@
 import type { JSX } from 'react'
 import { useEffect, useMemo, useState } from 'react'
-import type { ExternalSession, ExternalSessionQuery, Project, Settings } from '../../../shared/types'
+import type {
+  ConversationHits,
+  ConversationRef,
+  ExternalSession,
+  ExternalSessionQuery,
+  Project,
+  Settings,
+} from '../../../shared/types'
 import { useT } from '../i18n'
 import { findAgent } from '../lib/agents'
 import { basename, formatTime } from '../lib/util'
@@ -34,12 +41,33 @@ function queriesFor(settings: Settings): ExternalSessionQuery[] {
   return out
 }
 
+/** shorter queries match nearly every conversation, and each search reads the whole store */
+const SEARCH_MIN_CHARS = 3
+/** a pause in typing before the store is read: one search per word, not per key */
+const SEARCH_DELAY_MS = 350
+
+/** the query split around its matches, for highlighting; the match keeps its own letter case */
+function highlight(text: string, query: string): (string | JSX.Element)[] {
+  const hay = text.toLowerCase()
+  const needle = query.toLowerCase()
+  const out: (string | JSX.Element)[] = []
+  let from = 0
+  for (let i = hay.indexOf(needle); needle && i !== -1; i = hay.indexOf(needle, from)) {
+    if (i > from) out.push(text.slice(from, i))
+    out.push(<mark key={i}>{text.slice(i, i + needle.length)}</mark>)
+    from = i + needle.length
+  }
+  if (from < text.length) out.push(text.slice(from))
+  return out
+}
+
 export default function AgentHistoryModal({ project, settings, onCancel, onOpen, onError }: Props): JSX.Element {
   const t = useT()
   const [filter, setFilter] = useState('')
   const [hideKnown, setHideKnown] = useState(false)
 
   const queries = useMemo(() => queriesFor(settings), [settings])
+  const kindOf = useMemo(() => new Map(queries.map((q) => [q.agentId, q.kind])), [queries])
   const key = `${project.path}\0${JSON.stringify(queries)}`
   const [loaded, setLoaded] = useState<{ key: string; list: ExternalSession[] } | null>(null)
 
@@ -67,6 +95,41 @@ export default function AgentHistoryModal({ project, settings, onCancel, onOpen,
     }
   }, [project.path, queries, key, onError])
 
+  /**
+   * What the conversations themselves say. Tagged with the list and the query it answers, like the
+   * list itself: an answer to an older query is simply not shown, never cleared from the effect.
+   */
+  const query = filter.trim()
+  const searchKey = query.length >= SEARCH_MIN_CHARS && entries ? `${key}\0${query}` : null
+  const [found, setFound] = useState<{ key: string; hits: Map<string, ConversationHits> } | null>(null)
+  const hits = searchKey !== null && found?.key === searchKey ? found.hits : null
+
+  useEffect(() => {
+    if (searchKey === null || !entries) return
+    const refs: ConversationRef[] = []
+    for (const e of entries) {
+      const kind = kindOf.get(e.agentId)
+      if (kind) refs.push({ id: e.id, kind, ...(e.configDir ? { configDir: e.configDir } : {}) })
+    }
+    let alive = true
+    const timer = setTimeout(() => {
+      void window.api.agents
+        .searchConversations(refs, query)
+        .then((list) => {
+          if (alive) setFound({ key: searchKey, hits: new Map(list.map((h) => [h.id, h])) })
+        })
+        .catch((e: unknown) => {
+          if (!alive) return
+          onError(String(e))
+          setFound({ key: searchKey, hits: new Map() })
+        })
+    }, SEARCH_DELAY_MS)
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [searchKey, entries, kindOf, query, onError])
+
   /** ids the app already tracks: open tabs, recorded runs and archived sessions */
   const known = useMemo(() => {
     const ids = new Map<string, string>()
@@ -85,10 +148,11 @@ export default function AgentHistoryModal({ project, settings, onCancel, onOpen,
 
   const visible = (entries ?? []).filter((e) => {
     if (hideKnown && known.has(e.id)) return false
-    const q = filter.trim().toLowerCase()
+    const q = query.toLowerCase()
     if (!q) return true
-    return e.title.toLowerCase().includes(q) || e.cwd.toLowerCase().includes(q)
+    return e.title.toLowerCase().includes(q) || e.cwd.toLowerCase().includes(q) || Boolean(hits?.has(e.id))
   })
+  const searching = searchKey !== null && hits === null
 
   return (
     <Modal title={t('modals.agents.title', { project: project.name })} className="wide" onClose={onCancel}>
@@ -109,10 +173,13 @@ export default function AgentHistoryModal({ project, settings, onCancel, onOpen,
 
       <div className="ext-list">
         {entries === null && <div className="muted pad">{t('modals.agents.loading')}</div>}
-        {entries !== null && visible.length === 0 && <div className="muted pad">{t('modals.agents.none')}</div>}
+        {entries !== null && !searching && visible.length === 0 && (
+          <div className="muted pad">{t('modals.agents.none')}</div>
+        )}
         {visible.map((e) => {
           const agent = findAgent(settings, e.agentId)
           const mark = known.get(e.id)
+          const hit = hits?.get(e.id)
           return (
             <div key={e.id} className={'ext-item' + (mark ? ' known' : '')}>
               <span className="dot" style={{ background: agent?.color ?? 'var(--fg-dim)' }} title={agent?.name} />
@@ -129,6 +196,23 @@ export default function AgentHistoryModal({ project, settings, onCancel, onOpen,
                   <span className="muted small">{formatTime(e.updatedAt)}</span>
                   {mark && <span className="badge">{mark}</span>}
                 </div>
+                {hit && (
+                  <div className="ext-hits">
+                    {hit.matches.map((m, i) => (
+                      <div key={i} className="ext-hit" title={formatTime(m.at)}>
+                        <span className="who">
+                          {t(m.role === 'user' ? 'modals.agents.hit.user' : 'modals.agents.hit.agent')}
+                        </span>
+                        <span className="what">{highlight(m.snippet, query)}</span>
+                      </div>
+                    ))}
+                    {hit.total > hit.matches.length && (
+                      <div className="muted small">
+                        {t.plural('modals.agents.hit.more', hit.total - hit.matches.length)}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <button onClick={() => onOpen(e)} title={t('modals.agents.open.title', { title: e.title })}>
                 {t('modals.agents.open')}
@@ -140,7 +224,11 @@ export default function AgentHistoryModal({ project, settings, onCancel, onOpen,
 
       <div className="modal-actions">
         <span className="muted small">
-          {entries ? t('modals.agents.shown', { shown: visible.length, total: entries.length }) : ''}
+          {searching
+            ? t('modals.agents.searching')
+            : entries
+              ? t('modals.agents.shown', { shown: visible.length, total: entries.length })
+              : ''}
         </span>
         <div className="spacer" />
         <button data-testid="modal-close" onClick={onCancel}>

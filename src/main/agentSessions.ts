@@ -14,7 +14,7 @@
 import { promises as fs } from 'node:fs'
 import { join, resolve as resolvePath } from 'node:path'
 import { homedir } from 'node:os'
-import type { AgentActivity, ExternalSession, ExternalSessionQuery } from '../shared/types'
+import type { AgentActivity, ConversationRef, ExternalSession, ExternalSessionQuery } from '../shared/types'
 
 /**
  * A Claude profile may be set not by the agent's settings but by the agent's own wrapper (a
@@ -321,6 +321,8 @@ async function listClaudeSessions(
     const tailTitle = await claudeTailTitle(c.path, c.mtime)
     const title = head.aiTitle ?? tailTitle ?? head.firstUser ?? c.id.slice(0, 8)
 
+    // the search that may follow opens this very file; walking every profile again to find it is waste
+    conversationPathCache.set(c.id, c.path)
     return {
       id: c.id,
       agentId,
@@ -463,6 +465,16 @@ async function findClaudeConversation(id: string, configDir?: string): Promise<s
     }
   }
   return null
+}
+
+/** the file a conversation is written to: Claude's own journal, or the rollout Codex indexes */
+export async function conversationFile(ref: ConversationRef): Promise<string | null> {
+  if (ref.kind === 'claude') return findClaudeConversation(ref.id, ref.configDir)
+  return withThreads((db) => {
+    const row = db.prepare('select rollout_path from threads where id = ? limit 1').get(ref.id) as
+      { rollout_path?: string } | undefined
+    return row?.rollout_path || null
+  })
 }
 
 /** what the agent itself called the conversation: the title from its store, not from the terminal title */

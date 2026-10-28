@@ -5,7 +5,7 @@ export const modals = {
   'agents.title': 'Agent conversations in {project}',
   'agents.hint':
     'Everything the agents wrote down for the directories of this project and its worktrees — runs from a plain terminal included. The marked ones are already open or lie in the history of the application.',
-  'agents.filter': 'Filter by title or path',
+  'agents.filter': 'Search titles, paths and the conversations',
   'agents.onlyNew': 'Only new ones',
   'agents.loading': 'Reading the stores of the agents…',
   'agents.none': 'Nothing found',
@@ -17,6 +17,11 @@ export const modals = {
   'agents.open': 'Open',
   'agents.open.title': 'Open the conversation “{title}” in a tab',
   'agents.shown': '{shown} of {total}',
+  'agents.searching': 'Searching inside the conversations…',
+  /** who said the matched text: the user, or the agent */
+  'agents.hit.user': 'you',
+  'agents.hit.agent': 'agent',
+  'agents.hit.more': { one: '{count} more match', other: '{count} more matches' },
 
   'startup.title': 'Sessions restored: {n}',
   'startup.tabs': { one: 'They hold {count} agent tab.', other: 'They hold {count} agent tabs.' },

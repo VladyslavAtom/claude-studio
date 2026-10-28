@@ -104,6 +104,8 @@ export const CHANNELS = {
   },
   agent: {
     listExternalSessions: 'agent:listExternalSessions',
+    /** full-text search inside the conversations the listing returned */
+    searchConversations: 'agent:searchConversations',
     serviceAsk: 'agent:serviceAsk',
     serviceWarmUp: 'agent:serviceWarmUp',
     serviceAlive: 'agent:serviceAlive',

@@ -4,7 +4,7 @@ export const modals: ModalsArea = {
   'agents.title': 'Беседы агентов в проекте {project}',
   'agents.hint':
     'Всё, что агенты записали для каталогов этого проекта и его worktree — включая запуски из обычного терминала. Помеченные уже открыты или лежат в истории приложения.',
-  'agents.filter': 'Фильтр по названию или пути',
+  'agents.filter': 'Поиск по названию, пути и тексту бесед',
   'agents.onlyNew': 'Только новые',
   'agents.loading': 'Читаю хранилища агентов…',
   'agents.none': 'Ничего не найдено',
@@ -15,6 +15,15 @@ export const modals: ModalsArea = {
   'agents.open': 'Открыть',
   'agents.open.title': 'Открыть беседу «{title}» во вкладке',
   'agents.shown': '{shown} из {total}',
+  'agents.searching': 'Ищу в тексте бесед…',
+  'agents.hit.user': 'вы',
+  'agents.hit.agent': 'агент',
+  'agents.hit.more': {
+    one: 'ещё {count} совпадение',
+    few: 'ещё {count} совпадения',
+    many: 'ещё {count} совпадений',
+    other: 'ещё {count} совпадения',
+  },
 
   'startup.title': 'Восстановлено сессий: {n}',
   'startup.tabs': {

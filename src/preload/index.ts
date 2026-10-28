@@ -15,6 +15,8 @@ import type {
   DiffMode,
   ExternalSession,
   ExternalSessionQuery,
+  ConversationHits,
+  ConversationRef,
   FileContent,
   FileDiffStat,
   GitOpResult,
@@ -210,6 +212,8 @@ const api = {
   agents: {
     listExternalSessions: (projectPath: string, queries: ExternalSessionQuery[]): Promise<ExternalSession[]> =>
       ipcRenderer.invoke(CHANNELS.agent.listExternalSessions, projectPath, queries),
+    searchConversations: (refs: ConversationRef[], query: string): Promise<ConversationHits[]> =>
+      ipcRenderer.invoke(CHANNELS.agent.searchConversations, refs, query),
     serviceAsk: (
       cfg: ServiceConfig,
       prompt: string,

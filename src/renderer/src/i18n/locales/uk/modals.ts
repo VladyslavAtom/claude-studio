@@ -4,7 +4,7 @@ export const modals: ModalsArea = {
   'agents.title': 'Бесіди агентів у проєкті {project}',
   'agents.hint':
     'Усе, що агенти записали для каталогів цього проєкту та його worktree — разом із запусками зі звичайного термінала. Позначені вже відкриті або лежать в історії застосунку.',
-  'agents.filter': 'Фільтр за назвою або шляхом',
+  'agents.filter': 'Пошук за назвою, шляхом і текстом бесід',
   'agents.onlyNew': 'Лише нові',
   'agents.loading': 'Читаю сховища агентів…',
   'agents.none': 'Нічого не знайдено',
@@ -15,6 +15,15 @@ export const modals: ModalsArea = {
   'agents.open': 'Відкрити',
   'agents.open.title': 'Відкрити бесіду «{title}» у вкладці',
   'agents.shown': '{shown} з {total}',
+  'agents.searching': 'Шукаю в тексті бесід…',
+  'agents.hit.user': 'ви',
+  'agents.hit.agent': 'агент',
+  'agents.hit.more': {
+    one: 'ще {count} збіг',
+    few: 'ще {count} збіги',
+    many: 'ще {count} збігів',
+    other: 'ще {count} збігу',
+  },
 
   'startup.title': 'Відновлено сесій: {n}',
   'startup.tabs': {

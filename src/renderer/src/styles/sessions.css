@@ -220,6 +220,34 @@
   align-items: center;
   overflow: hidden;
 }
+/* where a full-text search found the query: one line per place, the speaker first */
+.ext-hits {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ext-hit {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  min-width: 0;
+}
+.ext-hit .who {
+  flex: none;
+  color: var(--fg-faint);
+}
+.ext-hit .what {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ext-hit mark {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--warn) 30%, transparent);
+  border-radius: 2px;
+}
 .ext-meta .badge {
   font-size: 10px;
   padding: 1px 6px;

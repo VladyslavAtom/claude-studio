@@ -1,9 +1,10 @@
 import { ipcMain } from 'electron'
 import { CHANNELS } from '../../shared/channels'
-import type { AgentToolResult, ExternalSessionQuery, ServiceConfig } from '../../shared/types'
+import type { AgentToolResult, ConversationRef, ExternalSessionQuery, ServiceConfig } from '../../shared/types'
 import { hookPaths, takeHookReport } from '../agentHooks'
 import { replyToolRequest } from '../agentTools'
 import { agentActivity, listExternalSessions, sessionExists, sessionTitle } from '../agentSessions'
+import { searchConversations } from '../conversationSearch'
 import { serviceAlive, serviceAsk, serviceWarmUp, shutdownService } from '../serviceAgent'
 
 const CH = CHANNELS.agent
@@ -12,6 +13,9 @@ const CH = CHANNELS.agent
 export function register(): void {
   ipcMain.handle(CH.listExternalSessions, (_e, projectPath: string, queries: ExternalSessionQuery[]) =>
     listExternalSessions(projectPath, queries),
+  )
+  ipcMain.handle(CH.searchConversations, (_e, refs: ConversationRef[], query: string) =>
+    searchConversations(refs, query),
   )
   ipcMain.handle(CH.serviceAsk, (_e, cfg: ServiceConfig, prompt: string, payload: string, timeoutMs?: number) =>
     serviceAsk(cfg, prompt, payload, timeoutMs),
