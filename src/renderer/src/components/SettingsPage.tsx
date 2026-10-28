@@ -501,7 +501,7 @@ export default function SettingsPage({ settings, initialTab, onClose, onSave }: 
                       <span>{t('settings.env.label')}</span>
                       <textarea
                         rows={4}
-                        placeholder="CLAUDE_CONFIG_DIR=/home/bv/.claude-1"
+                        placeholder="CLAUDE_CONFIG_DIR=/path/to/.claude-work"
                         {...rawField(`${selected.id}:env`, formatEnv(selected.env), (text) =>
                           patch(selected.id, { env: parseEnv(text) }),
                         )}

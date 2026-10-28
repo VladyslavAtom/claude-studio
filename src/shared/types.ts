@@ -33,7 +33,7 @@ export interface AgentDef {
   sessionSource: SessionSource
   /** the user's own free-form arguments, added both on a fresh run and on a resume */
   extraArgs: string[]
-  /** extra env for this agent, e.g. CLAUDE_CONFIG_DIR=/home/bv/.claude-1 */
+  /** extra env for this agent, e.g. CLAUDE_CONFIG_DIR=/path/to/.claude-work */
   env: Record<string, string>
   color: string
   enabled: boolean

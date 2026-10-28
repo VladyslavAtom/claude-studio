@@ -1043,3 +1043,7 @@ The old tab listed each conflict as two `<pre>` blocks with Take / Keep both: no
 ## 2026-10-28 — Conversation search reads the journals on demand, without an index
 
 Full-text search in the agents dialog scans the project's conversation files at query time. An index (SQLite FTS, a cache of extracted text) was not built: one project's conversations measured 80 MB and scan in 340 ms with a raw-line prefilter, while an index would need its own invalidation for journals that grow on every turn. Revisit if a project's store grows past what scans within a second. Scope is the conversations the dialog already lists, not every profile on the machine: a whole profile (1.4 GB) took 10 s.
+
+## 2026-10-28 — The merge tab's base goes through temp files
+
+The 2026-10-27 entry re-merged the stages with `git merge-file --diff3 --object-id` to avoid temp files. In a linked worktree, where every session lives, git 2.53 aborts on it with «BUG: repository.c:171: cannot reinitialize an already-initialized object directory» (exit 134), so the result pane started every conflict empty. The stages are now read with `git show :N:./path`, written to a temp directory and merged there; `tests/conflictInfo.test.ts` covers the linked worktree.

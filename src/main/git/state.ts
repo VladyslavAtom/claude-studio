@@ -1,5 +1,6 @@
 /** Unfinished repository operations: conflicts, continuing, and the shared runner for merge-like commands. */
 import { promises as fs } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ConflictInfo, ConflictSide, GitOpResult, MessageParams, OpResult, RepoState } from '../../shared/types'
 import { fail, git, lastLine, literal, literals, refuse } from './exec'
@@ -186,12 +187,30 @@ export async function conflictInfo(cwd: string, file: string): Promise<ConflictI
     if (state.operation !== 'merge') delete theirs.ref
   }
 
-  // `:N:./path` is a revision, not a pathspec: no glob to escape, and `./` keeps it relative to
-  // cwd. git merge-file exits with the number of conflicts, so a positive code is still output.
-  const stage = (n: number): string => `:${n}:./${file}`
-  const merged = await git(cwd, ['merge-file', '-p', '--diff3', '--object-id', stage(2), stage(1), stage(3)])
-  const diff3 = merged.code >= 0 && merged.code < 128 && !merged.problem ? merged.stdout : undefined
-  return { operation: state.operation, ours, theirs, ...(diff3 ? { diff3 } : {}) }
+  const diff3 = await mergeStages(cwd, file)
+  return { operation: state.operation, ours, theirs, ...(diff3 !== undefined ? { diff3 } : {}) }
+}
+
+/**
+ * The three index stages merged again with diff3 markers. Through temp files, not
+ * `merge-file --object-id`: in a linked worktree git 2.53 aborts on that with «BUG:
+ * repository.c:171: cannot reinitialize an already-initialized object directory», and every
+ * session lives in a linked worktree.
+ */
+async function mergeStages(cwd: string, file: string): Promise<string | undefined> {
+  // `:N:./path` is a revision, not a pathspec: no glob to escape, and `./` keeps it relative to cwd
+  const stages = await Promise.all([2, 1, 3].map((n) => git(cwd, ['show', `:${n}:./${file}`])))
+  if (stages.some((s) => s.code !== 0)) return undefined
+  const dir = await fs.mkdtemp(join(tmpdir(), 'cs-merge-'))
+  try {
+    const paths = ['ours', 'base', 'theirs'].map((name) => join(dir, name))
+    await Promise.all(paths.map((p, i) => fs.writeFile(p, stages[i]?.stdout ?? '')))
+    // git merge-file exits with the number of conflicts, so a positive code is still output
+    const merged = await git(dir, ['merge-file', '-p', '--diff3', ...paths])
+    return merged.code >= 0 && merged.code < 128 && !merged.problem ? merged.stdout : undefined
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true })
+  }
 }
 
 export async function markResolved(cwd: string, files: string[]): Promise<OpResult> {
