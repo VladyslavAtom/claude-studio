@@ -251,12 +251,16 @@
   <section id="install">
     <div class="kicker">Install</div>
     <h2>Build from source</h2>
-    <p class="sub">No release binaries yet. Five commands on Linux, plus an optional AppImage.</p>
+    <p class="sub">No release binaries yet: one command on Linux builds it from source, or the same steps by hand.</p>
     <div class="req">
       <div class="card"><h3>Linux</h3><p>X11 or Wayland. Developed on Ubuntu 24.04 with KDE Plasma.</p></div>
       <div class="card"><h3>Node.js 22.5+, git</h3><p><code>gh</code> for pull requests.</p></div>
       <div class="card"><h3>Claude Code or Codex</h3><p>On <code>PATH</code> and signed in. The app starts them; it does not bundle them.</p></div>
     </div>
+    <h3>One command</h3>
+    <div class="oneline"><pre><code>curl -fsSL https://raw.githubusercontent.com/VladyslavAtom/claude-studio/main/install.sh | bash</code></pre><button type="button" class="copy" data-copy="curl -fsSL https://raw.githubusercontent.com/VladyslavAtom/claude-studio/main/install.sh | bash">Copy</button></div>
+    <p class="note">Clones into <code>~/.local/share/claude-studio</code>, installs the dependencies, builds, adds <code>claude-studio</code> to <code>~/.local/bin</code> and the application menu, and starts the app. Run it again to update. <a href="https://github.com/VladyslavAtom/claude-studio/blob/main/install.sh">Read the script</a> first if you like.</p>
+    <h3>By hand</h3>
 <pre><code>git clone https://github.com/VladyslavAtom/claude-studio
 cd claude-studio
 npm install

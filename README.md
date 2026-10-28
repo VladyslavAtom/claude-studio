@@ -34,6 +34,14 @@ An agent in its own session, with the task it was started with. The same session
 
 ## Running
 
+One command on Linux: clones into `~/.local/share/claude-studio`, builds, adds `claude-studio` to `~/.local/bin` and the application menu, starts the app. Run it again to update.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/VladyslavAtom/claude-studio/main/install.sh | bash
+```
+
+By hand, from a clone:
+
 ```bash
 npm install
 npm run rebuild              # node-pty against the Electron ABI

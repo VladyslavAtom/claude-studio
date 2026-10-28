@@ -252,12 +252,16 @@
   <section id="install">
     <div class="kicker">Встановлення</div>
     <h2>Збірка з коду</h2>
-    <p class="sub">Готових збірок поки немає. П'ять команд на Linux і, за бажанням, AppImage.</p>
+    <p class="sub">Готових збірок поки немає: одна команда на Linux збирає застосунок із коду, або ті самі кроки вручну.</p>
     <div class="req">
       <div class="card"><h3>Linux</h3><p>X11 або Wayland. Розробляється на Ubuntu 24.04 з KDE Plasma.</p></div>
       <div class="card"><h3>Node.js 22.5+, git</h3><p><code>gh</code> для PR.</p></div>
       <div class="card"><h3>Claude Code або Codex</h3><p>У <code>PATH</code> і з виконаним входом. Застосунок запускає їх, але не містить.</p></div>
     </div>
+    <h3>Одна команда</h3>
+    <div class="oneline"><pre><code>curl -fsSL https://raw.githubusercontent.com/VladyslavAtom/claude-studio/main/install.sh | bash</code></pre><button type="button" class="copy" data-copy="curl -fsSL https://raw.githubusercontent.com/VladyslavAtom/claude-studio/main/install.sh | bash" data-done="Скопійовано">Копіювати</button></div>
+    <p class="note">Клонує в <code>~/.local/share/claude-studio</code>, встановлює залежності, збирає, додає <code>claude-studio</code> у <code>~/.local/bin</code> і меню застосунків та запускає застосунок. Повторний запуск оновлює. Скрипт можна спершу <a href="https://github.com/VladyslavAtom/claude-studio/blob/main/install.sh">прочитати</a>.</p>
+    <h3>Вручну</h3>
 <pre><code>git clone https://github.com/VladyslavAtom/claude-studio
 cd claude-studio
 npm install

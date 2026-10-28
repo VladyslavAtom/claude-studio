@@ -36,3 +36,14 @@
     if (e.key === 'ArrowRight') show(at + 1)
   })
 })()
+
+// The install command copies with one click; the label says so for a moment.
+document.querySelectorAll('[data-copy]').forEach((b) =>
+  b.addEventListener('click', () => {
+    const label = b.textContent
+    navigator.clipboard?.writeText(b.dataset.copy).then(() => {
+      b.textContent = b.dataset.done || 'Copied'
+      setTimeout(() => (b.textContent = label), 1500)
+    })
+  }),
+)
