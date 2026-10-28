@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Studio</title>
+<meta name="description" content="Десктопний застосунок для команди агентів Claude Code пліч-о-пліч: git worktree на кожну сесію, головний агент, що відкриває сесії для частин задачі, а diff, merge та історія в одному вікні.">
+<meta property="og:title" content="Claude Studio">
+<meta property="og:description" content="Команда агентів Claude Code пліч-о-пліч у git worktree.">
+<meta property="og:image" content="https://vladyslavatom.github.io/claude-studio/img/og.jpg">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="uk_UA">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="color-scheme" content="dark light">
+<link rel="alternate" hreflang="en" href="https://vladyslavatom.github.io/claude-studio/">
+<link rel="alternate" hreflang="uk" href="https://vladyslavatom.github.io/claude-studio/uk/">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#">
+      <svg class="logo" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="#2f6fd0"/><circle cx="8" cy="9" r="2" fill="#fff"/><circle cx="16" cy="9" r="2" fill="#fff" opacity=".75"/><circle cx="12" cy="16" r="2" fill="#fff" opacity=".55"/></svg>
+      Claude Studio
+    </a>
+    <nav>
+      <a href="#how">Як це працює</a>
+      <a href="#features">Можливості</a>
+      <a href="#faq">Питання</a>
+      <a href="#install">Встановлення</a>
+      <a class="gh" href="https://github.com/VladyslavAtom/claude-studio">GitHub</a>
+      <span class="lang"><a href="../" lang="en" hreflang="en">EN</a><a href="./" aria-current="page" lang="uk">UK</a></span>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div class="pill"><span><b>v0.1.0</b></span><span>Linux</span><span>збірка з коду</span><span>MIT</span></div>
+    <h1>Команда <span class="grad">агентів Claude Code</span> пліч&#8209;о&#8209;пліч у git worktree</h1>
+    <p class="lead">Claude Studio - десктопний застосунок для паралельної роботи агентів. Відкрийте репозиторій, запустіть сесію, і головний агент роздасть частини задачі окремим сесіям: кожна на своїй гілці, у кожної одна справа, усі в одному вікні.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Зібрати з коду</a>
+      <a class="btn" href="https://github.com/VladyslavAtom/claude-studio">Відкрити на GitHub</a>
+    </div>
+    <div class="frame"><a href="../img/hero.webp"><img src="../img/hero.webp" width="1560" height="960" alt="Головна сесія з трьома дочірніми на бічній панелі та diff однієї з них"></a></div>
+    <p class="cap">Демо-репозиторій. Головна сесія і три сесії, які вона відкрила, кожна на своїй гілці; праворуч - що змінила одна з них.</p>
+  </div>
+
+  <section id="how">
+    <div class="kicker">Як це працює</div>
+    <h2>Від однієї задачі до команди за чотири кроки</h2>
+    <p class="sub">Застосунок показує і поєднує справжні сесії Claude Code. Агенти працюють так само, як у терміналі; застосунок дає їм гілки, місце на екрані і спосіб передавати роботу одне одному.</p>
+
+    <div class="steps">
+      <div class="step solo">
+        <div>
+          <div class="num">1</div>
+          <h3>Відкрийте свій репозиторій</h3>
+          <p>Кожен репозиторій - вкладка проєкту з власним кольором, тож ви завжди знаєте, де ви. Відкрийте локальну теку або клонуйте за URL; тека всередині репозиторію прив'язується до його кореня.</p>
+        </div>
+      </div>
+
+      <div class="step flip">
+        <div>
+          <div class="num">2</div>
+          <h3>Запустіть сесію із задачею</h3>
+          <p>Сесія - це гілка <code>claude/&lt;slug&gt;</code> у <code>&lt;repo&gt;/.worktrees/&lt;slug&gt;</code>, прихована від <code>git status</code> через <code>.git/info/exclude</code>. Claude стартує в ній уже з вашою задачею, у справжньому терміналі, з вашим CLI, налаштуваннями і підпискою.</p>
+          <p>Потрібен агент у самій теці проєкту? Сесія може працювати в ній замість окремого worktree.</p>
+        </div>
+        <div class="frame"><a href="../img/agent.webp"><img src="../img/agent.webp" width="1717" height="1056" alt="Агент Claude працює у своїй сесії" loading="lazy"></a></div>
+      </div>
+
+      <div class="step">
+        <div>
+          <div class="num">3</div>
+          <h3>Попросіть головного агента розділити роботу</h3>
+          <p>Кожна вкладка Claude має чотири інструменти. Попросіть розділити роботу звичайними словами:</p>
+          <div class="prompt">Розбий це на API платежів, форму оплати та e2e-тести. Відкрий сесію для кожної частини, стеж за ними і скажи, коли вони будуть готові до merge.</div>
+          <p>Головний агент викликає <code>open_session</code> для кожної частини: видима сесія на гілці, відгалуженій від його власної, з Claude, який уже має підзадачу. Стан він перевіряє через <code>list_sessions</code> (статус вкладки, незакомічені файли), доручення надсилає через <code>send_to_session</code>, закриває через <code>close_session</code>.</p>
+          <p style="font-size:14px;color:var(--fg-faint)">API, UI і тести - лише приклад: ділиться так, як ви попросите. До 3 рівнів вкладеності, до 8 відкритих дочірніх сесій на одну.</p>
+        </div>
+        <div class="team" aria-label="Головна сесія і три дочірні">
+          <div class="node lead-node">
+            <div class="t"><span class="dot"></span>Checkout redesign</div>
+            <div class="b">claude/checkout-redesign · головна</div>
+          </div>
+          <div class="kids">
+            <div class="node"><div class="t"><span class="dot"></span>Payments API</div><div class="b">claude/payments-api</div><div class="role">PaymentIntents, webhook</div></div>
+            <div class="node"><div class="t"><span class="dot wait"></span>Checkout form</div><div class="b">claude/checkout-form</div><div class="role">валідація, стани помилок</div></div>
+            <div class="node"><div class="t"><span class="dot idle"></span>E2E tests</div><div class="b">claude/e2e-tests</div><div class="role">успішна оплата, відхилена картка</div></div>
+          </div>
+          <div class="foot"><span>у кожної дочірньої: свій worktree, своя гілка, своя розмова</span><span>відгалужені від гілки головної</span></div>
+        </div>
+      </div>
+
+      <div class="step flip">
+        <div>
+          <div class="num">4</div>
+          <h3>Перегляньте, зробіть merge, закрийте</h3>
+          <p>Перегляньте diff кожної дочірньої сесії, зробіть merge її гілки в головну з меню гілки, потім закрийте її. Дочірня сесія, чиїх комітів ще немає в головній, не видаляється: закриття відмовить або залишить її worktree і гілку на диску.</p>
+          <p>Далі гілка головної сесії йде звичним шляхом: push, PR через <code>gh</code> або merge у <code>main</code>.</p>
+        </div>
+        <div class="frame"><a href="../img/merge.webp"><img src="../img/merge.webp" width="930" height="380" alt="Трибічний merge: ваші зміни, результат, вхідні" loading="lazy"></a></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="split">
+      <div>
+        <div class="kicker">Перегляд</div>
+        <h2>Бачите точно, що зробив кожен агент</h2>
+        <ul class="ticks">
+          <li><b>Diff пліч-о-пліч</b> у стилі IDE JetBrains: правка на місці, відкат однієї зміни кліком, перехід між відмінностями, згортання незміненого.</li>
+          <li><b>Панель змін</b> списком або деревом, прапорці на файли і теки, commit із повідомленням, яке модель пише за diff.</li>
+          <li><b>Трибічний merge</b> для конфліктів: ваше, результат і вхідне, стрілка на кожен конфлікт і результат, який можна правити вручну.</li>
+          <li><b>Робота з гілками</b> не виходячи з вікна: push, pull з вибором стратегії, rebase, merge, PR.</li>
+        </ul>
+      </div>
+      <div class="frame"><a href="../img/diff.webp"><img src="../img/diff.webp" width="1260" height="680" alt="Diff пліч-о-пліч поруч із панеллю змін" loading="lazy"></a></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="split flip">
+      <div>
+        <div class="kicker">Історія</div>
+        <h2>Кожну розмову можна знайти</h2>
+        <ul class="ticks">
+          <li><b>Усі розмови Claude і Codex</b>, записані для тек проєкту, зокрема розпочаті поза застосунком, у звичайному терміналі.</li>
+          <li><b>Повнотекстовий пошук</b> по сказаному: ваші запити й відповіді агентів, зі збігами, підсвіченими в рядках.</li>
+          <li><b>Закриті сесії</b> лишаються в історії сесій, і їх можна повернути; <b>Відкрити</b> продовжує будь-яку розмову у вкладці.</li>
+        </ul>
+      </div>
+      <div class="frame"><a href="../img/history.webp"><img src="../img/history.webp" width="840" height="660" alt="Діалог розмов агентів: пошук webhook, збіги підсвічено" loading="lazy"></a></div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="kicker">Деталі</div>
+    <h2>Для довгих днів із багатьма агентами</h2>
+    <p class="sub">Дрібниці, від яких залежить, чи вийде тримати вісім агентів у роботі й не загубити жодного.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></div>
+        <h3>Статусам можна вірити</h3>
+        <p>Працює, чекає на вас, простоює, спить: вкладки Claude Code повідомляють це самі через hooks, а потік виводу - лише запасний варіант. Сповіщення і звук, коли агент вас чекає.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></div>
+        <h3>Сплячі вкладки</h3>
+        <p>Агент, що простоює N хвилин, зупиняється і зберігає розмову та останній екран. Один клік будить його там, де він зупинився: пам'ять дістається тим агентам, що працюють.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <h3>Своя розмова в кожній вкладці</h3>
+        <p>Кожна вкладка Claude отримує свій id сесії, Codex повідомляє свій thread. Два агенти в одній теці ніколи не продовжать розмову одне одного, а після перезапуску кожна вкладка продовжує свою (вкладка Codex - якщо вже відповіла хоч раз).</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+        <h3>Справжні термінали</h3>
+        <p>xterm.js з WebGL, пошук, історія прокрутки зберігається між перемиканнями. Шляхи, які друкує агент, - посилання, що відкривають файл на потрібному рядку.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg></div>
+        <h3>Стан не губиться</h3>
+        <p>Проєкти, сесії й вкладки повертаються після перезапуску. Файл стану пишеться атомарно, з резервними копіями, і ніколи не перезаписується мовчки.</p>
+      </div>
+      <div class="card">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div>
+        <h3>Темна, світла, три мови</h3>
+        <p>English, Українська, Русский. Тема й мова йдуть за системою, доки ви не оберете. Терміни git не перекладаються.</p>
+      </div>
+      <div class="card wide">
+        <div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <h3>Файли й редактор там, де працює агент</h3>
+          <p>Дерево файлів у кожній сесії зі звичним контекстним меню: створити, перейменувати, перемістити, дублювати, скопіювати шлях, відкрити в терміналі, показати diff чи історію файлу, відкотити його. Редактор CodeMirror зберігає на паузі й підхоплює те, що агент тим часом записав.</p>
+        </div>
+        <div class="frame"><a href="../img/filemenu.webp"><img src="../img/filemenu.webp" width="880" height="610" alt="Контекстне меню дерева файлів з відкритим підменю Git" loading="lazy"></a></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="split">
+      <div>
+        <div class="kicker">Налаштування</div>
+        <h2>Ваші агенти, як вам зручно</h2>
+        <ul class="ticks">
+          <li><b>Агенти - це пресети:</b> Claude, Codex або будь-який доданий вами CLI. Команда, аргументи з <code>{session}</code> і <code>{name}</code>, оточення, колір і порядок.</li>
+          <li><b>Кілька акаунтів:</b> оточення на кожен пресет, наприклад <code>CLAUDE_CONFIG_DIR</code> для другого профілю Claude.</li>
+          <li><b>Сон, сповіщення, повідомлення комітів, git і редактор</b> мають кожен свою сторінку.</li>
+        </ul>
+      </div>
+      <div class="frame"><a href="../img/settings.webp"><img src="../img/settings.webp" width="1240" height="560" alt="Налаштування: пресети агентів" loading="lazy"></a></div>
+    </div>
+  </section>
+
+  <section id="faq" class="faq">
+    <div class="kicker">Питання</div>
+    <h2>Часті питання</h2>
+    <details>
+      <summary>Це безкоштовно?</summary>
+      <p>Так, ліцензія MIT. Потрібна власна підписка Claude Code (або Codex) чи доступ до API: застосунок запускає CLI, які у вас уже є, і не містить та не перепродає їх.</p>
+    </details>
+    <details>
+      <summary><span>Чому не tmux і <code>git worktree</code>?</span></summary>
+      <p>Це і є основа, і вона працює. Що додає застосунок: worktree і гілка для кожної сесії створюються за вас, id розмови на кожну вкладку, щоб агенти не продовжували розмови одне одного, статуси з hooks Claude Code замість стеження за панелями, присипляння і пробудження агентів, diff, commit і merge для кожного worktree, а ще агенти, що відкривають видимі сесії одне для одного.</p>
+    </details>
+    <details>
+      <summary>Дочірні сесії працюють із Codex?</summary>
+      <p>Codex добре працює як вкладка, зі своєю розмовою, історією і пошуком. Чотири інструменти сесій є лише у вкладок Claude, тож поділ роботи веде Claude.</p>
+    </details>
+    <details>
+      <summary>Що він надсилає в мережу?</summary>
+      <p>Сам застосунок нічого не надсилає: без акаунта, телеметрії й автооновлення. Агенти, <code>git</code>, <code>gh</code> і генерація повідомлення коміту працюють через ваші власні CLI та підписки. Власний стан - локальний файл <code>~/.config/claude-studio/state.json</code>.</p>
+    </details>
+    <details>
+      <summary>Що він змінює в моєму репозиторії?</summary>
+      <p>Worktree сесій лежать у <code>&lt;repo&gt;/.worktrees/</code>, що додається до <code>.git/info/exclude</code>, а гілки називаються <code>claude/&lt;slug&gt;</code>. Закриття сесії видаляє чистий worktree і гілку, у якій немає нічого поза базовою; решта зберігається, якщо ви не скажете інакше.</p>
+    </details>
+    <details>
+      <summary>macOS? Windows?</summary>
+      <p>Розробляється і використовується на Linux (Ubuntu 24.04, KDE Plasma, X11 і Wayland). У коді немає викликів лише для Linux, і збірка має цілі dmg/zip, але на macOS його ще ніколи не запускали. Збірки для Windows немає.</p>
+    </details>
+    <details>
+      <summary>Це зробила Anthropic?</summary>
+      <p>Ні. Це незалежний open-source проєкт, не пов'язаний з Anthropic чи OpenAI.</p>
+    </details>
+  </section>
+
+  <section id="install">
+    <div class="kicker">Встановлення</div>
+    <h2>Збірка з коду</h2>
+    <p class="sub">Готових збірок поки немає. П'ять команд на Linux і, за бажанням, AppImage.</p>
+    <div class="req">
+      <div class="card"><h3>Linux</h3><p>X11 або Wayland. Розробляється на Ubuntu 24.04 з KDE Plasma.</p></div>
+      <div class="card"><h3>Node.js 22.5+, git</h3><p><code>gh</code> для PR.</p></div>
+      <div class="card"><h3>Claude Code або Codex</h3><p>У <code>PATH</code> і з виконаним входом. Застосунок запускає їх, але не містить.</p></div>
+    </div>
+<pre><code>git clone https://github.com/VladyslavAtom/claude-studio
+cd claude-studio
+npm install
+npm run rebuild      <span class="c"># node-pty під ABI Electron</span>
+./claude-studio.sh   <span class="c"># зібрати за потреби й запустити; --help для решти</span>
+npm run dist         <span class="c"># або зібрати AppImage у release/</span></code></pre>
+    <p class="note">Ubuntu 24.04+ обмежує непривілейовані user namespaces через AppArmor, тому скрипти встановлюють <code>ELECTRON_DISABLE_SANDBOX=1</code>.</p>
+    <div class="status"><b>Статус: 0.1.0.</b> Особистий інструмент, опублікований на випадок, якщо комусь знадобиться: один розробник, один Linux-десктоп. Issues і патчі вітаються на <a href="https://github.com/VladyslavAtom/claude-studio/issues">GitHub</a>.</div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>Claude Studio · MIT · не пов'язано з Anthropic чи OpenAI</span>
+    <span>
+      <a href="https://github.com/VladyslavAtom/claude-studio">GitHub</a>
+      <a href="https://github.com/VladyslavAtom/claude-studio/blob/main/docs/architecture.md">Архітектура</a>
+      <a href="https://github.com/VladyslavAtom/claude-studio/blob/main/docs/decisions.md">Рішення</a>
+    </span>
+  </div>
+</footer>
+<dialog class="zoom" aria-label="Знімок екрана" data-hint="клацніть по зображенню для повного розміру">
+  <div class="stage"><img alt=""></div>
+  <p></p>
+  <button class="close" type="button" aria-label="Закрити">&times;</button>
+  <button class="prev" type="button" aria-label="Попередній знімок">&lsaquo;</button>
+  <button class="next" type="button" aria-label="Наступний знімок">&rsaquo;</button>
+</dialog>
+<script src="../zoom.js"></script>
+</body>
+</html>
