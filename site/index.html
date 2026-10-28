@@ -50,22 +50,29 @@
     <p class="sub">The app shows and connects real Claude Code sessions. The agents keep doing what they do in a terminal; the app gives them branches, a place on screen and a way to hand work to each other.</p>
 
     <div class="steps">
-      <div class="step solo">
+      <div class="step">
         <div>
           <div class="num">1</div>
-          <h3>Open your repository</h3>
-          <p>Every repository is a project tab with a colour of its own, so you always know where you are. Open a local folder or clone one by URL; a folder inside a repository binds to its root.</p>
+          <h3>Open a project</h3>
+          <p>A project is a folder, and every project is a tab with a colour of its own. It does not have to be one repository:</p>
+          <ul class="ticks">
+            <li><b>One repository.</b> Each session gets its own worktree and branch. A folder inside a repository opens the whole repository.</li>
+            <li><b>A folder with several repositories</b>, say <code>backend/</code>, <code>frontend/</code> and <code>infra/</code> side by side. Sessions then work in that folder itself, without worktrees, and an agent can reach every repository in it.</li>
+          </ul>
+          <p>Open a local folder or clone by URL. The branch menu in the top bar searches branches and runs pull, push and pull requests for the project.</p>
         </div>
+        <div class="frame tall"><a href="img/gitmenu.webp"><img src="img/gitmenu.webp" width="400" height="680" alt="The project branch menu: search, pull, push, pull request, recent and all branches" loading="lazy"></a></div>
       </div>
 
       <div class="step flip">
         <div>
           <div class="num">2</div>
           <h3>Start a session with a task</h3>
+          <p>Give it a name, pick the agent and write the task. The branch name is made from the name; it starts from the current branch, or from any branch, tag or commit you pick from the list.</p>
           <p>A session is a branch <code>claude/&lt;slug&gt;</code> in <code>&lt;repo&gt;/.worktrees/&lt;slug&gt;</code>, kept out of <code>git status</code> through <code>.git/info/exclude</code>. Claude starts in it already holding your task, in a real terminal, with your own CLI, settings and subscription.</p>
           <p>Need the agent in the project folder itself? A session can share it instead of getting a worktree.</p>
         </div>
-        <div class="frame"><a href="img/agent.webp"><img src="img/agent.webp" width="1717" height="1056" alt="A Claude agent working in its session" loading="lazy"></a></div>
+        <div class="frame tall"><a href="img/newsession.webp"><img src="img/newsession.webp" width="560" height="730" alt="New session dialog: name, agent, task, branch and the branch to start from" loading="lazy"></a></div>
       </div>
 
       <div class="step">
@@ -73,9 +80,9 @@
           <div class="num">3</div>
           <h3>Ask the lead to split the work</h3>
           <p>Every Claude tab carries four tools. Ask for a split in plain words:</p>
-          <div class="prompt">Split this into the payments API, the checkout form and e2e tests. Open a session for each, check on them, and tell me when they are ready to merge.</div>
+          <div class="prompt">Split the checkout into backend, frontend and tests: the payments API, the checkout form, e2e tests. Open a session for each, check on them, and tell me when they are ready to merge.</div>
           <p>The lead calls <code>open_session</code> once per part: a visible session on a branch forked from its own, with a Claude already holding the sub-task. It checks on them with <code>list_sessions</code> (tab state, uncommitted files), sends follow-ups with <code>send_to_session</code>, and closes them with <code>close_session</code>.</p>
-          <p style="font-size:14px;color:var(--fg-faint)">API, UI and tests is an example: the split is whatever you ask for. Up to 3 levels deep, 8 open children per session.</p>
+          <p style="font-size:14px;color:var(--fg-faint)">Backend, frontend and tests is an example: the split is whatever you ask for. Up to 3 levels deep, 8 open children per session.</p>
         </div>
         <div class="team" aria-label="A lead session and three child sessions">
           <div class="node lead-node">
@@ -83,9 +90,9 @@
             <div class="b">claude/checkout-redesign · lead</div>
           </div>
           <div class="kids">
-            <div class="node"><div class="t"><span class="dot"></span>Payments API</div><div class="b">claude/payments-api</div><div class="role">PaymentIntents, webhook</div></div>
-            <div class="node"><div class="t"><span class="dot wait"></span>Checkout form</div><div class="b">claude/checkout-form</div><div class="role">validation, error states</div></div>
-            <div class="node"><div class="t"><span class="dot idle"></span>E2E tests</div><div class="b">claude/e2e-tests</div><div class="role">happy path, declined card</div></div>
+            <div class="node"><div class="t"><span class="dot"></span>Payments API</div><div class="b">claude/payments-api</div><div class="role">backend: PaymentIntents, webhook</div></div>
+            <div class="node"><div class="t"><span class="dot wait"></span>Checkout form</div><div class="b">claude/checkout-form</div><div class="role">frontend: validation, errors</div></div>
+            <div class="node"><div class="t"><span class="dot idle"></span>E2E tests</div><div class="b">claude/e2e-tests</div><div class="role">tests: happy path, declined card</div></div>
           </div>
           <div class="foot"><span>each child: own worktree, own branch, own conversation</span><span>forked from the lead's branch</span></div>
         </div>
@@ -138,44 +145,49 @@
     <div class="kicker">Details</div>
     <h2>Made for long days with many agents</h2>
     <p class="sub">The small things that decide whether you can keep eight agents busy without losing track of any of them.</p>
-    <div class="grid">
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></div>
-        <h3>Statuses you can trust</h3>
-        <p>Working, waiting for you, idle, asleep: Claude Code tabs report it themselves through hooks, and the output stream is only the fallback. A notification and a sound when one needs you.</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></div>
-        <h3>Sleeping tabs</h3>
-        <p>An agent idle for N minutes is stopped and keeps its conversation and its last screen. One click wakes it where it left off: memory goes to the agents that work.</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-        <h3>A conversation per tab</h3>
-        <p>Each Claude tab gets its own session id, Codex reports its thread. Two agents in one folder never resume each other, and after a restart each tab resumes its own conversation (a Codex tab once it has answered at least once).</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
-        <h3>Real terminals</h3>
-        <p>xterm.js with WebGL, search, scrollback kept across switches. Paths an agent prints are links that open the file at that line.</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg></div>
-        <h3>State survives</h3>
-        <p>Projects, sessions and tabs come back after a restart. The state file is written atomically, with backups, and never silently overwritten.</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div>
-        <h3>Dark, light, three languages</h3>
-        <p>English, Українська, Русский. Theme and language follow the system until you choose. git terms are never translated.</p>
-      </div>
-      <div class="card wide">
+    <div class="feats">
+      <div class="feat">
         <div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <h3>Statuses you can trust</h3>
+          <p>Every session and tab shows what its agent is doing: <span class="st run">working</span> <span class="st wait">waiting for you</span> <span class="st idle">idle</span>. Claude Code tabs report it themselves through hooks; watching the output is only the fallback. A notification and a sound when an agent needs you, like the permission prompt here.</p>
+        </div>
+        <div class="frame"><a href="img/status.webp"><img src="img/status.webp" width="1230" height="380" alt="Sessions with status dots; an agent waiting on a permission prompt" loading="lazy"></a></div>
+      </div>
+      <div class="feat flip">
+        <div>
+          <h3>Sleeping tabs</h3>
+          <p>An agent idle for N minutes is stopped to free memory; its conversation and its last screen stay. One click on Wake up and it carries on where it stopped. You can also send a tab to sleep from its menu.</p>
+        </div>
+        <div class="frame"><a href="img/sleep.webp"><img src="img/sleep.webp" width="1230" height="330" alt="An asleep tab keeps its last screen, with a Wake up button" loading="lazy"></a></div>
+      </div>
+      <div class="feat">
+        <div>
+          <h3>Restart without losing anything</h3>
+          <p>Projects, sessions and tabs come back after a restart, and you choose: start every agent now or leave them asleep until clicked.</p>
+          <p>Each tab comes back to <b>its own</b> conversation. Plain <code>claude --continue</code> picks the latest conversation in the folder, so two agents in one folder would both land in the same one; here every tab keeps its own conversation id.</p>
+        </div>
+        <div class="frame"><a href="img/restore.webp"><img src="img/restore.webp" width="620" height="260" alt="Sessions restored: start all of them or leave them asleep" loading="lazy"></a></div>
+      </div>
+      <div class="feat flip">
+        <div>
+          <h3>Real terminals</h3>
+          <p>The agent runs in a real terminal (xterm.js with WebGL), exactly as on its own: your CLI, your settings, your subscription. Search, scrollback kept across switches, and file paths an agent prints open the file at that line.</p>
+        </div>
+        <div class="frame"><a href="img/agent.webp"><img src="img/agent.webp" width="1717" height="1056" alt="A Claude agent working in its session" loading="lazy"></a></div>
+      </div>
+      <div class="feat">
+        <div>
           <h3>Files and editor where the agent works</h3>
           <p>A file tree per session with the context menu you expect: new, rename, move, duplicate, copy path, open in a terminal, show the diff or the history of a file, revert it. A CodeMirror editor that saves on a pause and picks up what an agent wrote meanwhile.</p>
         </div>
         <div class="frame"><a href="img/filemenu.webp"><img src="img/filemenu.webp" width="880" height="610" alt="File tree context menu with the Git submenu open" loading="lazy"></a></div>
+      </div>
+      <div class="feat flip">
+        <div>
+          <h3>Dark, light, three languages</h3>
+          <p>English, Українська, Русский. Theme and language follow the system until you choose. git terms (push, merge, rebase) stay in English in every language.</p>
+        </div>
+        <div class="frame"><a href="img/themes.webp"><img src="img/themes.webp" width="1230" height="570" alt="Light theme with the Ukrainian interface" loading="lazy"></a></div>
       </div>
     </div>
   </section>

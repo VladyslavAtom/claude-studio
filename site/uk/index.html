@@ -51,22 +51,29 @@
     <p class="sub">Застосунок показує і поєднує справжні сесії Claude Code. Агенти працюють так само, як у терміналі; застосунок дає їм гілки, місце на екрані і спосіб передавати роботу одне одному.</p>
 
     <div class="steps">
-      <div class="step solo">
+      <div class="step">
         <div>
           <div class="num">1</div>
-          <h3>Відкрийте свій репозиторій</h3>
-          <p>Кожен репозиторій - вкладка проєкту з власним кольором, тож ви завжди знаєте, де ви. Відкрийте локальну теку або клонуйте за URL; тека всередині репозиторію прив'язується до його кореня.</p>
+          <h3>Відкрийте проєкт</h3>
+          <p>Проєкт - це тека, і кожен проєкт - вкладка з власним кольором. Це не обов'язково один репозиторій:</p>
+          <ul class="ticks">
+            <li><b>Один репозиторій.</b> Кожна сесія отримує свій worktree і гілку. Тека всередині репозиторію відкриває весь репозиторій.</li>
+            <li><b>Тека з кількома репозиторіями</b>, наприклад <code>backend/</code>, <code>frontend/</code> і <code>infra/</code> поруч. Тоді сесії працюють прямо в цій теці, без worktree, і агенту доступні всі репозиторії в ній.</li>
+          </ul>
+          <p>Відкрийте локальну теку або клонуйте за URL. Меню гілок у верхній панелі шукає гілки і робить pull, push та PR для проєкту.</p>
         </div>
+        <div class="frame tall"><a href="../img/gitmenu.webp"><img src="../img/gitmenu.webp" width="400" height="680" alt="Меню гілок проєкту: пошук, pull, push, PR, недавні й усі гілки" loading="lazy"></a></div>
       </div>
 
       <div class="step flip">
         <div>
           <div class="num">2</div>
           <h3>Запустіть сесію із задачею</h3>
+          <p>Дайте назву, оберіть агента і напишіть задачу. Назва гілки складається з назви сесії; гілка починається від поточної або від будь-якої гілки, тегу чи коміту зі списку.</p>
           <p>Сесія - це гілка <code>claude/&lt;slug&gt;</code> у <code>&lt;repo&gt;/.worktrees/&lt;slug&gt;</code>, прихована від <code>git status</code> через <code>.git/info/exclude</code>. Claude стартує в ній уже з вашою задачею, у справжньому терміналі, з вашим CLI, налаштуваннями і підпискою.</p>
           <p>Потрібен агент у самій теці проєкту? Сесія може працювати в ній замість окремого worktree.</p>
         </div>
-        <div class="frame"><a href="../img/agent.webp"><img src="../img/agent.webp" width="1717" height="1056" alt="Агент Claude працює у своїй сесії" loading="lazy"></a></div>
+        <div class="frame tall"><a href="../img/newsession.webp"><img src="../img/newsession.webp" width="560" height="730" alt="Діалог нової сесії: назва, агент, задача, гілка і звідки її почати" loading="lazy"></a></div>
       </div>
 
       <div class="step">
@@ -74,9 +81,9 @@
           <div class="num">3</div>
           <h3>Попросіть головного агента розділити роботу</h3>
           <p>Кожна вкладка Claude має чотири інструменти. Попросіть розділити роботу звичайними словами:</p>
-          <div class="prompt">Розбий це на API платежів, форму оплати та e2e-тести. Відкрий сесію для кожної частини, стеж за ними і скажи, коли вони будуть готові до merge.</div>
+          <div class="prompt">Розбий оплату на бекенд, фронтенд і тести: API платежів, форма оплати, e2e-тести. Відкрий сесію для кожної частини, стеж за ними і скажи, коли вони будуть готові до merge.</div>
           <p>Головний агент викликає <code>open_session</code> для кожної частини: видима сесія на гілці, відгалуженій від його власної, з Claude, який уже має підзадачу. Стан він перевіряє через <code>list_sessions</code> (статус вкладки, незакомічені файли), доручення надсилає через <code>send_to_session</code>, закриває через <code>close_session</code>.</p>
-          <p style="font-size:14px;color:var(--fg-faint)">API, UI і тести - лише приклад: ділиться так, як ви попросите. До 3 рівнів вкладеності, до 8 відкритих дочірніх сесій на одну.</p>
+          <p style="font-size:14px;color:var(--fg-faint)">Бекенд, фронтенд і тести - лише приклад: ділиться так, як ви попросите. До 3 рівнів вкладеності, до 8 відкритих дочірніх сесій на одну.</p>
         </div>
         <div class="team" aria-label="Головна сесія і три дочірні">
           <div class="node lead-node">
@@ -84,9 +91,9 @@
             <div class="b">claude/checkout-redesign · головна</div>
           </div>
           <div class="kids">
-            <div class="node"><div class="t"><span class="dot"></span>Payments API</div><div class="b">claude/payments-api</div><div class="role">PaymentIntents, webhook</div></div>
-            <div class="node"><div class="t"><span class="dot wait"></span>Checkout form</div><div class="b">claude/checkout-form</div><div class="role">валідація, стани помилок</div></div>
-            <div class="node"><div class="t"><span class="dot idle"></span>E2E tests</div><div class="b">claude/e2e-tests</div><div class="role">успішна оплата, відхилена картка</div></div>
+            <div class="node"><div class="t"><span class="dot"></span>Payments API</div><div class="b">claude/payments-api</div><div class="role">бекенд: PaymentIntents, webhook</div></div>
+            <div class="node"><div class="t"><span class="dot wait"></span>Checkout form</div><div class="b">claude/checkout-form</div><div class="role">фронтенд: валідація, помилки</div></div>
+            <div class="node"><div class="t"><span class="dot idle"></span>E2E tests</div><div class="b">claude/e2e-tests</div><div class="role">тести: успішна оплата, відхилена картка</div></div>
           </div>
           <div class="foot"><span>у кожної дочірньої: свій worktree, своя гілка, своя розмова</span><span>відгалужені від гілки головної</span></div>
         </div>
@@ -139,44 +146,49 @@
     <div class="kicker">Деталі</div>
     <h2>Для довгих днів із багатьма агентами</h2>
     <p class="sub">Дрібниці, від яких залежить, чи вийде тримати вісім агентів у роботі й не загубити жодного.</p>
-    <div class="grid">
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></div>
-        <h3>Статусам можна вірити</h3>
-        <p>Працює, чекає на вас, простоює, спить: вкладки Claude Code повідомляють це самі через hooks, а потік виводу - лише запасний варіант. Сповіщення і звук, коли агент вас чекає.</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></div>
-        <h3>Сплячі вкладки</h3>
-        <p>Агент, що простоює N хвилин, зупиняється і зберігає розмову та останній екран. Один клік будить його там, де він зупинився: пам'ять дістається тим агентам, що працюють.</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-        <h3>Своя розмова в кожній вкладці</h3>
-        <p>Кожна вкладка Claude отримує свій id сесії, Codex повідомляє свій thread. Два агенти в одній теці ніколи не продовжать розмову одне одного, а після перезапуску кожна вкладка продовжує свою (вкладка Codex - якщо вже відповіла хоч раз).</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
-        <h3>Справжні термінали</h3>
-        <p>xterm.js з WebGL, пошук, історія прокрутки зберігається між перемиканнями. Шляхи, які друкує агент, - посилання, що відкривають файл на потрібному рядку.</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg></div>
-        <h3>Стан не губиться</h3>
-        <p>Проєкти, сесії й вкладки повертаються після перезапуску. Файл стану пишеться атомарно, з резервними копіями, і ніколи не перезаписується мовчки.</p>
-      </div>
-      <div class="card">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div>
-        <h3>Темна, світла, три мови</h3>
-        <p>English, Українська, Русский. Тема й мова йдуть за системою, доки ви не оберете. Терміни git не перекладаються.</p>
-      </div>
-      <div class="card wide">
+    <div class="feats">
+      <div class="feat">
         <div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <h3>Статусам можна вірити</h3>
+          <p>Кожна сесія і вкладка показує, що робить її агент: <span class="st run">працює</span> <span class="st wait">чекає на вас</span> <span class="st idle">простоює</span>. Вкладки Claude Code повідомляють це самі через hooks; стеження за виводом - лише запасний варіант. Сповіщення і звук, коли агент вас чекає, як із запитом дозволу тут.</p>
+        </div>
+        <div class="frame"><a href="../img/status.webp"><img src="../img/status.webp" width="1230" height="380" alt="Сесії з точками статусу; агент чекає на дозвіл" loading="lazy"></a></div>
+      </div>
+      <div class="feat flip">
+        <div>
+          <h3>Сплячі вкладки</h3>
+          <p>Агент, що простоює N хвилин, зупиняється, щоб звільнити пам'ять; розмова і останній екран лишаються. Один клік - і він продовжує з того ж місця. Вкладку можна приспати й вручну з її меню.</p>
+        </div>
+        <div class="frame"><a href="../img/sleep.webp"><img src="../img/sleep.webp" width="1230" height="330" alt="Спляча вкладка зберігає останній екран, поруч кнопка пробудження" loading="lazy"></a></div>
+      </div>
+      <div class="feat">
+        <div>
+          <h3>Перезапуск без втрат</h3>
+          <p>Проєкти, сесії й вкладки повертаються після перезапуску, а ви обираєте: запустити всіх агентів одразу чи лишити їх спати до першого кліку.</p>
+          <p>Кожна вкладка повертається до <b>своєї</b> розмови. Звичайний <code>claude --continue</code> бере останню розмову в теці, тож два агенти в одній теці потрапили б в одну й ту саму; тут кожна вкладка пам'ятає id своєї розмови.</p>
+        </div>
+        <div class="frame"><a href="../img/restore.webp"><img src="../img/restore.webp" width="620" height="260" alt="Сесії відновлено: запустити всі або лишити спати" loading="lazy"></a></div>
+      </div>
+      <div class="feat flip">
+        <div>
+          <h3>Справжні термінали</h3>
+          <p>Агент працює у справжньому терміналі (xterm.js з WebGL), так само як окремо: ваш CLI, ваші налаштування, ваша підписка. Пошук, історія прокрутки зберігається між перемиканнями, а шляхи, які друкує агент, відкривають файл на потрібному рядку.</p>
+        </div>
+        <div class="frame"><a href="../img/agent.webp"><img src="../img/agent.webp" width="1717" height="1056" alt="Агент Claude працює у своїй сесії" loading="lazy"></a></div>
+      </div>
+      <div class="feat">
+        <div>
           <h3>Файли й редактор там, де працює агент</h3>
           <p>Дерево файлів у кожній сесії зі звичним контекстним меню: створити, перейменувати, перемістити, дублювати, скопіювати шлях, відкрити в терміналі, показати diff чи історію файлу, відкотити його. Редактор CodeMirror зберігає на паузі й підхоплює те, що агент тим часом записав.</p>
         </div>
         <div class="frame"><a href="../img/filemenu.webp"><img src="../img/filemenu.webp" width="880" height="610" alt="Контекстне меню дерева файлів з відкритим підменю Git" loading="lazy"></a></div>
+      </div>
+      <div class="feat flip">
+        <div>
+          <h3>Темна, світла, три мови</h3>
+          <p>English, Українська, Русский. Тема й мова йдуть за системою, доки ви не оберете. Терміни git (push, merge, rebase) лишаються англійською в усіх мовах.</p>
+        </div>
+        <div class="frame"><a href="../img/themes.webp"><img src="../img/themes.webp" width="1230" height="570" alt="Світла тема з українським інтерфейсом" loading="lazy"></a></div>
       </div>
     </div>
   </section>

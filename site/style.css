@@ -217,3 +217,22 @@ html:has(.zoom[open]) { overflow: hidden; }
 .lang a { margin: 0; color: var(--fg-dim); }
 .lang a[aria-current] { color: var(--fg); font-weight: 600; }
 .lang a + a::before { content: "·"; margin: 0 6px; color: var(--fg-faint); }
+.frame.tall { max-width: 420px; justify-self: center; width: 100%; }
+.feats { display: grid; gap: 56px; }
+.feat { display: grid; grid-template-columns: 1fr 1.5fr; gap: 44px; align-items: center; }
+.feat.flip > :first-child { order: 2; }
+.feat p { color: var(--fg-dim); }
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--fg); white-space: nowrap; margin-right: 8px; }
+.st::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--add); }
+.st.wait::before { background: #f2cc60; }
+.st.idle::before { background: var(--fg-faint); }
+@media (max-width: 900px) {
+  .feat { grid-template-columns: 1fr; gap: 22px; }
+  .feat.flip > :first-child { order: 0; }
+}
+/* a flipped row keeps the wide column for the picture */
+.step.flip { grid-template-columns: 1.35fr 1fr; }
+.split.flip, .feat.flip { grid-template-columns: 1.5fr 1fr; }
+@media (max-width: 900px) {
+  .step.flip, .split.flip, .feat.flip { grid-template-columns: 1fr; }
+}
