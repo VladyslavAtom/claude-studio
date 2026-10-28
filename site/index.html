@@ -44,6 +44,36 @@
     <p class="cap">Demo repository. A lead session and the three sessions it opened, each on its own branch; on the right, what one of them changed.</p>
   </div>
 
+  <section id="why">
+    <div class="kicker">Why it is different</div>
+    <h2>Many agents, and you still know what each one is doing</h2>
+    <div class="feats">
+      <div class="feat">
+        <div>
+          <h3>Statuses you can trust</h3>
+          <p>Every session and tab shows what its agent is doing: <span class="st run">working</span> <span class="st wait">waiting for you</span> <span class="st idle">idle</span>. Claude Code tabs report it themselves through hooks; watching the output is only the fallback. A notification and a sound when an agent needs you, like the permission prompt here.</p>
+        </div>
+        <div class="frame"><a href="img/status.webp"><img src="img/status.webp" width="1230" height="380" alt="Sessions with status dots; an agent waiting on a permission prompt" loading="lazy"></a></div>
+      </div>
+      <div class="feat flip">
+        <div>
+          <h3>Light on memory</h3>
+          <p>The window itself takes about 290 MB; every running Claude Code process about 240 MB more. An agent idle for N minutes goes to sleep: the process stops and gives its memory back, the conversation and the last screen stay. One click on Wake up and it carries on where it stopped.</p>
+          <p class="fine">Measured here: PSS of the app's processes and of 18 <code>claude</code> processes on one Linux desktop.</p>
+        </div>
+        <div class="frame"><a href="img/sleep.webp"><img src="img/sleep.webp" width="1230" height="330" alt="An asleep tab keeps its last screen, with a Wake up button" loading="lazy"></a></div>
+      </div>
+      <div class="feat">
+        <div>
+          <h3>Restart without losing anything</h3>
+          <p>Projects, sessions and tabs come back after a restart, and you choose: start every agent now or leave them asleep until clicked.</p>
+          <p>Each tab comes back to <b>its own</b> conversation. Plain <code>claude --continue</code> picks the latest conversation in the folder, so two agents in one folder would both land in the same one; here every tab keeps its own conversation id.</p>
+        </div>
+        <div class="frame"><a href="img/restore.webp"><img src="img/restore.webp" width="620" height="260" alt="Sessions restored: start all of them or leave them asleep" loading="lazy"></a></div>
+      </div>
+    </div>
+  </section>
+
   <section id="how">
     <div class="kicker">How it works</div>
     <h2>From one task to a team, in four steps</h2>
@@ -148,41 +178,19 @@
     <div class="feats">
       <div class="feat">
         <div>
-          <h3>Statuses you can trust</h3>
-          <p>Every session and tab shows what its agent is doing: <span class="st run">working</span> <span class="st wait">waiting for you</span> <span class="st idle">idle</span>. Claude Code tabs report it themselves through hooks; watching the output is only the fallback. A notification and a sound when an agent needs you, like the permission prompt here.</p>
-        </div>
-        <div class="frame"><a href="img/status.webp"><img src="img/status.webp" width="1230" height="380" alt="Sessions with status dots; an agent waiting on a permission prompt" loading="lazy"></a></div>
-      </div>
-      <div class="feat flip">
-        <div>
-          <h3>Sleeping tabs</h3>
-          <p>An agent idle for N minutes is stopped to free memory; its conversation and its last screen stay. One click on Wake up and it carries on where it stopped. You can also send a tab to sleep from its menu.</p>
-        </div>
-        <div class="frame"><a href="img/sleep.webp"><img src="img/sleep.webp" width="1230" height="330" alt="An asleep tab keeps its last screen, with a Wake up button" loading="lazy"></a></div>
-      </div>
-      <div class="feat">
-        <div>
-          <h3>Restart without losing anything</h3>
-          <p>Projects, sessions and tabs come back after a restart, and you choose: start every agent now or leave them asleep until clicked.</p>
-          <p>Each tab comes back to <b>its own</b> conversation. Plain <code>claude --continue</code> picks the latest conversation in the folder, so two agents in one folder would both land in the same one; here every tab keeps its own conversation id.</p>
-        </div>
-        <div class="frame"><a href="img/restore.webp"><img src="img/restore.webp" width="620" height="260" alt="Sessions restored: start all of them or leave them asleep" loading="lazy"></a></div>
-      </div>
-      <div class="feat flip">
-        <div>
           <h3>Real terminals</h3>
           <p>The agent runs in a real terminal (xterm.js with WebGL), exactly as on its own: your CLI, your settings, your subscription. Search, scrollback kept across switches, and file paths an agent prints open the file at that line.</p>
         </div>
         <div class="frame"><a href="img/agent.webp"><img src="img/agent.webp" width="1717" height="1056" alt="A Claude agent working in its session" loading="lazy"></a></div>
       </div>
-      <div class="feat">
+      <div class="feat flip">
         <div>
           <h3>Files and editor where the agent works</h3>
           <p>A file tree per session with the context menu you expect: new, rename, move, duplicate, copy path, open in a terminal, show the diff or the history of a file, revert it. A CodeMirror editor that saves on a pause and picks up what an agent wrote meanwhile.</p>
         </div>
         <div class="frame"><a href="img/filemenu.webp"><img src="img/filemenu.webp" width="880" height="610" alt="File tree context menu with the Git submenu open" loading="lazy"></a></div>
       </div>
-      <div class="feat flip">
+      <div class="feat">
         <div>
           <h3>Dark, light, three languages</h3>
           <p>English, Українська, Русский. Theme and language follow the system until you choose. git terms (push, merge, rebase) stay in English in every language.</p>

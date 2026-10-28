@@ -236,3 +236,4 @@ html:has(.zoom[open]) { overflow: hidden; }
 @media (max-width: 900px) {
   .step.flip, .split.flip, .feat.flip { grid-template-columns: 1fr; }
 }
+.fine { font-size: 13.5px; color: var(--fg-faint); }
