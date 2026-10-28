@@ -1038,3 +1038,8 @@ The old tab listed each conflict as two `<pre>` blocks with Take / Keep both: no
 **A half-done merge survives.** Save, and closing the tab, write unsettled conflicts back as their original markers, so the tab reopens where it was. «Settled» is an arrow or an edit inside the conflict; undo reverts that state along with the text.
 
 **Labels come from the repository, not the markers**: `onto`/`head-name`/`REBASE_HEAD` for a rebase («Your commit <sha> <subject>», «main (upstream)»), the current branch and `MERGE_HEAD` for a merge. The whole-file buttons follow the same mapping (yours = `--theirs` during a rebase). The changes panel's own Take ours / Take theirs row buttons still use git's words; they belong to the panel and were not changed here.
+
+
+## 2026-10-28 — Conversation search reads the journals on demand, without an index
+
+Full-text search in the agents dialog scans the project's conversation files at query time. An index (SQLite FTS, a cache of extracted text) was not built: one project's conversations measured 80 MB and scan in 340 ms with a raw-line prefilter, while an index would need its own invalidation for journals that grow on every turn. Revisit if a project's store grows past what scans within a second. Scope is the conversations the dialog already lists, not every profile on the machine: a whole profile (1.4 GB) took 10 s.

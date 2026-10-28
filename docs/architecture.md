@@ -122,6 +122,10 @@ assembled from the path: the directory slug is irreversible (`/` and `.` both co
 `-`). A tab remembers the `configDir` of its conversation and launches with that
 `CLAUDE_CONFIG_DIR`.
 
+### Searching inside conversations
+
+The agents dialog lists the project's conversations (`listExternalSessions`) and filters them by title and path. A query of 3+ characters also searches what was said in them — `src/main/conversationSearch.ts`, over the listed conversations only: Claude's journal is found by id across profiles, a Codex rollout by `threads.rollout_path`. Only user prompts and agent answers count; tool calls and output, thinking and `isMeta` context are skipped. A line is `JSON.parse`d only when its raw text holds the JSON-escaped query (both CLIs write non-ASCII as is). Four files at a time, 15 s bound, and a newer query stops the older one at its next line. Measured: 80 MB of journals, 340 ms on one core.
+
 ### What the CLI reports about itself
 
 Three things cannot be worked out from the outside, and each CLI is asked through the one channel

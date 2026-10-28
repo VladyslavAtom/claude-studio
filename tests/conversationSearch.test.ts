@@ -93,7 +93,8 @@ describe('searchFile', () => {
 
     const { matches, total } = await searchFile(file, 'claude', 'САЙТ', () => false)
     expect(total).toBe(4)
-    expect(matches.map((m) => m.role)).toEqual(['user', 'assistant', 'assistant'])
+    // the three matches of the answer sit in one snippet, so it is shown once
+    expect(matches.map((m) => m.role)).toEqual(['user', 'assistant'])
     expect(matches[1]?.snippet).toBe('Сайт: GitHub Pages. Ещё сайт и сайт.')
   })
 

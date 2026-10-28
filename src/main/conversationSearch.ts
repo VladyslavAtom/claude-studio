@@ -112,9 +112,13 @@ export async function searchFile(
       if (!spoken) continue
       const found = findAll(spoken.text, query)
       total += found.length
+      // a match that the previous snippet of the same message already shows is counted, not shown again
+      let shownUntil = -1
       for (const index of found) {
         if (matches.length >= MATCHES_SHOWN) break
+        if (index < shownUntil) continue
         matches.push({ role: spoken.role, snippet: snippetAt(spoken.text, index, query.length), at: spoken.at })
+        shownUntil = index + query.length + CONTEXT_AFTER
       }
     }
   } catch {
