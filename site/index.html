@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Studio</title>
+<meta name="description" content="A desktop app for running Claude Code and Codex side by side, each session in its own git worktree, with diffs, commits and terminals in one window.">
+<meta property="og:title" content="Claude Studio">
+<meta property="og:description" content="Run Claude Code and Codex side by side, each session in its own git worktree.">
+<meta property="og:image" content="https://vladyslavatom.github.io/claude-studio/img/agent.png">
+<meta name="color-scheme" content="dark light">
+<style>
+  :root {
+    --bg: #1c1f21;
+    --bg-1: #212427;
+    --bg-2: #26292d;
+    --line: #383c41;
+    --fg: #d3d6d9;
+    --fg-dim: #8a9096;
+    --accent: #79b8ff;
+    --add: #7ee787;
+    --code-bg: #15171a;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f7f8fa;
+      --bg-1: #ffffff;
+      --bg-2: #eef0f3;
+      --line: #d5d9de;
+      --fg: #1f2328;
+      --fg-dim: #59636e;
+      --accent: #0b62c4;
+      --add: #1a7f37;
+      --code-bg: #1c1f21;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 0;
+  }
+  .brand { font-weight: 650; font-size: 18px; color: var(--fg); display: flex; align-items: center; gap: 10px; }
+  .brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  nav a { margin-left: 22px; color: var(--fg-dim); font-size: 15px; }
+  nav a:hover { color: var(--fg); text-decoration: none; }
+
+  .hero { text-align: center; padding: 56px 0 36px; }
+  .hero h1 {
+    font-size: clamp(32px, 5.2vw, 54px); line-height: 1.12; margin: 0 auto 18px; max-width: 860px;
+    letter-spacing: -0.02em;
+  }
+  .hero p.lead { font-size: clamp(17px, 2vw, 20px); color: var(--fg-dim); max-width: 720px; margin: 0 auto 30px; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 20px; border-radius: 8px; font-weight: 600; font-size: 15px;
+    border: 1px solid var(--line); color: var(--fg); background: var(--bg-1);
+  }
+  .btn:hover { text-decoration: none; border-color: var(--fg-dim); }
+  .btn.primary { background: #2f6fd0; border-color: #3b7fe0; color: #fff; }
+  .btn.primary:hover { background: #3a7ee0; }
+  .tags { margin-top: 18px; color: var(--fg-dim); font-size: 14px; }
+  .tags span + span::before { content: "·"; margin: 0 10px; }
+
+  .shot {
+    margin: 40px auto 0; border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); background: var(--bg-1);
+  }
+  .shot img { display: block; width: 100%; height: auto; }
+  .caption { color: var(--fg-dim); font-size: 14px; text-align: center; margin-top: 12px; }
+
+  section { padding: 72px 0 0; }
+  h2 { font-size: clamp(26px, 3.4vw, 34px); letter-spacing: -0.01em; margin: 0 0 10px; line-height: 1.2; }
+  .sub { color: var(--fg-dim); margin: 0 0 30px; max-width: 760px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+  .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p { margin: 0; color: var(--fg-dim); font-size: 15px; }
+
+  .split { display: grid; grid-template-columns: 1fr 1.6fr; gap: 36px; align-items: center; }
+  .split ul { padding-left: 20px; margin: 0; color: var(--fg-dim); }
+  .split li { margin-bottom: 8px; }
+  .split li b { color: var(--fg); font-weight: 600; }
+
+  code { font: 14px/1.5 ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; }
+  pre {
+    background: var(--code-bg); color: #d3d6d9; border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 20px; overflow-x: auto; margin: 0 0 16px;
+  }
+  pre .c { color: #6b7280; }
+  .note { color: var(--fg-dim); font-size: 15px; }
+  .req { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+
+  .status { background: var(--bg-1); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 18px 22px; }
+  .status p { margin: 0; color: var(--fg-dim); }
+
+  footer { margin-top: 80px; padding: 28px 0 40px; border-top: 1px solid var(--line); color: var(--fg-dim); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--fg-dim); margin-left: 18px; }
+  footer a:hover { color: var(--fg); }
+
+  @media (max-width: 860px) {
+    .grid, .req { grid-template-columns: 1fr 1fr; }
+    .split { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .grid, .req { grid-template-columns: 1fr; }
+    nav a:not(.gh) { display: none; }
+    .hero { padding-top: 32px; }
+    footer a { margin: 0 18px 0 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#"><span class="dot"></span>Claude Studio</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a class="gh" href="https://github.com/VladyslavAtom/claude-studio">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <h1>Run Claude Code and Codex side by side, each in its own git worktree</h1>
+    <p class="lead">A desktop app for parallel agent work: projects in tabs, a branch and a worktree per session, the real CLIs in terminals, and diffs, commits and merges in the same window.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Get started</a>
+      <a class="btn" href="https://github.com/VladyslavAtom/claude-studio">View on GitHub</a>
+    </div>
+    <div class="tags"><span>Free and open source, MIT</span><span>Linux</span><span>English, Українська, Русский</span></div>
+    <div class="shot"><img src="img/agent.png" width="1717" height="1056" alt="Claude Studio with a Claude agent working in its own session"></div>
+    <p class="caption">An agent at work in its own session, with the task it was started with.</p>
+  </div>
+
+  <section id="features">
+    <h2>Built around sessions, not chats</h2>
+    <p class="sub">Every session is a git branch in its own worktree. Inside it, as many agents, shells, files and diffs as the task needs.</p>
+    <div class="grid">
+      <div class="card"><h3>Sessions are worktrees</h3><p>A session gets a branch off the base you pick and a directory of its own. Agents in different sessions never touch each other's files.</p></div>
+      <div class="card"><h3>A conversation per tab</h3><p>Each Claude tab gets its own session id, Codex reports its thread. Two agents in one directory never resume each other.</p></div>
+      <div class="card"><h3>Statuses from the agents</h3><p>Working, waiting for you, idle, asleep: taken from Claude Code's hooks, not guessed from output. A notification and a sound when an agent needs you.</p></div>
+      <div class="card"><h3>Agents open sessions</h3><p>A Claude tab gets an <code>open_session</code> tool: a visible session with a worktree, a branch and a first task. Agents hand work to each other.</p></div>
+      <div class="card"><h3>Sleeping tabs</h3><p>An idle agent is stopped after N minutes and keeps its conversation. One click resumes it where it left off.</p></div>
+      <div class="card"><h3>Search every conversation</h3><p>All Claude and Codex conversations of the project, including ones started outside the app, with full-text search inside what was said.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="split">
+      <div>
+        <h2>Review what the agent did</h2>
+        <p class="sub">A side-by-side diff in the style of JetBrains IDEs, next to the list of changed files.</p>
+        <ul>
+          <li><b>Edit in the diff</b>, revert a single change with one click, jump between differences.</li>
+          <li><b>Commit from the panel</b> with checkboxes per file, or let a model write the message.</li>
+          <li><b>Branch work:</b> push, pull, rebase, merge, a PR through <code>gh</code>.</li>
+          <li><b>Three-way merge</b> for conflicts: yours, the result and theirs, side by side.</li>
+          <li><b>File tree</b> with a context menu, a CodeMirror editor, paths in the terminal as links.</li>
+        </ul>
+      </div>
+      <div class="shot" style="margin:0"><img src="img/diff.png" width="1873" height="1152" alt="Side-by-side diff of a changed file next to the changes panel" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Stays out of the way</h2>
+    <div class="grid">
+      <div class="card"><h3>The real CLIs</h3><p>Claude Code and Codex run as they are, in xterm.js terminals. Your settings, profiles and subscriptions stay yours. Add any other CLI as a preset.</p></div>
+      <div class="card"><h3>State survives</h3><p>Projects, sessions and tabs are restored after a restart, written atomically with backups.</p></div>
+      <div class="card"><h3>Dark and light, three languages</h3><p>Both follow the system until you choose. git terms are never translated.</p></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Get started</h2>
+    <p class="sub">There are no release binaries yet: build from source.</p>
+    <div class="req">
+      <div class="card"><h3>Linux</h3><p>X11 or Wayland. Developed on Ubuntu 24.04 with KDE Plasma.</p></div>
+      <div class="card"><h3>Node.js 22.5+ and git</h3><p><code>gh</code> for the PR button.</p></div>
+      <div class="card"><h3>Claude Code or Codex</h3><p>On <code>PATH</code>. The app starts them, it does not bundle them.</p></div>
+    </div>
+<pre><code>git clone https://github.com/VladyslavAtom/claude-studio
+cd claude-studio
+npm install
+npm run rebuild      <span class="c"># node-pty against the Electron ABI</span>
+./claude-studio.sh   <span class="c"># build if needed and start; --help for the rest</span>
+npm run dist         <span class="c"># or an AppImage in release/</span></code></pre>
+    <p class="note">Ubuntu 24.04+ restricts unprivileged user namespaces through AppArmor, so the scripts set <code>ELECTRON_DISABLE_SANDBOX=1</code>.</p>
+  </section>
+
+  <section>
+    <div class="status">
+      <p><b style="color:var(--fg)">Status: 0.1.0.</b> A personal tool, published in case it is useful: one developer, one Linux desktop. macOS has never been run, there is no Windows build. Issues and patches are welcome on <a href="https://github.com/VladyslavAtom/claude-studio/issues">GitHub</a>.</p>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>Claude Studio · MIT · not affiliated with Anthropic or OpenAI</span>
+    <span>
+      <a href="https://github.com/VladyslavAtom/claude-studio">GitHub</a>
+      <a href="https://github.com/VladyslavAtom/claude-studio/blob/main/docs/architecture.md">Architecture</a>
+      <a href="https://github.com/VladyslavAtom/claude-studio/blob/main/docs/decisions.md">Decisions</a>
+    </span>
+  </div>
+</footer>
+</body>
+</html>
