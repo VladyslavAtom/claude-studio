@@ -111,14 +111,14 @@
           <div class="num">3</div>
           <h3>Попросіть головного агента розділити роботу</h3>
           <p>Кожна вкладка Claude має чотири інструменти. Попросіть розділити роботу звичайними словами:</p>
-          <div class="prompt">Розбий цю фічу на три частини: бекенд, фронтенд і тести. Відкрий сесію для кожної, стеж за ними і скажи, коли вони будуть готові до merge.</div>
+          <div class="prompt">Додай подарункові картки. Розбий цю фічу на три частини: бекенд, фронтенд і тести. Відкрий сесію для кожної, стеж за ними і скажи, коли вони будуть готові до merge.</div>
           <p>Головний агент викликає <code>open_session</code> для кожної частини: видима сесія на гілці, відгалуженій від його власної, з Claude, який уже має підзадачу. Стан він перевіряє через <code>list_sessions</code> (статус вкладки, незакомічені файли), доручення надсилає через <code>send_to_session</code>, закриває через <code>close_session</code>.</p>
           <p style="font-size:14px;color:var(--fg-faint)">Бекенд, фронтенд і тести - лише приклад: ділиться так, як ви попросите. До 3 рівнів вкладеності, до 8 відкритих дочірніх сесій на одну.</p>
         </div>
         <div class="team" aria-label="Головна сесія і три дочірні">
           <div class="node lead-node">
-            <div class="t"><span class="dot"></span>Нова фіча</div>
-            <div class="b">claude/new-feature · головна</div>
+            <div class="t"><span class="dot"></span>Подарункові картки</div>
+            <div class="b">claude/gift-cards · головна</div>
           </div>
           <div class="kids">
             <div class="node"><div class="t"><span class="dot"></span>Бекенд</div><div class="b">claude/backend</div><div class="role">API, база даних, серверна логіка</div></div>

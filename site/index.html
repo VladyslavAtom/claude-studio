@@ -110,14 +110,14 @@
           <div class="num">3</div>
           <h3>Ask the lead to split the work</h3>
           <p>Every Claude tab carries four tools. Ask for a split in plain words:</p>
-          <div class="prompt">Split this feature into three parts: the backend, the frontend and the tests. Open a session for each, check on them, and tell me when they are ready to merge.</div>
+          <div class="prompt">Add gift cards. Split this feature into three parts: the backend, the frontend and the tests. Open a session for each, check on them, and tell me when they are ready to merge.</div>
           <p>The lead calls <code>open_session</code> once per part: a visible session on a branch forked from its own, with a Claude already holding the sub-task. It checks on them with <code>list_sessions</code> (tab state, uncommitted files), sends follow-ups with <code>send_to_session</code>, and closes them with <code>close_session</code>.</p>
           <p style="font-size:14px;color:var(--fg-faint)">Backend, frontend and tests is an example: the split is whatever you ask for. Up to 3 levels deep, 8 open children per session.</p>
         </div>
         <div class="team" aria-label="A lead session and three child sessions">
           <div class="node lead-node">
-            <div class="t"><span class="dot"></span>New feature</div>
-            <div class="b">claude/new-feature · lead</div>
+            <div class="t"><span class="dot"></span>Gift cards</div>
+            <div class="b">claude/gift-cards · lead</div>
           </div>
           <div class="kids">
             <div class="node"><div class="t"><span class="dot"></span>Backend</div><div class="b">claude/backend</div><div class="role">API, database, server logic</div></div>
