@@ -81,19 +81,19 @@
           <div class="num">3</div>
           <h3>Попросіть головного агента розділити роботу</h3>
           <p>Кожна вкладка Claude має чотири інструменти. Попросіть розділити роботу звичайними словами:</p>
-          <div class="prompt">Розбий оплату на бекенд, фронтенд і тести: API платежів, форма оплати, e2e-тести. Відкрий сесію для кожної частини, стеж за ними і скажи, коли вони будуть готові до merge.</div>
+          <div class="prompt">Розбий цю фічу на три частини: бекенд, фронтенд і тести. Відкрий сесію для кожної, стеж за ними і скажи, коли вони будуть готові до merge.</div>
           <p>Головний агент викликає <code>open_session</code> для кожної частини: видима сесія на гілці, відгалуженій від його власної, з Claude, який уже має підзадачу. Стан він перевіряє через <code>list_sessions</code> (статус вкладки, незакомічені файли), доручення надсилає через <code>send_to_session</code>, закриває через <code>close_session</code>.</p>
           <p style="font-size:14px;color:var(--fg-faint)">Бекенд, фронтенд і тести - лише приклад: ділиться так, як ви попросите. До 3 рівнів вкладеності, до 8 відкритих дочірніх сесій на одну.</p>
         </div>
         <div class="team" aria-label="Головна сесія і три дочірні">
           <div class="node lead-node">
-            <div class="t"><span class="dot"></span>Checkout redesign</div>
-            <div class="b">claude/checkout-redesign · головна</div>
+            <div class="t"><span class="dot"></span>Нова фіча</div>
+            <div class="b">claude/new-feature · головна</div>
           </div>
           <div class="kids">
-            <div class="node"><div class="t"><span class="dot"></span>Payments API</div><div class="b">claude/payments-api</div><div class="role">бекенд: PaymentIntents, webhook</div></div>
-            <div class="node"><div class="t"><span class="dot wait"></span>Checkout form</div><div class="b">claude/checkout-form</div><div class="role">фронтенд: валідація, помилки</div></div>
-            <div class="node"><div class="t"><span class="dot idle"></span>E2E tests</div><div class="b">claude/e2e-tests</div><div class="role">тести: успішна оплата, відхилена картка</div></div>
+            <div class="node"><div class="t"><span class="dot"></span>Бекенд</div><div class="b">claude/backend</div><div class="role">API, база даних, серверна логіка</div></div>
+            <div class="node"><div class="t"><span class="dot wait"></span>Фронтенд</div><div class="b">claude/frontend</div><div class="role">екрани, форми, клієнтська логіка</div></div>
+            <div class="node"><div class="t"><span class="dot idle"></span>Тести</div><div class="b">claude/tests</div><div class="role">модульні та end-to-end тести</div></div>
           </div>
           <div class="foot"><span>у кожної дочірньої: свій worktree, своя гілка, своя розмова</span><span>відгалужені від гілки головної</span></div>
         </div>

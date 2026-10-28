@@ -80,19 +80,19 @@
           <div class="num">3</div>
           <h3>Ask the lead to split the work</h3>
           <p>Every Claude tab carries four tools. Ask for a split in plain words:</p>
-          <div class="prompt">Split the checkout into backend, frontend and tests: the payments API, the checkout form, e2e tests. Open a session for each, check on them, and tell me when they are ready to merge.</div>
+          <div class="prompt">Split this feature into three parts: the backend, the frontend and the tests. Open a session for each, check on them, and tell me when they are ready to merge.</div>
           <p>The lead calls <code>open_session</code> once per part: a visible session on a branch forked from its own, with a Claude already holding the sub-task. It checks on them with <code>list_sessions</code> (tab state, uncommitted files), sends follow-ups with <code>send_to_session</code>, and closes them with <code>close_session</code>.</p>
           <p style="font-size:14px;color:var(--fg-faint)">Backend, frontend and tests is an example: the split is whatever you ask for. Up to 3 levels deep, 8 open children per session.</p>
         </div>
         <div class="team" aria-label="A lead session and three child sessions">
           <div class="node lead-node">
-            <div class="t"><span class="dot"></span>Checkout redesign</div>
-            <div class="b">claude/checkout-redesign · lead</div>
+            <div class="t"><span class="dot"></span>New feature</div>
+            <div class="b">claude/new-feature · lead</div>
           </div>
           <div class="kids">
-            <div class="node"><div class="t"><span class="dot"></span>Payments API</div><div class="b">claude/payments-api</div><div class="role">backend: PaymentIntents, webhook</div></div>
-            <div class="node"><div class="t"><span class="dot wait"></span>Checkout form</div><div class="b">claude/checkout-form</div><div class="role">frontend: validation, errors</div></div>
-            <div class="node"><div class="t"><span class="dot idle"></span>E2E tests</div><div class="b">claude/e2e-tests</div><div class="role">tests: happy path, declined card</div></div>
+            <div class="node"><div class="t"><span class="dot"></span>Backend</div><div class="b">claude/backend</div><div class="role">API, database, server logic</div></div>
+            <div class="node"><div class="t"><span class="dot wait"></span>Frontend</div><div class="b">claude/frontend</div><div class="role">screens, forms, client logic</div></div>
+            <div class="node"><div class="t"><span class="dot idle"></span>Tests</div><div class="b">claude/tests</div><div class="role">unit and end-to-end tests</div></div>
           </div>
           <div class="foot"><span>each child: own worktree, own branch, own conversation</span><span>forked from the lead's branch</span></div>
         </div>
