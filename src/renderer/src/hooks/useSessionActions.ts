@@ -1,5 +1,13 @@
 import { useCallback, useMemo, useRef } from 'react'
-import type { ArchivedSession, ExternalSession, Project, Session, TerminalTab } from '../../../shared/types'
+import { WORKTREE_CONFIG_FILE } from '../../../shared/types'
+import type {
+  ArchivedSession,
+  ExternalSession,
+  Project,
+  Session,
+  TerminalTab,
+  WorktreePrepared,
+} from '../../../shared/types'
 import type { NewSessionResult } from '../components/NewSessionModal'
 import { useT } from '../i18n'
 import { findAgent } from '../lib/agents'
@@ -65,16 +73,22 @@ export function useSessionActions(): SessionActions {
       setError(null)
       let cwd = project.path
       let worktree: Session['worktree']
+      let prepared: WorktreePrepared | undefined
 
       if (res.createWorktree) {
         setBusy(t('sessions.busy.worktreeAdd'))
         let r: Awaited<ReturnType<typeof window.api.git.worktreeAdd>>
+        // a claude session's worktree is trusted in the profile that tab runs from, so the CLI
+        // does not stop at «trust this folder?» — main does it only if the project root is trusted
+        const agentDef = findAgent(settingsRef.current, res.agentId ?? undefined)
+        const configDir = agentDef?.env.CLAUDE_CONFIG_DIR
         try {
           r = await window.api.git.worktreeAdd({
             repoPath: project.path,
             worktreePath: res.worktreePath,
             branch: res.branch,
             baseRef: res.baseRef,
+            ...(agentDef?.preset === 'claude' ? { claudeTrust: configDir ? { configDir } : {} } : {}),
           })
         } finally {
           setBusy(null)
@@ -89,12 +103,35 @@ export function useSessionActions(): SessionActions {
         }
         cwd = res.worktreePath
         worktree = { path: res.worktreePath, branch: res.branch, baseRef: res.baseRef }
+        prepared = r.prepared
+        if (prepared?.configError) {
+          setError(t('terminal.setup.configInvalid', { file: WORKTREE_CONFIG_FILE, detail: prepared.configError }))
+        }
         // the worktree directory has only just been created — it is not among the registered roots yet
         await window.api.files.registerRoot(cwd)
       }
 
       const terminal = newTerminal(settingsRef.current, res.agentId, [])
       if (res.startPrompt) terminal.startPrompt = res.startPrompt
+      // The repository's setup script gets a tab of its own, after the agent's: the first tab is
+      // the agent's by contract (an agent's `open_session` answers with it). One already approved
+      // runs at once, alongside the agent; one that is not opens on screen and asks first.
+      const setupScript = prepared?.scripts?.setup
+      const setupTab: TerminalTab | null =
+        prepared?.scripts && setupScript
+          ? {
+              ...newTerminal(settingsRef.current, null, [terminal]),
+              title: t('terminal.setup.title'),
+              titleManual: true,
+              setup: {
+                repoPath: project.path,
+                script: setupScript,
+                hash: prepared.scripts.hash,
+                approved: prepared.scripts.approved,
+              },
+            }
+          : null
+      const terminals = setupTab ? [terminal, setupTab] : [terminal]
       const session: Session = {
         id: uid(),
         name: res.name,
@@ -105,13 +142,13 @@ export function useSessionActions(): SessionActions {
         // a session without a worktree carries no key at all: `worktree: undefined` would be
         // written into state.json as a missing field on the next save anyway
         ...(worktree ? { worktree } : {}),
-        terminals: [terminal],
-        activeTerminalId: terminal.id,
+        terminals,
+        activeTerminalId: setupTab && !setupTab.setup?.approved ? setupTab.id : terminal.id,
         createdAt: Date.now(),
         runs: [],
         ...(res.parentId ? { parentId: res.parentId } : {}),
       }
-      wake(terminal.id)
+      for (const tab of terminals) wake(tab.id)
       dispatch({ type: 'sessionCreated', projectId: project.id, session })
       return { ok: true, session }
     },
@@ -132,13 +169,14 @@ export function useSessionActions(): SessionActions {
           project.path,
           session.worktree.path,
           deleteBranch ? session.worktree.branch : undefined,
+          session.worktree.branch,
         )
         setBusy(null)
-        if (!r.ok) setError(r.error ?? 'git worktree remove failed')
+        if (!r.ok) setError(resultMessage(t, r, 'git worktree remove failed'))
         // a success with a caveat — the worktree is gone, the branch outlived it. It used to
         // travel in `error` and was shown as a failure that never happened; main now keeps the
         // two apart, so this goes to the status line and takes itself down after a few seconds
-        else if (r.warning) showInfo(r.warning)
+        else if (r.code || r.warning) showInfo(resultMessage(t, r))
       }
 
       dispatch({

@@ -34,6 +34,7 @@ import type { AgentToolRequest, AgentToolResult, Project, Session, Settings } fr
 import type { NewSessionResult } from '../components/NewSessionModal'
 import { useT } from '../i18n'
 import { commandFor, conversationKind, envFor, findAgent } from '../lib/agents'
+import { withWorktreeEnv } from '../../../shared/worktreeSetup'
 import { autoBranch, worktreePathFor } from '../lib/sessionDefaults'
 import { MAX_CHILDREN, MAX_DEPTH, depthOf, descendants } from '../lib/sessionTree'
 import { terminalStatus } from '../lib/status'
@@ -216,7 +217,7 @@ export function useAgentToolRequests(sessions: SessionActions): void {
       if (terminal) {
         const agent = findAgent(state.settings, terminal.agentId)
         const command = commandFor(agent, terminal, hookPathsRef.current ?? undefined)
-        const env = envFor(agent, terminal)
+        const env = withWorktreeEnv(envFor(agent, terminal), project.path, session.worktree)
         const res = await window.api.pty
           .start({
             id: terminal.id,

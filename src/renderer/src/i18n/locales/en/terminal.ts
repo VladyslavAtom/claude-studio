@@ -90,6 +90,14 @@ export const terminal = {
   'tab.asleep': 'the tab is asleep — wake it and try again',
   'notify.fallbackTitle': 'Terminal',
   'notify.waiting': '{project}: the agent is waiting for you',
+  // the setup tab of a new worktree session: the repository's `setup` script (main/worktreeScripts)
+  'setup.title': 'Setup',
+  'setup.ask': 'This repository has a setup script for new worktrees ({file}). It runs in this tab, with the worktree as its directory:',
+  'setup.askApprove': 'It has not been approved in this form before. Approving runs it now and in every new worktree until the file changes.',
+  'setup.run': 'Approve and run',
+  'setup.skip': 'Skip',
+  'setup.failed': 'The setup script failed (exit code {code}) — its output is in the «{title}» tab',
+  'setup.configInvalid': '{file} could not be read, its scripts were not offered: {detail}',
 } as const
 
 export type TerminalArea = AreaOf<typeof terminal>

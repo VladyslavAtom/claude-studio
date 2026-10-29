@@ -64,11 +64,13 @@ export function run(
   args: string[],
   timeout: number,
   env: Record<string, string>,
+  /** written to the process's stdin, which is then closed (`git check-ignore --stdin`) */
+  input?: string,
 ): Promise<GitRunResult> {
   const maxBuffer = maxBufferFor(args)
   const sub = subcommandOf(args) || command
   return new Promise((resolve) => {
-    execFile(command, args, { cwd, maxBuffer, timeout, env }, (err, stdout, stderr) => {
+    const child = execFile(command, args, { cwd, maxBuffer, timeout, env }, (err, stdout, stderr) => {
       const outText = stdout ?? ''
       const errOut = (stderr ?? '').trim()
       const code = (err as { code?: unknown } | null)?.code
@@ -101,6 +103,11 @@ export function run(
       }
       resolve({ stdout: outText, stderr: stderr ?? '', code: err ? (code as number) : 0 })
     })
+    if (input !== undefined) {
+      // a process that exits before reading all of it closes the pipe: EPIPE is its answer, not ours
+      child.stdin?.on('error', () => undefined)
+      child.stdin?.end(input)
+    }
   })
 }
 
@@ -110,8 +117,9 @@ export function git(
   args: string[],
   timeout = 120_000,
   env?: Record<string, string>,
+  input?: string,
 ): Promise<GitRunResult> {
-  return run('git', cwd, args, timeout, { ...cleanGitEnv(), GIT_OPTIONAL_LOCKS: '0', ...env })
+  return run('git', cwd, args, timeout, { ...cleanGitEnv(), GIT_OPTIONAL_LOCKS: '0', ...env }, input)
 }
 
 /**

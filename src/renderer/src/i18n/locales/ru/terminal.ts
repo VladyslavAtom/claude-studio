@@ -75,4 +75,11 @@ export const terminal: TerminalArea = {
   'tab.asleep': 'вкладка спит — разбудите её и повторите',
   'notify.fallbackTitle': 'Терминал',
   'notify.waiting': '{project}: агент ждёт вас',
+  'setup.title': 'Setup',
+  'setup.ask': 'В этом репозитории есть скрипт подготовки новых worktree ({file}). Он запустится в этой вкладке, в каталоге worktree:',
+  'setup.askApprove': 'В таком виде он ещё не был одобрен. Одобрение запускает его сейчас и в каждом новом worktree, пока файл не изменится.',
+  'setup.run': 'Одобрить и запустить',
+  'setup.skip': 'Пропустить',
+  'setup.failed': 'Скрипт подготовки завершился с ошибкой (код {code}) — вывод во вкладке «{title}»',
+  'setup.configInvalid': 'Не удалось прочитать {file}, скрипты не предложены: {detail}',
 }

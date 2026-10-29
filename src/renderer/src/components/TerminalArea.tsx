@@ -1,7 +1,9 @@
 import type { JSX } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AgentActivity, AgentRun, Session, Settings, TerminalStatus, TerminalTab } from '../../../shared/types'
+import { setupCommandLine, withWorktreeEnv } from '../../../shared/worktreeSetup'
 import TerminalPane from './TerminalPane'
+import SetupConsent from './SetupConsent'
 import SleepScreen from './SleepScreen'
 import FileEditor from './FileEditor'
 import DiffView from './DiffView'
@@ -25,6 +27,8 @@ import { onPathsMoved } from '../lib/pathEvents'
 
 interface Props {
   session: Session
+  /** the project root: a worktree session's tabs are told it (`CLAUDE_STUDIO_ROOT`) */
+  projectPath: string
   settings: Settings
   /** terminals with a live pty; everything else is asleep and starts on click */
   awake: Set<string>
@@ -89,6 +93,7 @@ const CLOSE_RISK_TEXT = {
 
 export default function TerminalArea({
   session,
+  projectPath,
   settings,
   awake,
   attention,
@@ -135,6 +140,8 @@ export default function TerminalArea({
   /** the tab's process is restarting: the old pane is gone, the new one waits for `launched` */
   const [restarting, setRestarting] = useState<Set<string>>(new Set())
   const [historyOpen, setHistoryOpen] = useState(false)
+  /** setup tabs approved in this window: they run now without waiting for the state to say so */
+  const [setupApproved, setSetupApproved] = useState<Set<string>>(new Set())
   const [addOpen, setAddOpen] = useState(false)
   const [menuAt, setMenuAt] = useState<{ x: number; y: number; tab: TerminalTab } | null>(null)
   /** id of the tab being renamed; the draft itself lives inside the field */
@@ -626,6 +633,19 @@ export default function TerminalArea({
               </div>
             )
           }
+          // a setup tab that has not run yet: the script, once approved; the question, until then
+          const pendingSetup = tab.setup && !tab.launched ? tab.setup : null
+          if (pendingSetup && !pendingSetup.approved && !setupApproved.has(tab.id)) {
+            return tab.id === activeId ? (
+              <SetupConsent
+                key={tab.id}
+                setup={pendingSetup}
+                onApproved={() => setSetupApproved((prev) => new Set(prev).add(tab.id))}
+                onSkip={() => onCloseTerminal(tab.id)}
+                onError={onError}
+              />
+            ) : null
+          }
           if (restarting.has(tab.id)) {
             return tab.id === activeId ? (
               <div key={tab.id} className="muted pad">
@@ -639,13 +659,21 @@ export default function TerminalArea({
               id={tab.id}
               cwd={tab.shellCwd ?? session.cwd}
               kind={tab.kind}
-              command={commandFor(agent, tab, hookPaths ?? undefined)}
-              env={envFor(agent, tab)}
+              command={
+                pendingSetup ? setupCommandLine(pendingSetup.script) : commandFor(agent, tab, hookPaths ?? undefined)
+              }
+              env={withWorktreeEnv(envFor(agent, tab), projectPath, session.worktree)}
               sleepable={tab.kind === 'agent'}
               scrollbackLines={settings.terminal.scrollbackLines}
               active={tab.id === activeId}
               clearSeq={clearSeqs[tab.id] ?? 0}
-              onExit={() => setDead((d) => ({ ...d, [tab.id]: true }))}
+              onExit={(code) => {
+                setDead((d) => ({ ...d, [tab.id]: true }))
+                if (!pendingSetup) return
+                // ran once: a restart of this tab is an ordinary shell, not the script again
+                onLaunchedChange(tab.id, true)
+                if (code !== 0) onError(t('terminal.setup.failed', { code, title: tabTitle(tab) }))
+              }}
               onTitle={(title) => onTerminalTitle(tab.id, title)}
               onSessionError={(kind) => {
                 onLaunchedChange(tab.id, kind === 'in-use')

@@ -408,6 +408,32 @@ the profile is set by the agent's settings, not by the shell the application hap
 started from. Separately, `cleanGitEnv` removes `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` —
 they override `-C` and can silently substitute the repository.
 
+### A new worktree, made ready to work in
+
+After `git worktree add`, `createWorktree` (`src/main/projectRoots.ts`) does three things, each best effort — none of them undoes the worktree — and returns what it did as `prepared`:
+
+1. **`.worktreeinclude`** (`src/main/git/worktreeInclude.ts`) — the format of Claude Code, Codex and ccmanager: a gitignore-syntax list at the repository root. An entry is copied from the root checkout only when it matches the list **and** git ignores it: `ls-files --others --ignored --directory --exclude-from=.worktreeinclude`, then `check-ignore --stdin`. An ignored directory is one entry, copied whole. Skipped: anything already in the worktree (never overwritten), absolute paths and `..`, other worktrees nested in the repository, heavy directories (`node_modules`, `.venv`, `dist`, …) unless a pattern names them as a path segment, a source whose real directory is outside the repository, a target whose real directory is outside the worktree. Symlinks are copied as links, verbatim.
+2. **Trust** (`src/main/claudeTrust.ts`) — when the session's first tab is a `claude` preset, `projects[<worktree realpath>].hasTrustDialogAccepted = true` is written into that profile's `.claude.json` (`$CLAUDE_CONFIG_DIR/.claude.json`, or `~/.claude.json`), and only if the project root, or a directory above it, is already trusted there. Read, change one key, temp file + rename at the symlink's target; a file that does not parse is left alone; a write by a running CLI between our read and our rename is detected by mtime/size/inode and the read is redone (3 attempts).
+3. **Scripts** (`src/main/worktreeScripts.ts`) — `.claude-studio.json` at the project root: `{ "scripts": { "setup": "…", "teardown": "…" } }`, each one `sh -c` string. Read from the root, never from the worktree, and only for a project of the saved state (`isOpenedProject`). The renderer is told the scripts, the file's sha256, and whether that hash is approved.
+
+The setup script runs in a **Setup tab** of the session, the second tab (the first is the agent's: `open_session` answers with it). An approved script runs at once, alongside the agent: the tab's command is `exec sh -c '<script>'`, so the script's exit code is the tab's, the pane prints it, and a non-zero one also raises an error toast. An unapproved one makes the Setup tab the active one and shows `SetupConsent`: the exact script, Approve and run / Skip. Approving goes through `git:worktreeApproveScripts`, which re-reads the file, compares the hash and records it in `<userData>/worktree-scripts.json` (per repository, the last 20 hashes, mode 0600); an edited file is a new hash and asks again. Once the script has exited the tab's `launched` is set and a restart is an ordinary shell.
+
+The teardown runs in `removeSessionWorktree` before `git worktree remove`, only when the current file's hash is approved, with a 30 s limit (`run()` kills `sh`; what it started may outlive it). A failure, a timeout or an unapproved teardown is a `warning` on a successful removal — never a reason to keep the worktree.
+
+### The worktree's env
+
+Every tab of a worktree session, and the teardown, get (`src/shared/worktreeSetup.ts`):
+
+| variable                   | value                                                    |
+| -------------------------- | -------------------------------------------------------- |
+| `CLAUDE_STUDIO_PORT`       | `50000 + fnv1a(worktree path) % 1000 * 10`, stable       |
+| `CLAUDE_STUDIO_PORT_COUNT` | `10`: the block is `PORT … PORT+9`                       |
+| `CLAUDE_STUDIO_WORKTREE`   | the worktree's path                                      |
+| `CLAUDE_STUDIO_ROOT`       | the project root                                         |
+| `CLAUDE_STUDIO_BRANCH`     | the session's branch                                     |
+
+The app cannot pick a dev server's port: a repository's scripts have to read `CLAUDE_STUDIO_PORT` (`PORT=$CLAUDE_STUDIO_PORT npm run dev`). An agent preset's own env wins over these. A session without a worktree gets none of them.
+
 ## Sleeping tabs
 
 An agent with no activity for N minutes is put out: the pty is killed, the tab greys over, the

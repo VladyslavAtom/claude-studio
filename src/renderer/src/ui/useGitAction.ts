@@ -137,6 +137,15 @@ const WORDING: Record<AppMessageCode, Wording> = {
     return t('git.error.worktreeRemoveFailed.record')
   },
   'worktree-removed-branch-kept': (t) => t('git.warning.worktreeRemovedBranchKept'),
+  'worktree-teardown-failed': (t, p) => {
+    const reason = str(p, 'reason')
+    if (reason === 'timeout') return t('git.warning.worktreeTeardownFailed.timeout', { seconds: num(p, 'seconds') })
+    if (reason === 'spawn') return t('git.warning.worktreeTeardownFailed.spawn')
+    return t('git.warning.worktreeTeardownFailed.exit', { exit: num(p, 'exit') })
+  },
+  'worktree-teardown-unapproved': (t) => t('git.warning.worktreeTeardownUnapproved'),
+  'worktree-scripts-changed': (t) => t('git.error.worktreeScriptsChanged'),
+  'worktree-scripts-not-project': (t) => t('git.error.worktreeScriptsNotProject'),
   'ref-leading-dash': (t, p) => t('git.error.refLeadingDash', { ref: str(p, 'ref') }),
   // normally answered by the «stash and continue» dialog; the sentence is for a caller without one
   'dirty-tree': (t) => t('git.error.dirtyTree'),

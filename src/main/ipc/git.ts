@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { CHANNELS } from '../../shared/channels'
 import type { CommitDraftConfig, DiffMode, RepoState, WorktreeAddOptions } from '../../shared/types'
 import * as git from '../git'
-import { cloneRepo, createWorktree } from '../projectRoots'
+import { approveWorktreeScripts, cloneRepo, createWorktree, removeSessionWorktree } from '../projectRoots'
 
 const CH = CHANNELS.git
 
@@ -78,8 +78,13 @@ export function register(): void {
     git.createBranch(cwd, branch, baseRef),
   )
   ipcMain.handle(CH.worktreeAdd, (_e, opts: WorktreeAddOptions) => createWorktree(opts))
-  ipcMain.handle(CH.worktreeRemove, (_e, repoPath: string, worktreePath: string, branch?: string) =>
-    git.removeWorktree(repoPath, worktreePath, branch),
+  ipcMain.handle(
+    CH.worktreeRemove,
+    (_e, repoPath: string, worktreePath: string, deleteBranch?: string, branch?: string) =>
+      removeSessionWorktree(repoPath, worktreePath, deleteBranch, branch),
+  )
+  ipcMain.handle(CH.worktreeApproveScripts, (_e, repoPath: string, hash: string) =>
+    approveWorktreeScripts(repoPath, hash),
   )
   ipcMain.handle(CH.worktrees, (_e, repoPath: string) => git.listWorktrees(repoPath))
   ipcMain.handle(CH.checkBranchName, (_e, cwd: string, name: string) => git.isValidBranchName(cwd, name))

@@ -198,4 +198,10 @@ export const git: GitArea = {
   'stash.confirm': 'Stash і продовжити',
 
   'error.withDetail': '{message}: {detail}',
+  'warning.worktreeTeardownFailed.exit': 'worktree видалено, але скрипт teardown завершився з помилкою (код {exit})',
+  'warning.worktreeTeardownFailed.timeout': 'worktree видалено, але скрипт teardown не вклався в {seconds} с і був зупинений',
+  'warning.worktreeTeardownFailed.spawn': 'worktree видалено, але скрипт teardown не вдалося запустити',
+  'warning.worktreeTeardownUnapproved': 'worktree видалено; скрипт teardown репозиторію не запускався — у поточному вигляді його не схвалено',
+  'error.worktreeScriptsChanged': 'скрипти worktree в репозиторії змінилися після відкриття вкладки — відкрийте нову сесію, щоб їх переглянути',
+  'error.worktreeScriptsNotProject': 'скрипти worktree запускаються лише для проєкту, відкритого в застосунку',
 }

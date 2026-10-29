@@ -332,6 +332,12 @@ export interface TerminalTab {
     mode: DiffMode
     baseRef?: string
   }
+  /**
+   * The setup tab of a new worktree session: the repository's `setup` script, run once in a
+   * shell tab of its own. Once it has run (or been skipped) the tab's `launched` is set and it is
+   * an ordinary shell. See `main/worktreeScripts`.
+   */
+  setup?: WorktreeSetupTab
 }
 
 /**
@@ -861,6 +867,14 @@ export type AppMessageCode =
   | 'worktree-remove-failed'
   /** the worktree is gone but its branch could not be deleted — a warning, not a failure */
   | 'worktree-removed-branch-kept'
+  /** the repository's teardown script failed or ran out of time; the worktree was removed anyway. {reason: 'exit'|'timeout'|'spawn', exit?} */
+  | 'worktree-teardown-failed'
+  /** the repository has a teardown script nobody approved in its current form, so it did not run */
+  | 'worktree-teardown-unapproved'
+  /** the repository's scripts changed after the setup tab was opened: approve the new ones from a new session */
+  | 'worktree-scripts-changed'
+  /** scripts are run only for a project the person opened in the app */
+  | 'worktree-scripts-not-project'
   /** a branch name typed or passed starts with `-`: git would read it as an option. {ref} */
   | 'ref-leading-dash'
   /** checkout/merge/rebase refused over uncommitted edits: offer to stash them. {operation, ref} */
@@ -1008,6 +1022,12 @@ export interface WorktreeAddOptions {
   worktreePath: string
   branch: string
   baseRef: string
+  /**
+   * The session's first tab runs Claude Code from this profile (`CLAUDE_CONFIG_DIR`, or the
+   * default profile when the field inside is absent): the worktree is marked trusted there, so
+   * the CLI does not ask. Absent: not a claude session, nothing is written.
+   */
+  claudeTrust?: { configDir?: string }
 }
 
 export interface PtyStartOptions {
@@ -1049,4 +1069,47 @@ export interface ServiceConfig {
   args: string[]
   env: Record<string, string>
   cwd: string
+}
+
+// ---------------------------------------------------------------------------
+// Worktree setup: `.worktreeinclude`, the repository's scripts, Claude's trust
+// (main/git/worktreeInclude.ts, main/worktreeScripts.ts, main/claudeTrust.ts)
+// ---------------------------------------------------------------------------
+
+/** the committed file a repository describes its worktree scripts in, at its root */
+export const WORKTREE_CONFIG_FILE = '.claude-studio.json'
+
+/** what a new worktree's setup tab carries: enough to ask, approve and run */
+export interface WorktreeSetupTab {
+  /** the project root the scripts were read from: approval is per repository */
+  repoPath: string
+  script: string
+  /** sha256 of the config file the script came from; the approval is of exactly this content */
+  hash: string
+  /** approved before the tab was made: it runs at once instead of asking */
+  approved: boolean
+}
+
+/** the repository's scripts as found at worktree creation */
+export interface WorktreeScripts {
+  setup?: string
+  teardown?: string
+  hash: string
+  approved: boolean
+}
+
+/** what was done to a fresh worktree besides `git worktree add` */
+export interface WorktreePrepared {
+  /** `.worktreeinclude` entries copied, and entries left alone (already there, unsafe, heavy) */
+  copied: number
+  skipped: number
+  /** the worktree was marked trusted in the claude profile's `.claude.json` */
+  trusted: boolean
+  scripts?: WorktreeScripts
+  /** the config file is there but is not valid: JSON's own complaint, verbatim */
+  configError?: string
+}
+
+export interface WorktreeAddResult extends OpResult {
+  prepared?: WorktreePrepared
 }

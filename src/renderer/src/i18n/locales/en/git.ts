@@ -201,6 +201,12 @@ export const git = {
 
   /** an app-authored sentence with the tool's own text behind it */
   'error.withDetail': '{message}: {detail}',
+  'warning.worktreeTeardownFailed.exit': 'the worktree is removed, but its teardown script failed (exit code {exit})',
+  'warning.worktreeTeardownFailed.timeout': 'the worktree is removed, but its teardown script did not finish in {seconds} s and was stopped',
+  'warning.worktreeTeardownFailed.spawn': 'the worktree is removed, but its teardown script could not be started',
+  'warning.worktreeTeardownUnapproved': "the worktree is removed; the repository's teardown script was not run — it has not been approved in its current form",
+  'error.worktreeScriptsChanged': "the repository's worktree scripts changed after this tab was opened — open a new session to review them",
+  'error.worktreeScriptsNotProject': 'worktree scripts run only for a project opened in the app',
 } as const
 
 export type GitArea = AreaOf<typeof git>

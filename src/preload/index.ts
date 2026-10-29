@@ -36,6 +36,7 @@ import type {
   ServiceConfig,
   StateHealth,
   WorktreeAddOptions,
+  WorktreeAddResult,
 } from '../shared/types'
 
 // The payload shapes are declared once, in shared/types: a copy on the preload side drifted
@@ -160,14 +161,22 @@ const api = {
       ipcRenderer.invoke(CHANNELS.git.checkout, cwd, branch, autostash),
     createBranch: (cwd: string, branch: string, baseRef?: string): Promise<OpResult> =>
       ipcRenderer.invoke(CHANNELS.git.createBranch, cwd, branch, baseRef),
-    worktreeAdd: (opts: WorktreeAddOptions): Promise<OpResult> => ipcRenderer.invoke(CHANNELS.git.worktreeAdd, opts),
-    /** `warning` is a success with a caveat: the worktree is gone, the branch survived it */
+    /** `prepared`: what was done to the worktree besides creating it — include copy, trust, scripts */
+    worktreeAdd: (opts: WorktreeAddOptions): Promise<WorktreeAddResult> =>
+      ipcRenderer.invoke(CHANNELS.git.worktreeAdd, opts),
+    /**
+     * `warning` is a success with a caveat: the worktree is gone, the branch survived it, or the
+     * repository's teardown failed. `branch` is the worktree's branch, for the teardown's env
+     */
     worktreeRemove: (
       repoPath: string,
       worktreePath: string,
+      deleteBranch?: string,
       branch?: string,
     ): Promise<OpResult & { warning?: string }> =>
-      ipcRenderer.invoke(CHANNELS.git.worktreeRemove, repoPath, worktreePath, branch),
+      ipcRenderer.invoke(CHANNELS.git.worktreeRemove, repoPath, worktreePath, deleteBranch, branch),
+    worktreeApproveScripts: (repoPath: string, hash: string): Promise<OpResult> =>
+      ipcRenderer.invoke(CHANNELS.git.worktreeApproveScripts, repoPath, hash),
     worktrees: (repoPath: string): Promise<{ path: string; branch: string | null }[]> =>
       ipcRenderer.invoke(CHANNELS.git.worktrees, repoPath),
     checkBranchName: (cwd: string, name: string): Promise<boolean> =>

@@ -215,6 +215,31 @@
   gap: 10px;
   color: var(--fg-dim);
 }
+/* the setup tab of a new worktree, before its script is approved (SetupConsent) */
+.setup-consent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--fg);
+}
+.setup-script {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 40vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
 .zzz-big {
   color: var(--fg-faint);
   font-style: italic;

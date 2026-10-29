@@ -81,6 +81,8 @@ export const CHANNELS = {
     createBranch: 'git:createBranch',
     worktreeAdd: 'git:worktreeAdd',
     worktreeRemove: 'git:worktreeRemove',
+    /** the person approved the repository's worktree scripts as shown (main/worktreeScripts.ts) */
+    worktreeApproveScripts: 'git:worktreeApproveScripts',
     worktrees: 'git:worktrees',
     /** `git check-ref-format --branch`: the new-session window checks a typed name before Create */
     checkBranchName: 'git:checkBranchName',

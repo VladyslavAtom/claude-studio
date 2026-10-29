@@ -224,6 +224,7 @@ function Workspace({
             <TerminalArea
               key={activeSession.id}
               session={activeSession}
+              projectPath={project.path}
               settings={state.settings}
               awake={awake}
               attention={attention}
