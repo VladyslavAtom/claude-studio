@@ -364,6 +364,11 @@ export interface AgentHookPaths {
   /** the program a codex tab names its conversation through, passed as `-c notify=[…]` */
   notify: string
   /**
+   * The `key=value` overrides a codex tab passes as `-c` each, giving it the lifecycle hooks its
+   * state is read from. Codex runs them only once the person has trusted them in its own review.
+   */
+  codexHooks: string[]
+  /**
    * the MCP config a claude tab is passed as `--mcp-config`, which is what gives its agent the
    * tool for opening a session of its own (see `main/agentTools`). Absent when the config could
    * not be written: the tab then starts without the tool and behaves exactly as it did before.
@@ -462,6 +467,12 @@ export interface AgentHookReport {
    * Claude only, main thread only — see `main/agentHooks`.
    */
   permission: PermissionAsk | null
+  /**
+   * What the tab's CLI is doing, as its own hooks reported it — codex only, whose lifecycle hooks
+   * write it (see `main/agentHooks.codexActivity`). A claude tab's state comes from the CLI's own
+   * state file instead, so for it this is always null.
+   */
+  activity: AgentActivity | null
 }
 
 /**

@@ -157,6 +157,21 @@ export function useTerminalRuntime(): { state: TerminalRuntimeState; actions: Te
     setBusyIds((prev) => (prev.has(terminalId) ? prev : new Set(prev).add(terminalId)))
   }, [])
 
+  /**
+   * Output of every live tab, the background ones included. A pane is mounted only for the session
+   * on screen, so a pane cannot speak for the others — but main sends every pty's output to the
+   * window whether a pane listens or not, and this listener hears all of it. That makes the output
+   * fallback (`busyIds`) hold for a tab whose CLI reports nothing about itself — a custom preset,
+   * or a codex whose hooks are not trusted — wherever it is. Throttled as the pane throttles: one
+   * mark per tab per 1.5 s is all the 6-second window needs.
+   */
+  useEffect(() => {
+    return window.api.pty.onData(({ id }) => {
+      if (Date.now() - (activityAt.current.get(id) ?? 0) < 1500) return
+      markActivity(id)
+    })
+  }, [markActivity])
+
   const markSeen = useCallback((terminalId: string) => {
     setAttention((prev) => withoutId(prev, terminalId))
   }, [])

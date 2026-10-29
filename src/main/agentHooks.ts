@@ -25,12 +25,15 @@
  *   `--settings`; its hooks copy their stdin into `<reports>/`. `Stop` fires for the main agent
  *   alone, so a subagent cannot ring.
  * - **codex** — the `notify` program, passed as `-c notify=["…"]` and handed one JSON object as
- *   its **first argument**. Codex has hooks too, but they sit behind a trust gate, and its own
- *   event list has neither a `Stop` nor a `Notification`. Its one call, `agent-turn-complete`,
- *   names the thread; only that is read, because a codex turn has never rung here and a bell for
- *   it is a change of its own. The call **also fires for a finished subagent** (observed live),
- *   and such a payload names somebody else's thread — so the parser refuses it, or the tab would
- *   follow a subagent into a conversation that is not its own. See `parseNotifyReport`.
+ *   its **first argument**. Its one call, `agent-turn-complete`, names the thread; only that is
+ *   read, because a codex turn has never rung here and a bell for it is a change of its own. The
+ *   call **also fires for a finished subagent** (observed live), and such a payload names
+ *   somebody else's thread — so the parser refuses it, or the tab would follow a subagent into a
+ *   conversation that is not its own. See `parseNotifyReport`.
+ *   What the agent is doing comes from codex's lifecycle hooks, passed the same way (`-c
+ *   hooks.<Event>=[…]`) — see `CODEX_STATE_PROGRAM`. They sit behind codex's own trust gate:
+ *   until the person trusts them in codex's startup review, they do not run and the tab is judged
+ *   by its output, exactly as before.
  *
  * Neither is ever merged into the user's own configuration: both must apply to the CLIs this
  * app starts and to nothing else, or a `claude` or `codex` the user runs by hand in the same
@@ -48,6 +51,7 @@ import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import { basename, join } from 'node:path'
 import type {
+  AgentActivity,
   AgentHookPaths,
   AgentHookReport,
   AgentSessionReport,
@@ -70,6 +74,11 @@ function settingsPath(): string {
 /** the program a codex tab is started with; a file rather than a line, because codex runs it */
 function notifyPath(): string {
   return join(baseDir(), 'codex-notify.sh')
+}
+
+/** the program every lifecycle hook of a codex tab runs, with the event's name as its argument */
+function codexStatePath(): string {
+  return join(baseDir(), 'codex-state.sh')
 }
 
 /** the program a claude tab's `PermissionRequest` hook runs; a file, because it is a loop */
@@ -286,6 +295,110 @@ mv -f "$t" "$d/$s.json" || rm -f "$t"
 exit 0
 `
 
+/**
+ * What a codex tab is doing, from codex's own lifecycle hooks (0.163: `SessionStart`,
+ * `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`, `Stop`, `Interrupt`,
+ * `SessionEnd`, …). Codex keeps no state file of its own the way claude does, so the hooks write
+ * one: `<id>.codex`, holding the name of the last event, rewritten by each. `codexActivity` turns
+ * the name into a state.
+ *
+ * **How they reach codex without touching its configuration.** Each is a `-c hooks.<Event>=[…]`
+ * on the command line — codex's «session flags» layer, which exists for one run and is merged
+ * with the user's own hooks rather than replacing them (both listed by `hooks/list`, checked
+ * against 0.163). Nothing is written to `~/.codex`.
+ *
+ * **The trust gate is codex's, and it is left to the person.** A hook that is not managed runs
+ * only once its exact definition has been trusted; codex asks at startup («Hooks need review»)
+ * and records the answer in the user's config by itself. `--dangerously-bypass-hook-trust` would
+ * skip that, but for every hook of the run — the user's own and a plugin's too — so it is not
+ * used, and nothing writes the trust record on the person's behalf. Untrusted, the hooks do not
+ * run, the file is never written, and the tab falls back on its output.
+ *
+ * Trust is recorded against a hash of the definition, so **the command lines must not change**:
+ * a change asks the person to review again. That is why every hook runs the same program with
+ * nothing but the event's name, and the meaning of an event lives in `codexActivity`, which can
+ * change freely.
+ *
+ * The program reads and drops its stdin (a `PostToolUse` payload carries the tool's whole
+ * output), prints nothing — an empty stdout is «no decision» for `PermissionRequest`, so the
+ * normal approval prompt follows at once — and exits zero whatever happens.
+ */
+const CODEX_STATE_PROGRAM = `#!/bin/sh
+exec 2>/dev/null
+cat > /dev/null
+d=$CLAUDE_STUDIO_HOOK_DIR; s=$CLAUDE_STUDIO_SESSION
+[ -n "$d" ] && [ -n "$s" ] && [ -n "$1" ] || exit 0
+t="$d/$s.$$.tmp"
+printf '%s' "$1" > "$t" || { rm -f "$t"; exit 0; }
+mv -f "$t" "$d/$s.codex" || rm -f "$t"
+exit 0
+`
+
+/**
+ * The events a codex tab reports, and the matcher of each. `PreToolUse` is asked for one tool
+ * only: `request_user_input` is codex asking the person a question, and every other tool call
+ * starting is not news — `PostToolUse` already says the agent is working.
+ */
+const CODEX_EVENTS: readonly { event: string; matcher?: string }[] = [
+  { event: 'SessionStart' },
+  { event: 'UserPromptSubmit' },
+  { event: 'PreToolUse', matcher: '^request_user_input$' },
+  { event: 'PermissionRequest' },
+  { event: 'PostToolUse' },
+  { event: 'Stop' },
+  { event: 'Interrupt' },
+  { event: 'SessionEnd' },
+]
+
+/** a TOML basic string; the value of a `-c` override is parsed as TOML */
+function tomlString(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+/** the `-c` overrides that give a codex tab its lifecycle hooks, one `key=value` per event */
+export function codexHookOverrides(program: string): string[] {
+  return CODEX_EVENTS.map(({ event, matcher }) => {
+    const command = tomlString(`sh ${shellWord(program)} ${event}`)
+    const match = matcher ? `matcher=${tomlString(matcher)},` : ''
+    return `hooks.${event}=[{${match}hooks=[{type="command",command=${command},timeout=3}]}]`
+  })
+}
+
+/**
+ * The state behind the last event a codex tab reported, or null when it says nothing usable.
+ *
+ * - a prompt submitted, a tool finished: working. `PostToolUse` also follows an approved command
+ *   and an answered question, which is how a tab leaves «waiting» — though only once that tool has
+ *   finished; codex raises nothing at the moment the person answers;
+ * - an approval asked for, a question to the person (`request_user_input`): waiting;
+ * - a turn ended or interrupted, a session started: idle;
+ * - the session ended, or anything else: null — the codex process is gone or the word is not
+ *   ours, and the tab is judged by its output.
+ */
+export function codexActivity(raw: string): AgentActivity | null {
+  switch (raw.trim()) {
+    case 'UserPromptSubmit':
+    case 'PostToolUse':
+      return 'busy'
+    case 'PreToolUse':
+    case 'PermissionRequest':
+      return 'waiting'
+    case 'SessionStart':
+    case 'Stop':
+    case 'Interrupt':
+      return 'idle'
+  }
+  return null
+}
+
+async function readCodexActivity(terminalId: string): Promise<AgentActivity | null> {
+  try {
+    return codexActivity(await fs.readFile(join(reportsDir(), `${terminalId}.codex`), 'utf8'))
+  } catch {
+    return null // no hook has run for this tab: not codex, not trusted yet, or reporting is off
+  }
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
@@ -461,11 +574,18 @@ async function prepare(): Promise<AgentHookPaths | null> {
     // codex runs this one, so it has to carry the bit that says it may be run
     await fs.writeFile(notifyPath(), NOTIFY_PROGRAM, { encoding: 'utf8', mode: 0o755 })
     await fs.chmod(notifyPath(), 0o755) // an existing file keeps its own mode: the write above does not set it
+    // run as `sh <path> <event>`, so it needs no bit either
+    await fs.writeFile(codexStatePath(), CODEX_STATE_PROGRAM, 'utf8')
     // the other half of what a claude tab is started with: the tool it opens a session through
     // (`agentTools`). It is prepared separately and may fail separately — a tab without the tool
     // still reports, and a tab whose hooks are missing is not deprived of the tool as well
     const mcp = await toolConfigPath()
-    return { settings: settingsPath(), notify: notifyPath(), ...(mcp ? { mcp } : {}) }
+    return {
+      settings: settingsPath(),
+      notify: notifyPath(),
+      codexHooks: codexHookOverrides(codexStatePath()),
+      ...(mcp ? { mcp } : {}),
+    }
   } catch {
     // an unwritable userData: no overlay, no notify program, and every tab behaves as before
     return null
@@ -509,14 +629,14 @@ async function sweep(): Promise<void> {
  * so its silence answers no such question — see `useWaitingPoll`.
  */
 export async function takeHookReport(terminalId: string): Promise<AgentHookReport> {
-  if (!isTerminalId(terminalId)) return { session: null, stops: 0, notifications: 0, permission: null }
+  if (!isTerminalId(terminalId)) return { session: null, stops: 0, notifications: 0, permission: null, activity: null }
   const session = await readSession(terminalId)
   const stops = await takeEvents(terminalId, 'Stop')
   const notifications = await takeEvents(terminalId, 'Notification')
   // a finished turn has no prompt left open: whatever ask is still on disk was answered in the
   // terminal, and its hook is told to stop waiting
   const permission = stops > 0 ? await withdrawAsks(terminalId) : await readAsk(terminalId)
-  return { session, stops, notifications, permission }
+  return { session, stops, notifications, permission, activity: await readCodexActivity(terminalId) }
 }
 
 /** the asks of one tab, oldest first: the name sorts by seconds, then by pid */

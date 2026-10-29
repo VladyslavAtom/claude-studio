@@ -52,10 +52,11 @@ const SILENT_AFTER_MS = 20_000
  * **A permission prompt is also offered to the window** (`report.permission`), so that it can be
  * answered from the session list. That is a state and is handed on as one, every pass.
  *
- * **A codex tab is polled for one thing only: which conversation it is in.** It reports no
- * events, so its counts are zero and it rings exactly as much as it did before — never. What it
- * does report is the thread codex picked, which is the only way to learn it and the only way to
- * notice it changing.
+ * **A codex tab is polled for two things: which conversation it is in, and what it is doing.**
+ * It reports no events, so its counts are zero and it rings exactly as much as it did before —
+ * never. It reports the thread codex picked, which is the only way to learn it and the only way to
+ * notice it changing, and the state its lifecycle hooks wrote (`report.activity`), which is its
+ * answer to what claude's state file answers.
  *
  * **A claude tab that reports nothing is reported.** With no fallback left, a CLI whose hooks are
  * off would simply stop ringing and nothing would say why. The CLI reports a start for every tab,
@@ -134,6 +135,10 @@ export function useWaitingPoll({
                 activity = conversation
                   ? await window.api.agents.activity(conversation, storeDir(terminal, agent.env.CLAUDE_CONFIG_DIR))
                   : null
+                onActivity(terminal.id, activity)
+              } else {
+                // codex keeps no state file; its lifecycle hooks write one, and it rides in the report
+                activity = report.activity
                 onActivity(terminal.id, activity)
               }
               // a state, so it is handed on every pass, null included: that is how a card goes away

@@ -130,8 +130,8 @@ The agents dialog lists the project's conversations (`listExternalSessions`) and
 
 Three things cannot be worked out from the outside, and each CLI is asked through the one channel
 it has — `src/main/agentHooks.ts`. Both answer in the same shape, so the renderer has one code
-path. Codex answers the first question only; the other two are claude's, and a codex tab has
-never rung here.
+path. Codex answers the first question, and what it is doing (its lifecycle hooks, below); the
+bell and the permission card are claude's, and a codex tab has never rung here.
 
 **Which conversation the tab is in.** The UUID is ours only until the user types `/clear`: the
 CLI abandons that conversation and opens one with an id of its own. A tab that kept the old id
@@ -149,16 +149,16 @@ elicitation dialog is not the end of a turn: `Stop` never fires, and the record 
 `Notification` is what the CLI raises for it, and the overlay asks for exactly those types
 (matcher `permission_prompt|elicitation_dialog|elicitation_url_dialog`). `idle_prompt`, raised
 about a minute after every finished turn, is not a block and is not asked for: it used to ring a
-second time for a turn the person had already looked at. Codex has nothing of the kind a tab of ours can hear — its
-`permission_request` is a hook, and hooks there sit behind a trust gate we do not open — and
-**a codex tab rings no more than it ever did, which is not at all**.
+second time for a turn the person had already looked at. **A codex tab rings no more than it ever
+did, which is not at all** — its hooks give it a state (below), not a bell.
 
-The mechanism is one directory, `<userData>/agent-hooks/`, and two ways in:
+The mechanism is one directory, `<userData>/agent-hooks/`, and these ways in:
 
-| agent   | started with              | how the payload arrives         | what it reports         |
-| ------- | ------------------------- | ------------------------------- | ----------------------- |
-| `uuid`  | `--settings <overlay>`    | hooks, on stdin                 | conversation and events |
-| `codex` | `-c notify=["<program>"]` | one JSON object, as argument #1 | the conversation, only  |
+| agent   | started with              | how the payload arrives          | what it reports         |
+| ------- | ------------------------- | -------------------------------- | ----------------------- |
+| `uuid`  | `--settings <overlay>`    | hooks, on stdin                  | conversation and events |
+| `codex` | `-c notify=["<program>"]` | one JSON object, as argument #1  | the conversation        |
+| `codex` | `-c hooks.<Event>=[…]`    | the event's name, as argument #1 | what it is doing        |
 
 Both write into `<userData>/agent-hooks/reports/`, addressed by `CLAUDE_STUDIO_SESSION` and
 `CLAUDE_STUDIO_HOOK_DIR` — put into the pty's environment by `src/main/pty.ts` and inherited by
@@ -172,6 +172,7 @@ tab. The `-c` value is TOML inside a shell word, so the path is escaped for both
 | `<terminal id>.json`          | state: the conversation — claude rewrites it at every start, codex at every turn end. All a codex tab ever leaves |
 | `<terminal id>.stop.<unique>` | a claude event: a finished turn, one file each, deleted as it is read                                             |
 | `<terminal id>.note.<unique>` | a claude event: the CLI asking for a person, one file each, likewise                                              |
+| `<terminal id>.codex`         | state: the name of the last lifecycle event a codex tab's hooks reported                                          |
 | `<terminal id>.ask.<n>`       | state: a permission prompt the CLI holds open, written by the `PermissionRequest` hook still waiting on it        |
 | `<terminal id>.answer.<n>`    | the window's answer to that prompt, written by main on a click, read and deleted by the waiting hook              |
 
@@ -237,6 +238,35 @@ shows it as working until the next pass reads the CLI's own word.
 There is no «always allow» on the card and no action in the desktop notification (Electron
 supports notification actions on macOS only).
 
+### A codex tab's state
+
+Codex keeps no state file the way claude does, so its own lifecycle hooks (codex 0.163) write one.
+Each is a per-launch override, `-c hooks.<Event>=[{…command="sh '<userData>/agent-hooks/codex-state.sh' <Event>"…}]`
+— codex's «session flags» layer, merged with the user's own hooks and gone with the process;
+`~/.codex` is not touched. The program drops its stdin, writes the event's name to
+`<id>.codex` and prints nothing, so for `PermissionRequest` it is «no decision» and the approval
+prompt follows at once. `agentHooks.codexActivity` maps the name, and the report carries it as
+`activity`:
+
+| event                                                    | state     |
+| -------------------------------------------------------- | --------- |
+| `UserPromptSubmit`, `PostToolUse`                        | `busy`    |
+| `PermissionRequest`, `PreToolUse` `^request_user_input$` | `waiting` |
+| `SessionStart`, `Stop`, `Interrupt`                      | `idle`    |
+| `SessionEnd`, anything else                              | no answer |
+
+`useWaitingPoll` hands it on as the tab's activity, so `lib/status` draws it exactly as it draws
+claude's state file. A tab leaves `waiting` on the next `PostToolUse` — after the approved command
+or the answered question has finished; codex raises nothing at the moment of the answer.
+
+**Codex's trust gate is left to the person.** A non-managed hook runs only once its exact definition
+has been trusted: the first codex tab shows codex's own «Hooks need review» screen, and codex records
+the answer in the user's config itself. `--dangerously-bypass-hook-trust` is not passed (it would
+skip the review for every hook of the run, the user's own and plugins' included), and the app never
+writes the trust record. Untrusted, nothing runs and the tab falls back on its output. Trust is
+keyed by a hash of the definition, so the override text is fixed — every event runs the same program
+with only its name, and what a name means can change in `codexActivity` without a new review.
+
 ### A tab that cannot report says so
 
 With nothing to fall back on, a CLI whose hooks are off would simply stop ringing and nothing
@@ -278,6 +308,12 @@ pulse:
 | `attention`     | not about the process: this tab rang and nobody has looked yet                       |
 | the state file  | the process's own answer; where it answers, it decides                               |
 | `busyIds`       | output in the last few seconds — a shell tab's only answer, and the fallback for all |
+
+The state is claude's `sessions/<pid>.json`, or for codex the state its hooks write (above).
+`busyIds` is fed by one listener in `useTerminalRuntime` on every pty's output — main sends it for
+every live tab, mounted pane or not — so the fallback holds for background tabs as well: a custom
+preset, or a codex whose hooks are untrusted, shows «running» while it prints and «idle» six
+seconds after. It cannot show «waiting»: that needs the CLI to say so.
 
 `busy` and `shell` are «running» (the CLI's own session list counts both as working), `waiting` is
 «waiting» — it is set while the CLI is blocked on a person, and it draws the dot without ringing,

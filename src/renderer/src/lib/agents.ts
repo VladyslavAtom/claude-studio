@@ -55,6 +55,8 @@ function tomlString(value: string): string {
  *   that config is added to the user's own servers rather than replacing them;
  * - a `codex` agent takes the notify program as `-c notify=["…"]`, a config override on the
  *   command line. Codex is never told an id, so this is the only way the tab ever learns one.
+ *   It also takes its lifecycle hooks as `-c hooks.<Event>=[…]`, one override each, which is
+ *   where its working / waiting / idle state comes from;
  *   It is given no tool: the two CLIs do not share an MCP configuration format on the command
  *   line, and nothing here has been tried against codex.
  *
@@ -68,7 +70,13 @@ function reportingArgs(agent: AgentDef, hooks: AgentHookPaths): string[] {
     if (hooks.mcp) args.push('--mcp-config', quote(hooks.mcp))
     return args
   }
-  if (agent.sessionSource === 'codex') return ['-c', quote(`notify=[${tomlString(hooks.notify)}]`)]
+  if (agent.sessionSource === 'codex') {
+    return [
+      '-c',
+      quote(`notify=[${tomlString(hooks.notify)}]`),
+      ...hooks.codexHooks.flatMap((override) => ['-c', quote(override)]),
+    ]
+  }
   return []
 }
 

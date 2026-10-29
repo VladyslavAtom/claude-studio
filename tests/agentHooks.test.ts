@@ -278,6 +278,7 @@ describe('takeHookReport — the conversation', () => {
       stops: 0,
       notifications: 0,
       permission: null,
+      activity: null,
     })
   })
 
@@ -290,11 +291,23 @@ describe('takeHookReport — the conversation', () => {
 
   it('is null when no hook has run for this tab', async () => {
     await fs.mkdir(hooks.reportsDir(), { recursive: true })
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
+    expect(await hooks.takeHookReport(TERM)).toEqual({
+      session: null,
+      stops: 0,
+      notifications: 0,
+      permission: null,
+      activity: null,
+    })
   })
 
   it('is null when the reports directory does not exist at all', async () => {
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
+    expect(await hooks.takeHookReport(TERM)).toEqual({
+      session: null,
+      stops: 0,
+      notifications: 0,
+      permission: null,
+      activity: null,
+    })
   })
 
   it('never reads outside the reports directory', async () => {
@@ -304,12 +317,13 @@ describe('takeHookReport — the conversation', () => {
       stops: 0,
       notifications: 0,
       permission: null,
+      activity: null,
     })
   })
 })
 
 describe('takeHookReport — events', () => {
-  const empty = { session: null, stops: 0, notifications: 0, permission: null }
+  const empty = { session: null, stops: 0, notifications: 0, permission: null, activity: null }
 
   it('counts a turn and consumes it, so it rings exactly once', async () => {
     await writeEvent(TERM, 'stop', stopPayload(), '1785100765.457196')
@@ -358,6 +372,7 @@ describe('takeHookReport — events', () => {
       stops: 1,
       notifications: 1,
       permission: null,
+      activity: null,
     })
   })
 })
@@ -371,7 +386,13 @@ describe('clearReports', () => {
     await writeEvent(other, 'stop', stopPayload(), '1.2')
     hooks.clearReports(TERM)
     await vi.waitFor(async () =>
-      expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null }),
+      expect(await hooks.takeHookReport(TERM)).toEqual({
+        session: null,
+        stops: 0,
+        notifications: 0,
+        permission: null,
+        activity: null,
+      }),
     )
     const kept = await hooks.takeHookReport(other)
     expect([kept.session?.sessionId, kept.stops]).toEqual([SID, 1])
@@ -391,6 +412,7 @@ describe('hookPaths', () => {
     expect(paths).toEqual({
       settings: join(dir, 'agent-hooks', 'settings.json'),
       notify: join(dir, 'agent-hooks', 'codex-notify.sh'),
+      codexHooks: hooks.codexHookOverrides(join(dir, 'agent-hooks', 'codex-state.sh')),
       // the other half a claude tab is started with: the tool it opens a session through
       mcp: join(dir, 'agent-tools', 'mcp.json'),
     })
@@ -429,7 +451,13 @@ describe('hookPaths', () => {
     await writeReport(TERM, payload())
     await writeEvent(TERM, 'stop', stopPayload(), '1.1')
     await hooks.hookPaths()
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
+    expect(await hooks.takeHookReport(TERM)).toEqual({
+      session: null,
+      stops: 0,
+      notifications: 0,
+      permission: null,
+      activity: null,
+    })
   })
 
   it('is prepared once, so a later report is not swept away', async () => {
@@ -445,7 +473,13 @@ describe('hookPaths', () => {
     vi.resetModules()
     const fresh = (await import('../src/main/agentHooks')) as Hooks
     expect(await fresh.hookPaths()).toBeNull()
-    expect(await fresh.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
+    expect(await fresh.takeHookReport(TERM)).toEqual({
+      session: null,
+      stops: 0,
+      notifications: 0,
+      permission: null,
+      activity: null,
+    })
   })
 })
 
@@ -597,6 +631,7 @@ describe('the notify program itself', () => {
       stops: 0,
       notifications: 0,
       permission: null,
+      activity: null,
     })
   })
 
@@ -658,7 +693,13 @@ describe('the notify program itself', () => {
     // the program writes what it was handed; a subagent's turn is refused where the parser is,
     // and the tab is left with no reported conversation rather than with somebody else's
     await run(await program(), subturnPayload(), env())
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
+    expect(await hooks.takeHookReport(TERM)).toEqual({
+      session: null,
+      stops: 0,
+      notifications: 0,
+      permission: null,
+      activity: null,
+    })
   })
 })
 
@@ -878,5 +919,122 @@ describe('the permission program itself', () => {
     await hooks.hookPaths()
     await rm(hooks.reportsDir(), { recursive: true, force: true })
     expect(await start(env(), askPayload())).toEqual({ out: '', code: 0 })
+  })
+})
+
+describe('codexHookOverrides', () => {
+  const overrides = (): string[] => hooks.codexHookOverrides('/home/u/.config/claude-studio/agent-hooks/codex-state.sh')
+
+  it('gives codex one override per lifecycle event, each running the same program', () => {
+    const list = overrides()
+    expect(list.map((o) => o.slice(0, o.indexOf('=')))).toEqual([
+      'hooks.SessionStart',
+      'hooks.UserPromptSubmit',
+      'hooks.PreToolUse',
+      'hooks.PermissionRequest',
+      'hooks.PostToolUse',
+      'hooks.Stop',
+      'hooks.Interrupt',
+      'hooks.SessionEnd',
+    ])
+    for (const o of list) {
+      const event = o.slice('hooks.'.length, o.indexOf('='))
+      expect(o).toContain(`command="sh '/home/u/.config/claude-studio/agent-hooks/codex-state.sh' ${event}"`)
+    }
+  })
+
+  it('asks PreToolUse about the question tool only', () => {
+    const pre = overrides().find((o) => o.startsWith('hooks.PreToolUse=')) ?? ''
+    expect(pre).toContain('matcher="^request_user_input$"')
+    expect(overrides().filter((o) => o.includes('matcher='))).toHaveLength(1)
+  })
+
+  it('is the same text every time: codex trusts a hook by the hash of its definition', () => {
+    expect(overrides()).toEqual(overrides())
+  })
+
+  it('escapes what would end the TOML string early', () => {
+    const [first] = hooks.codexHookOverrides('/home/u/we"ird\\dir/codex-state.sh')
+    expect(first).toContain(`command="sh '/home/u/we\\"ird\\\\dir/codex-state.sh' SessionStart"`)
+  })
+})
+
+describe('codexActivity', () => {
+  it('reads the last event as a state', () => {
+    expect(hooks.codexActivity('UserPromptSubmit')).toBe('busy')
+    expect(hooks.codexActivity('PostToolUse')).toBe('busy')
+    expect(hooks.codexActivity('PermissionRequest')).toBe('waiting')
+    expect(hooks.codexActivity('PreToolUse')).toBe('waiting')
+    expect(hooks.codexActivity('Stop')).toBe('idle')
+    expect(hooks.codexActivity('Interrupt')).toBe('idle')
+    expect(hooks.codexActivity('SessionStart')).toBe('idle')
+  })
+
+  it('has no opinion once the session ended, or about a word it does not know', () => {
+    expect(hooks.codexActivity('SessionEnd')).toBeNull()
+    expect(hooks.codexActivity('')).toBeNull()
+    expect(hooks.codexActivity('Notification')).toBeNull()
+  })
+})
+
+/**
+ * The codex state program, run the way codex runs a command hook: a shell, the event's name as
+ * the argument the override gives it, the payload on stdin, the tab's environment.
+ */
+describe('the codex state program itself', () => {
+  const env = (over: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => ({
+    ...process.env,
+    CLAUDE_STUDIO_HOOK_DIR: hooks.reportsDir(),
+    CLAUDE_STUDIO_SESSION: TERM,
+    ...over,
+  })
+
+  async function fire(
+    event: string,
+    vars: NodeJS.ProcessEnv = env(),
+    stdin = '{"x":1}',
+  ): Promise<{ out: string; code: number }> {
+    await hooks.hookPaths()
+    return new Promise((resolve) => {
+      const child = spawn('/bin/sh', [join(dir, 'agent-hooks', 'codex-state.sh'), event], { env: vars })
+      let out = ''
+      child.stdout.setEncoding('utf8')
+      child.stdout.on('data', (chunk: string) => (out += chunk))
+      child.on('close', (code) => resolve({ out, code: code ?? -1 }))
+      child.stdin.on('error', () => undefined)
+      child.stdin.end(stdin)
+    })
+  }
+
+  it('follows the tab through a turn, and prints nothing — no decision for an approval', async () => {
+    const seen: (string | null)[] = []
+    for (const event of ['SessionStart', 'UserPromptSubmit', 'PermissionRequest', 'PostToolUse', 'Stop']) {
+      expect(await fire(event)).toEqual({ out: '', code: 0 })
+      seen.push((await hooks.takeHookReport(TERM)).activity)
+    }
+    expect(seen).toEqual(['idle', 'busy', 'waiting', 'busy', 'idle'])
+  })
+
+  it('takes a large payload without choking on it', async () => {
+    expect(await fire('PostToolUse', env(), 'x'.repeat(2_000_000))).toEqual({ out: '', code: 0 })
+    expect((await hooks.takeHookReport(TERM)).activity).toBe('busy')
+  })
+
+  it('leaves the state, and nothing else; the session ending clears what it means', async () => {
+    await fire('UserPromptSubmit')
+    await fire('SessionEnd')
+    expect(await fs.readdir(hooks.reportsDir())).toEqual([`${TERM}.codex`])
+    expect((await hooks.takeHookReport(TERM)).activity).toBeNull()
+  })
+
+  it('does nothing in a codex the app did not start', async () => {
+    expect(await fire('Stop', env({ CLAUDE_STUDIO_SESSION: '' }))).toEqual({ out: '', code: 0 })
+    expect(await fs.readdir(hooks.reportsDir())).toEqual([])
+  })
+
+  it('goes with the tab', async () => {
+    await fire('UserPromptSubmit')
+    hooks.clearReports(TERM)
+    await vi.waitFor(async () => expect((await hooks.takeHookReport(TERM)).activity).toBeNull())
   })
 })

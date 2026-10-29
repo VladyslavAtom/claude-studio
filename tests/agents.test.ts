@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { commandFor, commandForRun, findAgent, parseEnv, titleFor } from '../src/renderer/src/lib/agents'
-import type { AgentDef, AgentRun, Settings, TerminalTab } from '../src/shared/types'
+import type { AgentDef, AgentHookPaths, AgentRun, Settings, TerminalTab } from '../src/shared/types'
 
 function agent(over: Partial<AgentDef> = {}): AgentDef {
   return {
@@ -157,6 +157,7 @@ describe('commandFor — how a claude tab is made to report', () => {
   const PATHS = {
     settings: '/home/u/.config/claude-studio/agent-hooks/settings.json',
     notify: '/home/u/.config/claude-studio/agent-hooks/codex-notify.sh',
+    codexHooks: [],
   }
 
   it('goes before the agent’s own arguments, so a positional prompt stays last', () => {
@@ -196,7 +197,7 @@ describe('commandFor — how a claude tab is made to report', () => {
  */
 describe('commandFor — how a codex tab is made to report', () => {
   const NOTIFY = '/home/u/.config/claude-studio/agent-hooks/codex-notify.sh'
-  const paths = (notify: string): { settings: string; notify: string } => ({ settings: '/s.json', notify })
+  const paths = (notify: string): AgentHookPaths => ({ settings: '/s.json', notify, codexHooks: [] })
   const codex = (over: Partial<AgentDef> = {}): AgentDef =>
     agent({
       id: 'codex',
@@ -245,6 +246,18 @@ describe('commandFor — how a codex tab is made to report', () => {
 
   it('is left out when main could not write one — the tab starts exactly as before', () => {
     expect(commandFor(codex(), tab())).toBe('codex')
+  })
+
+  it('passes each lifecycle hook as an override of its own, after the notify program', () => {
+    const hooks = [
+      `hooks.Stop=[{hooks=[{type="command",command="sh '/p/codex-state.sh' Stop",timeout=3}]}]`,
+      `hooks.PreToolUse=[{matcher="^request_user_input$",hooks=[{type="command",command="sh '/p/x' PreToolUse"}]}]`,
+    ]
+    const command = commandFor(codex(), tab({ startPrompt: 'go' }), { ...paths(NOTIFY), codexHooks: hooks }) ?? ''
+    const argv = execFileSync('/bin/sh', ['-c', command.replace(/^codex/, `printf '%s\\n'`)], { encoding: 'utf8' })
+      .split('\n')
+      .slice(0, -1)
+    expect(argv).toEqual(['-c', `notify=["${NOTIFY}"]`, '-c', hooks[0], '-c', hooks[1], 'go'])
   })
 
   it('never gets the claude overlay', () => {
