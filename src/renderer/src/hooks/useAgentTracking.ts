@@ -36,20 +36,26 @@ export function storeDir(terminal: Pick<TerminalTab, 'configDir'>, agentDir?: st
  * Resume or fresh start is decided by the agent's own store, never by our bookkeeping:
  * a fresh run with an id that already exists dies with "Session ID is already in use",
  * and a resume of a conversation that was never written dies with "No conversation found".
+ * Answers with the settled value, for a caller that starts the process itself.
  */
-export function useResolveLaunched(): (projectId: string, sessionId: string, terminal: TerminalTab) => Promise<void> {
+export function useResolveLaunched(): (
+  projectId: string,
+  sessionId: string,
+  terminal: TerminalTab,
+) => Promise<boolean> {
   const dispatch = useDispatch()
   const settingsRef = useSettingsRef()
 
   return useCallback(
     async (projectId: string, sessionId: string, terminal: TerminalTab) => {
       const agent = findAgent(settingsRef.current, terminal.agentId)
-      if (!agent || agent.sessionSource === 'none' || !terminal.agentSessionId) return
+      if (!agent || agent.sessionSource === 'none' || !terminal.agentSessionId) return Boolean(terminal.launched)
       const kind = agent.sessionSource === 'codex' ? 'codex' : 'claude'
       const dir = storeDir(terminal, agent.env.CLAUDE_CONFIG_DIR)
       const exists = await window.api.agents.sessionExists(kind, terminal.agentSessionId, dir)
-      if (Boolean(terminal.launched) === exists) return
-      dispatch({ type: 'launchedChanged', projectId, sessionId, terminalId: terminal.id, launched: exists })
+      if (Boolean(terminal.launched) !== exists)
+        dispatch({ type: 'launchedChanged', projectId, sessionId, terminalId: terminal.id, launched: exists })
+      return exists
     },
     [dispatch, settingsRef],
   )

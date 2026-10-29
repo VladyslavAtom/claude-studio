@@ -34,8 +34,8 @@ import type { AgentToolRequest, AgentToolResult, Project, Session, Settings } fr
 import type { NewSessionResult } from '../components/NewSessionModal'
 import { useT } from '../i18n'
 import { submitToAgent } from '../lib/agentSubmit'
-import { commandFor, conversationKind, envFor, findAgent } from '../lib/agents'
-import { withWorktreeEnv } from '../../../shared/worktreeSetup'
+import { conversationKind, findAgent } from '../lib/agents'
+import { startWithoutPane } from '../lib/headlessStart'
 import { autoBranch, worktreePathFor } from '../lib/sessionDefaults'
 import { MAX_CHILDREN, MAX_DEPTH, depthOf, descendants } from '../lib/sessionTree'
 import { terminalStatus } from '../lib/status'
@@ -200,28 +200,10 @@ export function useAgentToolRequests(sessions: SessionActions): void {
 
       const session = created.session
       const terminal = session.terminals[0]
-      // A tab's process normally starts when its pane is first mounted, and a pane exists only for
-      // the session on screen — a child opened into a project nobody is looking at would wait for
-      // the person to go there. So it is started here, with exactly what the pane would pass; the
-      // pane that mounts later re-attaches to it (`pty.start` on a live id), takes the kept output
-      // and applies its measured size. No size now: there is no pane to measure.
-      let started = false
-      if (terminal) {
-        const agent = findAgent(state.settings, terminal.agentId)
-        const command = commandFor(agent, terminal, hookPathsRef.current ?? undefined)
-        const env = withWorktreeEnv(envFor(agent, terminal), project.path, session.worktree)
-        const res = await window.api.pty
-          .start({
-            id: terminal.id,
-            cwd: session.cwd,
-            kind: terminal.kind,
-            ...(command === undefined ? {} : { initialCommand: command }),
-            ...(env === undefined ? {} : { env }),
-            sleepable: terminal.kind === 'agent',
-          })
-          .catch(() => null)
-        started = Boolean(res?.alive)
-      }
+      // a child opened into a project nobody is looking at must not wait for the person to go there
+      const started = terminal
+        ? await startWithoutPane(state.settings, hookPathsRef.current, project.path, session, terminal)
+        : false
       return {
         ok: true,
         session: {

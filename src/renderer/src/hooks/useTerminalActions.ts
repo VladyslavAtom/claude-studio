@@ -144,7 +144,9 @@ export function useTerminalActions(): TerminalActions {
         wake(terminalId)
         return Promise.resolve()
       }
-      return resolveLaunched(project.id, session.id, terminal).finally(() => wake(terminalId))
+      return resolveLaunched(project.id, session.id, terminal)
+        .then(() => undefined)
+        .finally(() => wake(terminalId))
     },
     [resolveLaunched, wake],
   )

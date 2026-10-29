@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { COMMIT_VIA_SERVICE, SERVICE_ARGS } from '../../../shared/types'
-import { useLoaded } from '../state/appStateContext'
+import { startWithoutPane } from '../lib/headlessStart'
+import { useHookPaths, useLoaded } from '../state/appStateContext'
 import { useRuntimeActions } from '../state/runtimeContext'
 import { useAppStateRef } from '../state/selectors'
 import { useUiActions } from '../state/uiContext'
@@ -16,20 +17,32 @@ export function useStartupPolicy(): { startAllAgents: () => void } {
   const { wake } = useRuntimeActions()
   const { openModal, closeModal } = useUiActions()
   const resolveLaunched = useResolveLaunched()
+  const hookPaths = useHookPaths()
 
   const startAllAgents = useCallback(() => {
     closeModal()
-    for (const project of stateRef.current.projects) {
+    const { projects, settings, activeProjectId } = stateRef.current
+    const shown = projects.find((p) => p.id === activeProjectId)?.activeSessionId ?? null
+    for (const project of projects) {
       for (const session of project.sessions) {
         for (const terminal of session.terminals) {
           // «start them all» (modals.startup.all) is about agents: shells, editors and diffs would
           // raise ptys and panels for nothing
           if (terminal.kind !== 'agent') continue
-          void resolveLaunched(project.id, session.id, terminal).finally(() => wake(terminal.id))
+          void resolveLaunched(project.id, session.id, terminal)
+            .then(async (launched) => {
+              // Waking only raises a pane, and a pane exists only for the session on screen: every
+              // other session's agent would sit unstarted until the person went there. The one on
+              // screen is left to its own pane, which starts it as it mounts.
+              if (session.id === shown) return
+              await startWithoutPane(settings, hookPaths, project.path, session, { ...terminal, launched })
+            })
+            .catch(() => undefined)
+            .finally(() => wake(terminal.id))
         }
       }
     }
-  }, [closeModal, resolveLaunched, stateRef, wake])
+  }, [closeModal, hookPaths, resolveLaunched, stateRef, wake])
 
   useEffect(() => {
     if (!loaded) return
