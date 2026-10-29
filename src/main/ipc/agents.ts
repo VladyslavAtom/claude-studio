@@ -4,6 +4,7 @@ import type { AgentToolResult, ConversationRef, ExternalSessionQuery, ServiceCon
 import { hookPaths, takeHookReport } from '../agentHooks'
 import { replyToolRequest } from '../agentTools'
 import { agentActivity, listExternalSessions, sessionExists, sessionTitle } from '../agentSessions'
+import { readConversationLog } from '../conversationLog'
 import { searchConversations } from '../conversationSearch'
 import { serviceAlive, serviceAsk, serviceWarmUp, shutdownService } from '../serviceAgent'
 
@@ -35,4 +36,7 @@ export function register(): void {
   // the answer to a request an agent made through its tool; it travels back as a file the
   // blocked tool call is watching for
   ipcMain.handle(CH.toolReply, (_e, id: string, result: AgentToolResult) => replyToolRequest(id, result))
+  ipcMain.handle(CH.readConversationLog, (_e, ref: ConversationRef, cursor: string | null) =>
+    readConversationLog(ref, cursor),
+  )
 }

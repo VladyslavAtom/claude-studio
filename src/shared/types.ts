@@ -390,6 +390,8 @@ export type AgentToolRequest = { id: string; terminalId: string | null } & (
   | { tool: 'close'; session: string; force?: boolean }
   /** typed into the child's agent tab and submitted, as if the person had typed it */
   | { tool: 'send'; session: string; text: string }
+  /** the child's conversation since `cursor` (see `main/conversationLog`); `tab` picks one of its agent tabs */
+  | { tool: 'read'; session: string; tab?: string; cursor?: string }
 )
 
 /**
@@ -679,6 +681,25 @@ export interface ConversationMatch {
   snippet: string
   at: number
 }
+
+/**
+ * A conversation since a cursor, as compact text — what `read_session` tells a lead agent about
+ * its child (`main/conversationLog`). The codes are not `AppMessageCode`s: the reader is another
+ * CLI, and the renderer words them in English for it.
+ */
+export type ConversationLogResult =
+  | {
+      ok: true
+      /** one line per event; empty when nothing was said since the cursor */
+      text: string
+      /** `<conversation id>:<byte offset>` — where the next read starts */
+      cursor: string
+      /** stopped at the size bound: more is already on disk, read again with `cursor` */
+      more: boolean
+      /** the cursor named another conversation (a `/clear`) or a replaced file: read from the start */
+      restarted: boolean
+    }
+  | { ok: false; code: 'bad-cursor' | 'conversation-not-found' }
 
 /** what a search found in one conversation: the first few places, and how many there were */
 export interface ConversationHits {

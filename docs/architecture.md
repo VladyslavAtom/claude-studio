@@ -283,15 +283,29 @@ written next to the settings overlay by `src/main/agentTools.ts`. `open_session`
 `isolate`) becomes an ordinary session in the window: a worktree, a tab, an agent already holding
 the task, and the answer names its session id.
 
-That session is the asker's **child**: `Session.parentId`. Three more tools act on the asker's
+That session is the asker's **child**: `Session.parentId`. Four more tools act on the asker's
 descendants and nothing else — `list_sessions` (id, branch, conversation id, tab state,
-uncommitted files), `send_to_session` (typed into the child's agent tab and submitted; multi-line
-text as a bracketed paste) and `close_session`. Closing removes the worktree only when it is clean
+uncommitted files, agent tab ids when there is more than one), `send_to_session` (typed into the
+child's agent tab and submitted; multi-line text as a bracketed paste), `read_session` and
+`close_session`. Closing removes the worktree only when it is clean
 and the branch only when it has no commits outside the parent's branch; otherwise it is refused,
 and `force` closes the session but keeps both on disk. A child with open children of its own is
 refused. The child forks from the parent's branch, and its first prompt opens with a line naming
 the parent and its conversation id. Limits: depth 3, 8 open children per session
 (`lib/sessionTree`).
+
+`read_session` (`session`, optional `cursor`, optional `tab`) is how a lead follows a child
+without scraping its terminal. The renderer checks the child, picks its agent tab (the first, or
+the one named) and asks main (`agent:readConversationLog`); `src/main/conversationLog.ts` reads
+that tab's conversation file — Claude's journal or Codex's rollout, found by `conversationFile` —
+from the cursor on. The answer is one line per event: `[user]`, `[assistant]` (text clipped at
+2000 chars), `[tool] <name>: <main argument>` (200 chars), `[result]` / `[result error]` (300
+chars); thinking, reasoning, subagent turns, the CLI's injected context and its bookkeeping
+records are left out. The last line is `cursor: <conversation id>:<byte offset>`, so a read costs
+only the bytes appended since. One answer holds at most 20 KB and one call scans at most 32 MB;
+either bound stops on a line boundary and says more is waiting. A line still being written is left
+for the next read. A cursor that names another conversation (the tab ran `/clear`) or points past
+the end of the file starts over from the beginning, and the answer says so.
 
 The list stays flat in the state; `lib/sessionTree` reads the tree off `parentId`, and an unknown
 parent means top level. Rows are indented with a guide line, a parent folds, and a folded parent's

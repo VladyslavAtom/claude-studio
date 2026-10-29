@@ -9,7 +9,7 @@ import type {
   Settings,
 } from '../../../shared/types'
 import { useT } from '../i18n'
-import { findAgent } from '../lib/agents'
+import { conversationKind, findAgent } from '../lib/agents'
 import { basename, formatTime } from '../lib/util'
 import Modal from '../ui/Modal'
 
@@ -22,21 +22,16 @@ interface Props {
 }
 
 /**
- * Where an agent keeps its conversations. The kind comes from preset/sessionSource rather than
- * from the command name: a wrapper such as `claude-1` does not end in «claude» yet is still a
- * claude preset with sessionSource 'uuid'. The command name is only the fallback for agents of
- * the custom preset. For Claude the directory is named only when the agent's settings set one:
- * the main process reads every ~/.claude* profile anyway and labels them by name.
+ * Where an agent keeps its conversations (`conversationKind`). For Claude the directory is named
+ * only when the agent's settings set one: the main process reads every ~/.claude* profile anyway
+ * and labels them by name.
  */
 function queriesFor(settings: Settings): ExternalSessionQuery[] {
   const out: ExternalSessionQuery[] = []
   for (const a of settings.agents) {
-    const command = a.command.toLowerCase()
-    if (a.preset === 'codex' || a.sessionSource === 'codex' || command.endsWith('codex')) {
-      out.push({ agentId: a.id, kind: 'codex' })
-    } else if (a.preset === 'claude' || a.sessionSource === 'uuid' || command.endsWith('claude')) {
-      out.push({ agentId: a.id, kind: 'claude', configDir: a.env.CLAUDE_CONFIG_DIR })
-    }
+    const kind = conversationKind(a)
+    if (kind === 'codex') out.push({ agentId: a.id, kind })
+    else if (kind === 'claude') out.push({ agentId: a.id, kind, configDir: a.env.CLAUDE_CONFIG_DIR })
   }
   return out
 }

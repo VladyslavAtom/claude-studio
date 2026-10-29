@@ -6,8 +6,9 @@
  * goes back the same way to the tool call that is still blocked on it.
  *
  * A session opened through `open_session` is the asker's **child** (`Session.parentId`). The
- * other three tools act on the asker's descendants only — listing them, typing into them, closing
- * them — and the check is made here, against the state, never trusted from the request.
+ * other four tools act on the asker's descendants only — listing them, typing into them, reading
+ * their conversation, closing them — and the check is made here, against the state, never trusted
+ * from the request. Reading is the one thing main does for us: the conversation is a file.
  *
  * The renderer does the work because a session is a renderer thing — the project, the worktree,
  * the tab and the state that is written to disk all live on this side. Main knows none of it.
@@ -32,7 +33,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import type { AgentToolRequest, AgentToolResult, Project, Session, Settings } from '../../../shared/types'
 import type { NewSessionResult } from '../components/NewSessionModal'
 import { useT } from '../i18n'
-import { commandFor, envFor, findAgent } from '../lib/agents'
+import { commandFor, conversationKind, envFor, findAgent } from '../lib/agents'
 import { autoBranch, worktreePathFor } from '../lib/sessionDefaults'
 import { MAX_CHILDREN, MAX_DEPTH, depthOf, descendants } from '../lib/sessionTree'
 import { terminalStatus } from '../lib/status'
@@ -287,6 +288,9 @@ export function useAgentToolRequests(sessions: SessionActions): void {
           if (s.worktree) lines.push(`  branch: ${s.worktree.branch}`)
           if (tab?.agentSessionId) lines.push(`  claude session id: ${tab.agentSessionId}`)
           lines.push(`  state: ${statusOf(s)}`)
+          // a session the person added a second agent to: read_session can be pointed at either
+          const agentTabs = s.terminals.filter((x) => x.kind === 'agent')
+          if (agentTabs.length > 1) for (const x of agentTabs) lines.push(`  agent tab: ${x.id} "${x.title}"`)
           if (project.isGit) {
             const st = await window.api.git.status(s.cwd, 'working').catch(() => null)
             if (st && !st.error) lines.push(`  uncommitted files: ${st.files.length}`)
@@ -362,6 +366,55 @@ export function useAgentToolRequests(sessions: SessionActions): void {
     [resolveChild],
   )
 
+  const read = useCallback(
+    async (request: Extract<AgentToolRequest, { tool: 'read' }>): Promise<AgentToolResult> => {
+      const found = resolveChild(request)
+      if (typeof found === 'string') return { ok: false, error: found }
+      const { child } = found
+      const agentTabs = child.terminals.filter((x) => x.kind === 'agent')
+      const tab = request.tab ? agentTabs.find((x) => x.id === request.tab) : agentTabs[0]
+      if (!tab)
+        return {
+          ok: false,
+          error: request.tab
+            ? `"${child.name}" has no agent tab ${request.tab}.`
+            : `"${child.name}" has no agent tab to read.`,
+        }
+      const agent = findAgent(stateRef.current.settings, tab.agentId)
+      const kind = agent ? conversationKind(agent) : null
+      if (!kind)
+        return { ok: false, error: `The agent of "${child.name}" keeps no conversation Claude Studio can read.` }
+      if (!tab.agentSessionId)
+        return { ok: false, error: `"${child.name}" has no conversation yet: its agent has not started a turn.` }
+      const configDir = tab.configDir ?? agent?.env.CLAUDE_CONFIG_DIR
+      const log = await window.api.agents.readConversationLog(
+        { id: tab.agentSessionId, kind, ...(configDir ? { configDir } : {}) },
+        request.cursor ?? null,
+      )
+      if (!log.ok)
+        return {
+          ok: false,
+          error:
+            log.code === 'bad-cursor'
+              ? `Not a cursor: "${request.cursor ?? ''}". Pass the one the previous answer ended with, or none to read from the start.`
+              : `The conversation of "${child.name}" (${tab.agentSessionId}) was not found on disk; its agent may not have written anything yet.`,
+        }
+      const lines = [`[Claude Studio] "${child.name}", ${kind} conversation ${tab.agentSessionId}`]
+      if (log.restarted)
+        lines.push(
+          'The cursor belongs to an earlier conversation of this tab (after /clear) or a replaced file; read from the start.',
+        )
+      lines.push(log.text || '(nothing new)')
+      lines.push(
+        log.more
+          ? `cursor: ${log.cursor} - truncated at 20 KB, more is waiting: call read_session again with this cursor.`
+          : `cursor: ${log.cursor}`,
+      )
+      return { ok: true, text: lines.join('\n') }
+    },
+    [resolveChild, stateRef],
+  )
+
   const carryOut = useCallback(
     (request: AgentToolRequest): Promise<AgentToolResult> => {
       switch (request.tool) {
@@ -373,9 +426,11 @@ export function useAgentToolRequests(sessions: SessionActions): void {
           return close(request)
         case 'send':
           return sendTo(request)
+        case 'read':
+          return read(request)
       }
     },
-    [close, list, open, sendTo],
+    [close, list, open, read, sendTo],
   )
 
   useEffect(() => {

@@ -129,6 +129,22 @@ describe('parseToolRequest', () => {
     expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'rm -rf' }))).toBeNull()
   })
 
+  it('takes a read with its optional tab and cursor, and refuses a tab that is not an id', () => {
+    const head = { id: ID, terminalId: TAB }
+    expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'read', session: ID }))).toEqual({
+      ...head,
+      tool: 'read',
+      session: ID,
+    })
+    expect(
+      tools.parseToolRequest(JSON.stringify({ ...head, tool: 'read', session: ID, tab: TAB, cursor: `${ID}:42` })),
+    ).toEqual({ ...head, tool: 'read', session: ID, tab: TAB, cursor: `${ID}:42` })
+    expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'read', session: ID, tab: '../x' }))).toBeNull()
+    expect(
+      tools.parseToolRequest(JSON.stringify({ ...head, tool: 'read', session: ID, cursor: 'x'.repeat(201) })),
+    ).toBeNull()
+  })
+
   it('drops an isolate that is not a boolean instead of reading it as one', () => {
     expect(tools.parseToolRequest(req({ isolate: 'yes' }))).not.toHaveProperty('isolate')
   })
@@ -216,7 +232,7 @@ async function firstRequest(): Promise<AgentToolRequest> {
 }
 
 describe('the MCP server', () => {
-  it('answers the handshake and offers the four tools', async () => {
+  it('answers the handshake and offers the five tools', async () => {
     await tools.toolConfigPath()
     const requests = join(dir, 'agent-tools', 'requests')
     const cli = talk(join(dir, 'agent-tools', 'open-session.js'), requests, TAB)
@@ -230,6 +246,7 @@ describe('the MCP server', () => {
         'list_sessions',
         'close_session',
         'send_to_session',
+        'read_session',
       ])
     } finally {
       cli.stop()
@@ -278,6 +295,26 @@ describe('the MCP server', () => {
       expect(written).toMatchObject({ terminalId: TAB, tool: 'close', session: ID, force: true })
       await tools.replyToolRequest(written.id, { ok: true, text: 'Closed "Parser".' })
       expect((await cli.reply(8)).result?.content?.[0]?.text).toBe('Closed "Parser".')
+    } finally {
+      cli.stop()
+    }
+  })
+
+  it('read_session carries its cursor and tab to the window', async () => {
+    await tools.toolConfigPath()
+    const requests = join(dir, 'agent-tools', 'requests')
+    const cli = talk(join(dir, 'agent-tools', 'open-session.js'), requests, TAB)
+    try {
+      cli.send({
+        jsonrpc: '2.0',
+        id: 10,
+        method: 'tools/call',
+        params: { name: 'read_session', arguments: { session: ID, cursor: ` ${ID}:7 `, tab: TAB } },
+      })
+      const written = await firstRequest()
+      expect(written).toMatchObject({ tool: 'read', session: ID, cursor: `${ID}:7`, tab: TAB })
+      await tools.replyToolRequest(written.id, { ok: true, text: `[user] hi\ncursor: ${ID}:9` })
+      expect((await cli.reply(10)).result?.content?.[0]?.text).toContain(`cursor: ${ID}:9`)
     } finally {
       cli.stop()
     }

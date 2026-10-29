@@ -122,6 +122,8 @@ export const CHANNELS = {
     toolRequest: 'agent:toolRequest',
     /** the renderer's answer to one such request; it travels back to the agent that asked */
     toolReply: 'agent:toolReply',
+    /** a conversation since a cursor, as compact text: what `read_session` answers with */
+    readConversationLog: 'agent:readConversationLog',
   },
   pty: {
     sleepPolicy: 'pty:sleepPolicy',

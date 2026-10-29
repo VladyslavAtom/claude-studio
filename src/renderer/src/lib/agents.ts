@@ -6,6 +6,19 @@ export function findAgent(settings: Settings, agentId?: string): AgentDef | null
 }
 
 /**
+ * Whose store an agent's conversations are kept in. The preset and the session source decide,
+ * not the command name: a wrapper such as `claude-1` does not end in «claude» yet is still a
+ * claude preset with sessionSource 'uuid'. The command name is only the fallback for agents of
+ * the custom preset. Null: an agent whose conversations we cannot read.
+ */
+export function conversationKind(agent: AgentDef): 'claude' | 'codex' | null {
+  const command = agent.command.toLowerCase()
+  if (agent.preset === 'codex' || agent.sessionSource === 'codex' || command.endsWith('codex')) return 'codex'
+  if (agent.preset === 'claude' || agent.sessionSource === 'uuid' || command.endsWith('claude')) return 'claude'
+  return null
+}
+
+/**
  * Both placeholders are always passed, but a tab may have no conversation id yet — the caller
  * says so with `undefined` rather than by leaving the field out, so nothing here has to guess
  * whether a missing id was meant or forgotten. An argument that fills out empty is dropped.

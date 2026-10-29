@@ -16,6 +16,7 @@ import type {
   ExternalSession,
   ExternalSessionQuery,
   ConversationHits,
+  ConversationLogResult,
   ConversationRef,
   FileContent,
   FileDiffStat,
@@ -245,6 +246,9 @@ const api = {
     /** the answer to one such request; the agent's tool call is blocked until it arrives */
     replyToolRequest: (id: string, result: AgentToolResult): Promise<void> =>
       ipcRenderer.invoke(CHANNELS.agent.toolReply, id, result),
+    /** a conversation since a cursor, as compact text, for a lead agent reading its child */
+    readConversationLog: (ref: ConversationRef, cursor: string | null): Promise<ConversationLogResult> =>
+      ipcRenderer.invoke(CHANNELS.agent.readConversationLog, ref, cursor),
   },
   pty: {
     sleepPolicy: (enabled: boolean, minutes: number): Promise<void> =>

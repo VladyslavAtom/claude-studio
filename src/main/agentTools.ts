@@ -5,8 +5,10 @@
  * is the opposite direction: a claude tab is started with an MCP server of ours
  * (`--mcp-config`), the server exposes `open_session`, and a call to it becomes a new session in
  * the window — a worktree, a tab, an agent already holding its first task. That session is the
- * asker's child, and three more tools act on children only: `list_sessions`, `close_session`,
- * `send_to_session`. Which session is whose is checked in the renderer, which owns the state.
+ * asker's child, and four more tools act on children only: `list_sessions`, `close_session`,
+ * `send_to_session`, `read_session`. Which session is whose is checked in the renderer, which
+ * owns the state; `read_session` is then answered from the child's conversation file by
+ * `conversationLog`.
  *
  * Only claude. Codex is not given the config: the two CLIs do not share an MCP configuration
  * format on the command line, and nothing here has been tried against it.
@@ -105,7 +107,7 @@ const TOOLS = [
       'the screen and its own branch - not for a subagent, which nobody can see or talk to.',
       'The new session runs as an ordinary Claude CLI on this machine, so your usual way of',
       'messaging other sessions reaches it once it has started.',
-      'It becomes your child: you may list it, type into it and close it, and closing it is your',
+      'It becomes your child: you may list it, read it, type into it and close it, and closing it is your',
       'job once your overall plan has nothing left for it - not after its first answer.',
     ].join(' '),
     inputSchema: {
@@ -173,6 +175,32 @@ const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'read_session',
+    description: [
+      'Read what a session you opened (or one opened by it) said and did: its conversation since',
+      'a cursor, one line per event - [user] prompts, [assistant] text, [tool] calls with their',
+      'main argument, [result] tool output clipped to a few hundred characters. Thinking is left',
+      'out. One answer holds at most 20 KB; the last line gives the cursor to pass next time, and',
+      'says when more is waiting. Without a cursor it reads from the start of the conversation.',
+    ].join(' '),
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: SESSION_ARG,
+        cursor: {
+          type: 'string',
+          description: 'The cursor the previous read_session answer ended with. Left out: from the start.',
+        },
+        tab: {
+          type: 'string',
+          description: 'Which agent tab of the session, as list_sessions names them. Left out: its first agent tab.',
+        },
+      },
+      required: ['session'],
+      additionalProperties: false,
+    },
+  },
 ]
 
 function send(msg) {
@@ -218,6 +246,12 @@ function requestFor(name, args) {
   if (name === 'send_to_session') {
     if (typeof args.text !== 'string' || !args.text.trim()) return 'text is required.'
     return { tool: 'send', session: session, text: args.text }
+  }
+  if (name === 'read_session') {
+    const r = { tool: 'read', session: session }
+    if (typeof args.cursor === 'string' && args.cursor.trim()) r.cursor = args.cursor.trim()
+    if (typeof args.tab === 'string' && args.tab.trim()) r.tab = args.tab.trim()
+    return r
   }
   return 'Unknown tool: ' + String(name)
 }
@@ -359,6 +393,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** a task longer than this is not a task; the cap is about a runaway writer, not about style */
 const TASK_MAX = 20_000
 const NAME_MAX = 200
+/** `<conversation id>:<offset>`, checked again where it is used; this only bounds the file */
+const CURSOR_MAX = 200
 
 /**
  * A request is a file written by somebody else's process, so every field is checked and anything
@@ -380,6 +416,18 @@ export function parseToolRequest(raw: string): AgentToolRequest | null {
   // a request written before the tool had siblings carries no `tool`: it can only be an open
   const tool = o.tool ?? 'open'
   if (tool === 'list') return { ...head, tool }
+  if (tool === 'read') {
+    if (typeof o.session !== 'string' || !UUID.test(o.session)) return null
+    if (o.tab !== undefined && (typeof o.tab !== 'string' || !UUID.test(o.tab))) return null
+    if (o.cursor !== undefined && (typeof o.cursor !== 'string' || o.cursor.length > CURSOR_MAX)) return null
+    return {
+      ...head,
+      tool,
+      session: o.session,
+      ...(typeof o.tab === 'string' ? { tab: o.tab } : {}),
+      ...(typeof o.cursor === 'string' ? { cursor: o.cursor } : {}),
+    }
+  }
   if (tool === 'close' || tool === 'send') {
     if (typeof o.session !== 'string' || !UUID.test(o.session)) return null
     if (tool === 'close') return { ...head, tool, session: o.session, ...(o.force === true ? { force: true } : {}) }

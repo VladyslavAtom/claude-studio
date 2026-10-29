@@ -1047,3 +1047,16 @@ Full-text search in the agents dialog scans the project's conversation files at 
 ## 2026-10-28 — The merge tab's base goes through temp files
 
 The 2026-10-27 entry re-merged the stages with `git merge-file --diff3 --object-id` to avoid temp files. In a linked worktree, where every session lives, git 2.53 aborts on it with «BUG: repository.c:171: cannot reinitialize an already-initialized object directory» (exit 134), so the result pane started every conflict empty. The stages are now read with `git show :N:./path`, written to a temp directory and merged there; `tests/conflictInfo.test.ts` covers the linked worktree.
+
+## 2026-10-29 — A lead reads its child's conversation, by byte cursor
+
+A lead agent could open, list, type into and close its children, but could not see what they said or did except by asking them. `read_session` returns the child's conversation since a cursor as compact text, read from the conversation file the CLI already writes; prior art is Okena's `okena claude log <term> --cursor <session>:<offset>`.
+
+**Cursor = `<conversation id>:<byte offset>`.** Both journals are append-only, so an offset makes each read O(new data); on a 63 MB conversation the first 20 KB page took 26 ms. The id is in the cursor because `/clear` moves a tab to a new file, and an old offset into it would land mid-line; such a cursor starts over and says so. Line numbers were rejected: counting them means reading from the start every time.
+
+**Compact, not raw.** One line per event, tool results clipped to 300 chars, thinking left out; one answer at most 20 KB. A lead needs to know what the child did and where it is stuck, not the files it read — those it can read itself.
+
+**Codex tabs are read too**, from the rollout file: the event types map one to one (`message`, `function_call`, `custom_tool_call`, their outputs), so it cost a `switch`, not a code path. Codex injects its environment and instructions as user messages; those are dropped by their leading tag.
+
+**Same ownership rule as the other child tools**: only the asker's descendants, checked in the renderer against the state.
+
