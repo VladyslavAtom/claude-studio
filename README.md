@@ -15,12 +15,15 @@ An agent in its own session, with the task it was started with. The same session
 - **Tabs inside a session.** As many agents, shells, files, diffs and merge views as needed, all in one worktree.
 - **A conversation per tab.** Claude gets its own `--session-id`; Codex reports the thread it picked. Two agents in one directory never resume each other.
 - **Agents are presets.** Command, arguments (`{session}`, `{name}`), environment, colour and order — editable in the settings; add your own.
-- **Statuses and attention.** Working / waiting / idle / asleep, from Claude Code's hooks rather than from a transcript, with a notification and a sound. A tab that cannot report says so.
-- **An agent can open a session.** A Claude tab gets one MCP tool, `open_session`: a visible tab with a worktree, a branch and a first task. The agents then talk to each other themselves.
-- **Sleeping tabs.** After N idle minutes the process is killed and the id kept; a click resumes the same conversation. Sleep by hand from the tab menu.
+- **Statuses and attention.** Working / waiting / idle / asleep, from Claude Code's and Codex's own hooks rather than from a transcript, with a notification and a sound. "Waiting" means a real block: a permission prompt or a question. A tab that cannot report says so.
+- **Answer a permission prompt from the list.** A background tab blocked on a permission shows an Allow / Deny card under its session row; answering in the terminal still works, and the first answer wins.
+- **A lead agent runs child sessions.** A Claude tab gets five MCP tools: `open_session` (a visible session with a worktree, a branch forked from the lead's and a first task), `list_sessions`, `read_session` (what a child said and did since a cursor), `send_to_session` and `close_session`. Up to 3 levels deep, 8 open children per session.
+- **New worktrees ready to work in.** Ignored files listed in `.worktreeinclude` (`.env` and the like) are copied into a new worktree; a `setup` script from `.claude-studio.json` runs in its own tab after a one-time approval, `teardown` before removal. Each worktree gets a block of ports in `CLAUDE_STUDIO_PORT`, and Claude does not ask to trust the new folder again.
+- **Sleeping tabs.** After N idle minutes the process is killed and the id kept; a click resumes the same conversation. Sleep by hand from the tab menu. After a restart, start every agent at once or leave them asleep.
 - **One history for all agents.** Every Claude and Codex conversation recorded for the project's directories, including those started outside the application.
-- **Changes and commits.** Uncommitted files with checkboxes, a diff with highlighting, commit from the panel, a generated commit message, revert to HEAD with a confirmation.
-- **Branch work.** Push (`-u` on the first), `gh pr create`, rebase onto the base, merge of the base in, pull with a choice of strategy; conflicts are resolved in a merge tab.
+- **Changes and commits.** Uncommitted files with checkboxes, a side-by-side diff with per-change revert, commit from the panel, a generated commit message, revert to HEAD with a confirmation.
+- **Review comments to the agent.** Comment lines in the diff and send them all to the session's agent as one prompt.
+- **Branch work.** Push (`-u` on the first), `gh pr create`, rebase onto the base, merge of the base in, pull with a choice of strategy; conflicts are resolved in a three-way merge tab. The PR of a session's branch and its CI checks show on the session row.
 - **Files and editor.** A file tree and CodeMirror 6 with Darcula-style highlighting; saves on a pause, atomically. Paths printed in a terminal are links.
 - **Terminals.** xterm.js with WebGL, scrollback replayed on tab switch, search (Ctrl+F), Shift+Enter for a newline in an agent composer.
 - **Themes and languages.** Dark and light, English / Ukrainian / Russian, both following the system until chosen. git terms are never translated.

@@ -51,9 +51,10 @@
       <div class="feat">
         <div>
           <h3>Statuses you can trust</h3>
-          <p>Every session and tab shows what its agent is doing: <span class="st run">working</span> <span class="st wait">waiting for you</span> <span class="st idle">idle</span>. Claude Code tabs report it themselves through hooks; watching the output is only the fallback. A notification and a sound when an agent needs you, like the permission prompt here.</p>
+          <p>Every session and tab shows what its agent is doing: <span class="st run">working</span> <span class="st wait">waiting for you</span> <span class="st idle">idle</span>. Claude Code and Codex tabs report it themselves through their hooks; watching the output is only the fallback. A notification and a sound when an agent needs you.</p>
+          <p>A permission prompt in a background tab shows up right in the session list: <b>Allow</b> or <b>Deny</b> without switching to the tab. Answering in the terminal works as usual; whichever comes first wins.</p>
         </div>
-        <div class="frame"><a href="img/status.webp"><img src="img/status.webp" width="1230" height="380" alt="Sessions with status dots; an agent waiting on a permission prompt" loading="lazy"></a></div>
+        <div class="frame"><a href="img/permission.webp"><img src="img/permission.webp" width="1230" height="380" alt="Sessions with status dots; a permission prompt answered from the session list" loading="lazy"></a></div>
       </div>
       <div class="feat flip">
         <div>
@@ -109,9 +110,9 @@
         <div>
           <div class="num">3</div>
           <h3>Ask the lead to split the work</h3>
-          <p>Every Claude tab carries four tools. Ask for a split in plain words:</p>
+          <p>Every Claude tab carries five tools. Ask for a split in plain words:</p>
           <div class="prompt">Add gift cards. Split this feature into three parts: the backend, the frontend and the tests. Open a session for each, check on them, and tell me when they are ready to merge.</div>
-          <p>The lead calls <code>open_session</code> once per part: a visible session on a branch forked from its own, with a Claude already holding the sub-task. It checks on them with <code>list_sessions</code> (tab state, uncommitted files), sends follow-ups with <code>send_to_session</code>, and closes them with <code>close_session</code>.</p>
+          <p>The lead calls <code>open_session</code> once per part: a visible session on a branch forked from its own, with a Claude already holding the sub-task. It checks on them with <code>list_sessions</code> (tab state, uncommitted files), reads what each one said and did with <code>read_session</code>, sends follow-ups with <code>send_to_session</code>, and closes them with <code>close_session</code>.</p>
           <p style="font-size:14px;color:var(--fg-faint)">Backend, frontend and tests is an example: the split is whatever you ask for. Up to 3 levels deep, 8 open children per session.</p>
         </div>
         <div class="team" aria-label="A lead session and three child sessions">
@@ -149,10 +150,11 @@
           <li><b>Side-by-side diff</b> in the style of JetBrains IDEs: edit in place, revert one change with a click, jump between differences, fold what did not change.</li>
           <li><b>Changes panel</b> as a list or a tree, checkboxes per file and folder, commit with a message a model writes from the diff.</li>
           <li><b>Three-way merge</b> for conflicts: yours, the result and incoming, an arrow per conflict, and a result you can edit by hand.</li>
-          <li><b>Branch work</b> without leaving the window: push, pull with a choice of strategy, rebase, merge, a pull request.</li>
+          <li><b>Review comments to the agent:</b> comment lines in the diff, then send them all to the session's agent as one prompt.</li>
+          <li><b>Branch work</b> without leaving the window: push, pull with a choice of strategy, rebase, merge, a pull request. The PR and its CI checks show on the session row.</li>
         </ul>
       </div>
-      <div class="frame"><a href="img/diff.webp"><img src="img/diff.webp" width="1260" height="680" alt="Side-by-side diff next to the changes panel" loading="lazy"></a></div>
+      <div class="frame"><a href="img/review.webp"><img src="img/review.webp" width="1260" height="680" alt="Side-by-side diff with a review comment, ready to send to the agent" loading="lazy"></a></div>
     </div>
   </section>
 
@@ -178,19 +180,27 @@
     <div class="feats">
       <div class="feat">
         <div>
+          <h3>New worktrees ready to work in</h3>
+          <p>A fresh worktree has no <code>.env</code> and no dependencies. List ignored files in <code>.worktreeinclude</code> and they are copied in; put a <code>setup</code> script in <code>.claude-studio.json</code> and it runs in its own tab of every new session, after you approve it once. A <code>teardown</code> runs before the worktree is removed.</p>
+          <p>Each worktree gets its own block of ports in <code>CLAUDE_STUDIO_PORT</code>, so two dev servers do not fight over 3000, and Claude does not ask to trust the folder again.</p>
+        </div>
+        <div class="frame"><a href="img/setup.webp"><img src="img/setup.webp" width="900" height="260" alt="A repository's setup script waiting for approval in a new session" loading="lazy"></a></div>
+      </div>
+      <div class="feat flip">
+        <div>
           <h3>Real terminals</h3>
           <p>The agent runs in a real terminal (xterm.js with WebGL), exactly as on its own: your CLI, your settings, your subscription. Search, scrollback kept across switches, and file paths an agent prints open the file at that line.</p>
         </div>
         <div class="frame"><a href="img/agent.webp"><img src="img/agent.webp" width="1717" height="1056" alt="A Claude agent working in its session" loading="lazy"></a></div>
       </div>
-      <div class="feat flip">
+      <div class="feat">
         <div>
           <h3>Files and editor where the agent works</h3>
           <p>A file tree per session with the context menu you expect: new, rename, move, duplicate, copy path, open in a terminal, show the diff or the history of a file, revert it. A CodeMirror editor that saves on a pause and picks up what an agent wrote meanwhile.</p>
         </div>
         <div class="frame"><a href="img/filemenu.webp"><img src="img/filemenu.webp" width="880" height="610" alt="File tree context menu with the Git submenu open" loading="lazy"></a></div>
       </div>
-      <div class="feat">
+      <div class="feat flip">
         <div>
           <h3>Dark, light, three languages</h3>
           <p>English, Українська, Русский. Theme and language follow the system until you choose. git terms (push, merge, rebase) stay in English in every language.</p>
@@ -228,7 +238,7 @@
     </details>
     <details>
       <summary>Do child sessions work with Codex?</summary>
-      <p>Codex runs fine as a tab, with its own conversation, history and search. The four session tools are given to Claude tabs only, so a split is led by Claude.</p>
+      <p>Codex runs fine as a tab, with its own conversation, history and search. The five session tools are given to Claude tabs only, so a split is led by Claude.</p>
     </details>
     <details>
       <summary>What does it send over the network?</summary>
