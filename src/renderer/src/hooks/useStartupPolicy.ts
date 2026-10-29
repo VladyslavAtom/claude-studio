@@ -7,6 +7,10 @@ import { useAppStateRef } from '../state/selectors'
 import { useUiActions } from '../state/uiContext'
 import { useResolveLaunched } from './useAgentTracking'
 
+/** how many agents «start them all» brings up at the same time, and the pause after each */
+const START_AT_ONCE = 2
+const START_GAP_MS = 4000
+
 /**
  * What happens right after the state is loaded: whether to bring the agent tabs up and whether
  * to warm the service session. Both decisions are taken once per start.
@@ -23,25 +27,39 @@ export function useStartupPolicy(): { startAllAgents: () => void } {
     closeModal()
     const { projects, settings, activeProjectId } = stateRef.current
     const shown = projects.find((p) => p.id === activeProjectId)?.activeSessionId ?? null
+    const queue: (() => Promise<void>)[] = []
     for (const project of projects) {
       for (const session of project.sessions) {
         for (const terminal of session.terminals) {
           // «start them all» (modals.startup.all) is about agents: shells, editors and diffs would
           // raise ptys and panels for nothing
           if (terminal.kind !== 'agent') continue
-          void resolveLaunched(project.id, session.id, terminal)
-            .then(async (launched) => {
-              // Waking only raises a pane, and a pane exists only for the session on screen: every
-              // other session's agent would sit unstarted until the person went there. The one on
-              // screen is left to its own pane, which starts it as it mounts.
-              if (session.id === shown) return
-              await startWithoutPane(settings, hookPaths, project.path, session, { ...terminal, launched })
-            })
-            .catch(() => undefined)
-            .finally(() => wake(terminal.id))
+          // the session on screen is started by its own pane as it mounts, and at once
+          if (session.id === shown) {
+            void resolveLaunched(project.id, session.id, terminal)
+              .catch(() => undefined)
+              .finally(() => wake(terminal.id))
+            continue
+          }
+          // Waking only raises a pane, and a pane exists only for the session on screen: every
+          // other session's agent is started here, without one.
+          queue.push(async () => {
+            const launched = await resolveLaunched(project.id, session.id, terminal).catch(() => false)
+            await startWithoutPane(settings, hookPaths, project.path, session, { ...terminal, launched })
+            wake(terminal.id)
+          })
         }
       }
     }
+    // Sixteen CLIs starting in the same second froze the desktop (load 25, swap 12 GB): each
+    // spends its first seconds loading at full speed. So they go a few at a time, a gap apart.
+    const worker = async (): Promise<void> => {
+      for (let job = queue.shift(); job; job = queue.shift()) {
+        await job().catch(() => undefined)
+        await new Promise((resolve) => setTimeout(resolve, START_GAP_MS))
+      }
+    }
+    for (let i = 0; i < START_AT_ONCE; i++) void worker()
   }, [closeModal, hookPaths, resolveLaunched, stateRef, wake])
 
   useEffect(() => {
