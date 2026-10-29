@@ -221,11 +221,18 @@ export function start(opts: StartOptions): PtyStartResult {
     term.alive = false
     if (term.flushTimer) clearTimeout(term.flushTimer)
     term.flushTimer = null
+    const tail = term.pending
     term.pending = ''
     // Exit of a pty that `kill()` already retired: the renderer has remounted the pane under the
     // same id and is listening again, so emitting here would print «the process has finished» over a
     // terminal that is running. The scrollback goes with it — the record is gone from `terms`.
     if (term.discarded || terms.get(opts.id) !== term) return
+    // the batch still waiting for its timer is the last thing the process said: a short command's
+    // whole output, often. It goes out before the exit, or the pane ends without it
+    if (tail) {
+      term.seq += 1
+      emit(CHANNELS.pty.data, { id: opts.id, data: tail, seq: term.seq })
+    }
     // A dead pty is exactly what a person scrolls back through — what did it say before it went?
     // So its record is trimmed to the same limit a live one is held to, and to nothing else: an
     // «unlimited» setting that quietly kept four thousand characters of a finished agent would be
