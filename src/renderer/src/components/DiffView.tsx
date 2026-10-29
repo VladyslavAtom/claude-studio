@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChangeSet,
   Compartment,
@@ -50,6 +50,10 @@ import {
 } from '../hooks/useCheckedFile'
 import { toLf } from '../lib/lineEndings'
 import { useChangesRefresh } from '../hooks/useChangesRefresh'
+import { useReviewActions, useReviewComments } from '../state/reviewContext'
+import type { ReviewSendOutcome } from '../lib/reviewComments'
+import { uid } from '../lib/util'
+import { reviewExtension, setReview, type ReviewHandlers, type ReviewLabels } from './DiffViewReview'
 
 type DiffSpec = NonNullable<TerminalTab['diff']>
 
@@ -69,6 +73,10 @@ interface Props {
   onError: (msg: string) => void
   /** the right side has edits not yet on disk: the tab must not be unmounted meanwhile */
   onDirty: (dirty: boolean) => void
+  /** the session the tab belongs to: review comments are gathered per session */
+  sessionId: string
+  /** hand the session's review comments to its agent; see TerminalArea */
+  onSendComments: () => Promise<ReviewSendOutcome>
 }
 
 /** what one read of both sides produced */
@@ -264,6 +272,8 @@ export default function DiffView({
   onGuard,
   onError,
   onDirty,
+  sessionId,
+  onSendComments,
 }: Props): JSX.Element {
   const t = useT()
   const colours = useThemed(EDITOR_THEMES)
@@ -298,6 +308,33 @@ export default function DiffView({
   const phraseSlots = useRef<{ view: EditorView; slot: Compartment }[]>([])
 
   const file = useCheckedFile({ path: abs, editor, viewRef: rightRef, onError })
+
+  // review comments: the session's, and the ones on this file
+  const sessionComments = useReviewComments(sessionId)
+  const review = useReviewActions()
+  const fileComments = useMemo(
+    () => sessionComments.filter((c) => c.cwd === spec.cwd && c.path === spec.path),
+    [sessionComments, spec.cwd, spec.path],
+  )
+  /** the comments worth sending: a fresh one still empty in its editor is not one yet */
+  const readyCount = sessionComments.filter((c) => c.text.trim()).length
+  /** the comment open in its editor; one at a time */
+  const [editing, setEditing] = useState<string | null>(null)
+  /** what the last send could not do, said in the toolbar */
+  const [sendNote, setSendNote] = useState<string | null>(null)
+  const draftsRef = useRef(new Map<string, string>())
+  const reviewLabels = useMemo<ReviewLabels>(
+    () => ({
+      add: t('editor.review.add'),
+      commented: t('editor.review.commented'),
+      placeholder: t('editor.review.placeholder'),
+      save: t('editor.review.save'),
+      cancel: t('editor.review.cancel'),
+      edit: t('editor.review.edit'),
+      remove: t('editor.review.remove'),
+    }),
+    [t],
+  )
   const { dirty, conflict, gone, savedAt } = file
 
   // mirrors for the CodeMirror callbacks and the poll, written after the commit
@@ -321,6 +358,67 @@ export default function DiffView({
     onDirtyRef.current = onDirty
     onGuardRef.current = onGuard
   })
+
+  /** what a comment widget calls; rewritten every render, read when the widget acts */
+  const reviewRef = useRef<ReviewHandlers>({
+    add: () => undefined,
+    save: () => undefined,
+    cancel: () => undefined,
+    startEdit: () => undefined,
+    remove: () => undefined,
+    draft: () => undefined,
+    setDraft: () => undefined,
+  })
+  useEffect(() => {
+    const drafts = draftsRef.current
+    const finish = (id: string): void => {
+      drafts.delete(id)
+      setEditing((cur) => (cur === id ? null : cur))
+    }
+    /** a comment that was never given text goes away when its editor closes or another opens */
+    const dropIfEmpty = (id: string | null): void => {
+      const c = id ? sessionComments.find((x) => x.id === id) : undefined
+      if (c && !c.text.trim()) review.remove(sessionId, [c.id])
+    }
+    reviewRef.current = {
+      add: (view, from, to) => {
+        dropIfEmpty(editing)
+        const doc = view.state.doc
+        const code = doc.sliceString(doc.line(from).from, doc.line(to).to)
+        const id = uid()
+        review.add(sessionId, { id, cwd: spec.cwd, path: spec.path, from, to, code, text: '' })
+        setEditing(id)
+      },
+      save: (id, text) => {
+        if (text.trim()) review.edit(sessionId, id, text.trim())
+        else review.remove(sessionId, [id])
+        finish(id)
+        rightRef.current?.focus()
+      },
+      cancel: (id) => {
+        dropIfEmpty(id)
+        finish(id)
+        rightRef.current?.focus()
+      },
+      startEdit: (id) => {
+        if (editing !== id) dropIfEmpty(editing)
+        setEditing(id)
+      },
+      remove: (id) => {
+        review.remove(sessionId, [id])
+        finish(id)
+      },
+      draft: (id) => drafts.get(id),
+      setDraft: (id, text) => drafts.set(id, text),
+    }
+  })
+
+  // a comment never given text does not outlive its editor: leaving the tab closes the editor
+  const emptyRef = useRef<string[]>([])
+  useEffect(() => {
+    emptyRef.current = fileComments.filter((c) => !c.text.trim()).map((c) => c.id)
+  }, [fileComments])
+  useEffect(() => () => review.remove(sessionId, emptyRef.current), [review, sessionId])
 
   useEffect(() => {
     const register = onGuardRef.current
@@ -519,6 +617,7 @@ export default function DiffView({
           EditorView.updateListener.of((u) => {
             if (editedByUser(u)) fileRef.current.changed(u.state.doc.toString())
           }),
+          reviewExtension(reviewRef),
         ]
       : readOnly
     const revertTitle = tr('editor.diff.revert')
@@ -601,6 +700,18 @@ export default function DiffView({
       phraseSlots.current = []
     }
   }, [docs, layout, unifiedSeq, leftPath, spec.path])
+
+  // the comments into the live view: after every rebuild, and whenever they or their words change
+  useEffect(() => {
+    rightRef.current?.dispatch({ effects: setReview.of({ comments: fileComments, editing, labels: reviewLabels }) })
+  }, [fileComments, editing, reviewLabels, docs, layout, unifiedSeq])
+
+  const sendComments = async (): Promise<void> => {
+    setSendNote(null)
+    const outcome = await onSendComments()
+    if (outcome === 'starting') setSendNote(t('editor.review.starting'))
+    else if (outcome === 'no-agent') setSendNote(t('editor.review.noAgent'))
+  }
 
   const liveViews = (): EditorView[] => {
     const merge = mergeRef.current
@@ -712,6 +823,17 @@ export default function DiffView({
           </span>
         )}
         <div className="spacer" />
+        {sendNote && <span className="muted small diff-review-note">{sendNote}</span>}
+        {readyCount > 0 && (
+          <button
+            className="primary"
+            data-testid="review-send"
+            onClick={() => void sendComments()}
+            title={t('editor.review.send.title')}
+          >
+            {t.plural('editor.review.send', readyCount)}
+          </button>
+        )}
         {showView && (
           <>
             <button

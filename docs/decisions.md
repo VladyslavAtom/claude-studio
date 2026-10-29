@@ -1078,3 +1078,14 @@ A lead agent could open, list, type into and close its children, but could not s
 
 **Trust is carried over, not granted.** emdash (`packages/plugins/src/agents/impl/claude/trust.ts`) sets `hasTrustDialogAccepted` and `hasCompletedProjectOnboarding` for every workspace unconditionally. Here the key is written only for a worktree the app has just created, for a `claude` session, and only when the project root (or a parent) is already trusted in the same profile — the app repeats an answer the person gave about this repository, it never gives one. `hasCompletedProjectOnboarding` is not written: it is not what asks. Why it is needed at all: in Claude Code 2.1.312 (read in the installed bundle) the upward walk for trust stops at the cwd's git root, and a worktree is its own git root, so even a worktree nested in a trusted checkout asks again. The file is shared with running CLIs, so it is temp + rename, never truncated, left alone when it does not parse, and re-read when its mtime/size/inode changed under us.
 
+## 2026-10-29 — Review comments from the diff go to the agent as one prompt, and are not saved
+
+The person comments lines of a diff's new side and sends them all at once into the session's agent tab. Prior art: vibe-kanban's `ReviewProvider` (numbered `path:line`, code block, comment) and emdash's `<user_comments>` XML; the plain numbered form was taken — it reads the same to the model and to a person looking at the tab afterwards.
+
+**Gutter click, not a context menu.** The diff has no context menu of its own, and a `+` beside the line number is the form GitHub, GitLab and both peers use. A selection widens it to a range.
+
+**In memory, not in state.json.** A comment is a draft for the next prompt, usually sent within minutes. Kept across a restart it would point at line numbers of a file the agent may have rewritten meanwhile, and it would cost a schema step and a `migrate()` line for that. Revisit if comments are lost to restarts in practice.
+
+**A sleeping agent is woken, not typed into.** Waiting for the TUI to be ready has no reliable signal for every agent (codex has no hooks); a paste typed before bracketed paste is on arrives as keystrokes and submits line by line. So the tab is woken and shown, the comments are kept, and the person sends again.
+
+**One typing path.** The bracketed paste and the delayed Enter moved from `useAgentToolRequests` into `lib/agentInput` + `lib/agentSubmit`, used by `send_to_session` and by review comments alike.

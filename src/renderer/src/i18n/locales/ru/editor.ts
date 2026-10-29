@@ -62,4 +62,20 @@ export const editor: EditorArea = {
   'diff.revert': 'Заменить это изменение исходным текстом (Ctrl+Z отменит)',
   // CodeMirror's phrase: one template for every count, so the wording avoids number agreement
   'diff.unchanged': 'Строк без изменений: $',
+  'review.add': 'Комментарий к строке (выделите строки, чтобы прокомментировать их все)',
+  'review.commented': 'К этой строке есть комментарий ревью',
+  'review.placeholder': 'Комментарий для агента… (Ctrl+Enter сохраняет, Esc отменяет)',
+  'review.save': 'Сохранить',
+  'review.cancel': 'Отмена',
+  'review.edit': 'Изменить',
+  'review.remove': 'Удалить',
+  'review.send': {
+    one: 'Отправить агенту {count} комментарий',
+    few: 'Отправить агенту {count} комментария',
+    many: 'Отправить агенту {count} комментариев',
+    other: 'Отправить агенту {count} комментария',
+  },
+  'review.send.title': 'Вставить комментарии ревью этой сессии во вкладку её агента одним промптом',
+  'review.starting': 'Агент запускается: отправьте ещё раз, когда появится его приглашение',
+  'review.noAgent': 'В этой сессии нет агента, который примет комментарии: откройте или перезапустите вкладку агента',
 }

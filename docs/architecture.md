@@ -605,6 +605,30 @@ re-read (on the triggers above, not a timer of its own) swaps texts into the liv
 overwrites unsaved edits: a disk that moved under them is shown as the editor's conflict. A
 hidden diff tab stays mounted only while it has unsaved edits.
 
+### Review comments to the agent
+
+The new side of a diff (the right editor, or the unified view) has a narrow gutter beside the line
+numbers: a `+` on hover adds a comment to that line, or to every selected line when the click is
+inside a selection. A comment is a block widget under its last line (`components/DiffViewReview.ts`):
+a textarea while edited (Ctrl+Enter saves, Esc cancels, an empty one is dropped), then its text with
+Edit and Delete. Lines it covers carry a `●` in the gutter. Only an existing text file takes
+comments — a deleted file has no new side.
+
+The comments live in `state/ReviewProvider`, per session, in memory: they survive the diff tab
+being unmounted and switching sessions, not a restart. Each holds its file, its lines (1-based,
+pinned by number — the working file is replaced whole on every re-read, so no mapping survives
+it) and the quoted lines as they were when written. The toolbar of every diff tab in the session
+shows «Send N comments to the agent» while any have text.
+
+Sending (`TerminalArea.sendReview`) formats one prompt (`lib/reviewComments.formatReviewPrompt`):
+a header line, then per comment, ordered by file and line, `N. path:from-to`, the quoted lines in
+a fence longer than any backtick run inside them, and the text. It goes into the session's first
+live agent tab through `lib/agentSubmit` — the same bracketed paste plus a separate Enter that
+`send_to_session` uses — the sent comments are removed by id, and the agent tab is brought to the
+front. With no live agent the first sleeping one is woken and shown, and the comments stay: a TUI
+that is still starting has not turned bracketed paste on, and the paste would arrive as keys. The
+toolbar says to send again once the prompt is up. No agent tab at all is said the same way.
+
 ### The merge tab
 
 Three CodeMirror panes, PyCharm's layout: «yours» on the left, the result in the middle, the incoming side on the right. The working file is parsed by its conflict markers (`lib/merge3.ts`); the text between conflicts is the same in all three panes, each side pane holds its side of every conflict, and the result starts every conflict from the common base. The base comes from the file's own `|||||||` chunk, or else from `git:conflictInfo`, which re-merges stages 1-3 with `git merge-file --diff3` over temp copies and is matched to the file's conflicts by their two sides.

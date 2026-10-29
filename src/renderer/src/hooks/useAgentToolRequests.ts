@@ -33,6 +33,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import type { AgentToolRequest, AgentToolResult, Project, Session, Settings } from '../../../shared/types'
 import type { NewSessionResult } from '../components/NewSessionModal'
 import { useT } from '../i18n'
+import { submitToAgent } from '../lib/agentSubmit'
 import { commandFor, conversationKind, envFor, findAgent } from '../lib/agents'
 import { withWorktreeEnv } from '../../../shared/worktreeSetup'
 import { autoBranch, worktreePathFor } from '../lib/sessionDefaults'
@@ -45,15 +46,6 @@ import type { SessionActions } from './useSessionActions'
 
 /** a leftover directory of a removed worktree: git refuses to put a new one there */
 const PATH_TRIES = 20
-
-/**
- * bracketed paste, for multi-line text only: it arrives as one input instead of being submitted
- * line by line. A single line is typed raw — a permission menu reads keys, not a paste.
- */
-const PASTE_START = '\x1b[200~'
-const PASTE_END = '\x1b[201~'
-/** the TUI takes a paste and an Enter in the same chunk as part of the paste */
-const SUBMIT_DELAY_MS = 60
 
 interface Asker {
   project: Project
@@ -358,10 +350,7 @@ export function useAgentToolRequests(sessions: SessionActions): void {
           ok: false,
           error: `The agent of "${child.name}" is not running; it starts when its session is opened on screen.`,
         }
-      const multiline = /[\r\n]/.test(request.text)
-      window.api.pty.input(tab.id, multiline ? PASTE_START + request.text + PASTE_END : request.text)
-      await new Promise((r) => setTimeout(r, SUBMIT_DELAY_MS))
-      window.api.pty.input(tab.id, '\r')
+      await submitToAgent(tab.id, request.text)
       return { ok: true, text: `Typed into "${child.name}" and submitted.` }
     },
     [resolveChild],

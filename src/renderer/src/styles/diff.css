@@ -123,3 +123,62 @@
   background: none;
   cursor: pointer;
 }
+
+/* review comments: the gutter they are added from, and each one as a block under its lines */
+.diff-host .cs-review-gutter .cm-gutterElement {
+  width: 14px;
+  padding: 0 2px;
+  text-align: center;
+  cursor: pointer;
+}
+.diff-host .cs-review-add {
+  visibility: hidden;
+  color: var(--accent);
+  font-weight: 600;
+}
+.diff-host .cs-review-gutter .cm-gutterElement:hover .cs-review-add {
+  visibility: visible;
+}
+.diff-host .cs-review-mark {
+  color: var(--accent);
+  font-size: 9px;
+}
+.diff-host .cs-review {
+  margin: 4px 8px 6px 4px;
+  padding: 6px 8px;
+  max-width: 720px;
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--fg);
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  white-space: normal;
+  cursor: default;
+}
+.diff-host .cs-review-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.diff-host .cs-review-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font: inherit;
+}
+.diff-host .cs-review-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.diff-host .cs-review:not(.editing) .cs-review-actions button {
+  padding: 0 6px;
+  font-size: 11px;
+}
+.diff-head .diff-review-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

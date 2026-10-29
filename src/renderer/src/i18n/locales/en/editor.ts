@@ -60,6 +60,18 @@ export const editor = {
   'diff.revert': 'Replace this change with the original text (Ctrl+Z undoes it)',
   // CodeMirror's own phrase: `$` is its placeholder for the number, not ours
   'diff.unchanged': '$ unchanged lines',
+  // review comments on the diff's new side, sent to the session's agent
+  'review.add': 'Comment on this line (select lines first to comment on all of them)',
+  'review.commented': 'A review comment covers this line',
+  'review.placeholder': 'Comment for the agent… (Ctrl+Enter saves, Esc cancels)',
+  'review.save': 'Save',
+  'review.cancel': 'Cancel',
+  'review.edit': 'Edit',
+  'review.remove': 'Delete',
+  'review.send': { one: 'Send {count} comment to the agent', other: 'Send {count} comments to the agent' },
+  'review.send.title': "Paste this session's review comments into its agent tab as one prompt",
+  'review.starting': 'The agent is starting: send again once it shows its prompt',
+  'review.noAgent': 'No agent in this session can take the comments: open or restart an agent tab',
 } as const
 
 export type EditorArea = AreaOf<typeof editor>

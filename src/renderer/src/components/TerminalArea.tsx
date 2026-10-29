@@ -24,6 +24,9 @@ import ContextMenu from './ContextMenu'
 import Modal from '../ui/Modal'
 import type { CloseGuard, CloseRisk } from '../hooks/useCheckedFile'
 import { onPathsMoved } from '../lib/pathEvents'
+import { submitToAgent } from '../lib/agentSubmit'
+import { formatReviewPrompt, type ReviewSendOutcome } from '../lib/reviewComments'
+import { useReviewActions, useReviewComments } from '../state/reviewContext'
 
 interface Props {
   session: Session
@@ -127,6 +130,35 @@ export default function TerminalArea({
   const hookPaths = useHookPaths()
   const [nonces, setNonces] = useState<Record<string, number>>({})
   const [dead, setDead] = useState<Record<string, boolean>>({})
+  const reviewComments = useReviewComments(session.id)
+  const review = useReviewActions()
+
+  /**
+   * The session's review comments, as one prompt, into its agent tab — the first live one, the
+   * same choice the changes panel makes for its commit message. A sleeping agent is woken and
+   * shown, and the comments wait: a TUI that is still starting has not turned bracketed paste on,
+   * and the paste would arrive as keystrokes. Sent comments are dropped by id, so one written
+   * while the paste was in flight stays.
+   */
+  const sendReview = async (): Promise<ReviewSendOutcome> => {
+    const ready = reviewComments.filter((c) => c.text.trim())
+    const agents = session.terminals.filter((x) => x.kind === 'agent' && !dead[x.id])
+    const live = agents.find((x) => awake.has(x.id))
+    if (!live) {
+      const sleeping = agents[0]
+      if (!sleeping) return 'no-agent'
+      onSelectTerminal(sleeping.id)
+      void onWake(sleeping.id)
+      return 'starting'
+    }
+    await submitToAgent(live.id, formatReviewPrompt(ready, session.cwd))
+    review.remove(
+      session.id,
+      ready.map((c) => c.id),
+    )
+    onSelectTerminal(live.id)
+    return 'sent'
+  }
   /**
    * How many times each tab has been asked to clear its scrollback. Not a nonce in the sense the
    * map above is: bumping this one must **not** rebuild the pane — a rebuilt pane re-attaches and
@@ -598,6 +630,8 @@ export default function TerminalArea({
                 onGuard={guardFor(tab.id)}
                 onError={onError}
                 onDirty={(d) => markDirtyDiff(tab.id, d)}
+                sessionId={session.id}
+                onSendComments={sendReview}
               />
             ) : null
           }

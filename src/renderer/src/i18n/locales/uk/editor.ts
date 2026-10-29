@@ -62,4 +62,20 @@ export const editor: EditorArea = {
   'diff.revert': 'Замінити цю зміну початковим текстом (Ctrl+Z скасує)',
   // CodeMirror's phrase: one template for every count, so the wording avoids number agreement
   'diff.unchanged': 'Рядків без змін: $',
+  'review.add': 'Коментар до рядка (виділіть рядки, щоб прокоментувати їх усі)',
+  'review.commented': 'До цього рядка є коментар рев’ю',
+  'review.placeholder': 'Коментар для агента… (Ctrl+Enter зберігає, Esc скасовує)',
+  'review.save': 'Зберегти',
+  'review.cancel': 'Скасувати',
+  'review.edit': 'Змінити',
+  'review.remove': 'Видалити',
+  'review.send': {
+    one: 'Надіслати агенту {count} коментар',
+    few: 'Надіслати агенту {count} коментарі',
+    many: 'Надіслати агенту {count} коментарів',
+    other: 'Надіслати агенту {count} коментаря',
+  },
+  'review.send.title': 'Вставити коментарі рев’ю цієї сесії у вкладку її агента одним промптом',
+  'review.starting': 'Агент запускається: надішліть ще раз, коли з’явиться його запрошення',
+  'review.noAgent': 'У цій сесії немає агента, який прийме коментарі: відкрийте або перезапустіть вкладку агента',
 }

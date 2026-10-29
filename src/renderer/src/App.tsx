@@ -23,6 +23,7 @@ import { useActions } from './state/actionsContext'
 import { AppStateProvider } from './state/AppStateProvider'
 import { useAppState, useDispatch, useLoaded } from './state/appStateContext'
 import { RuntimeProvider } from './state/RuntimeProvider'
+import { ReviewProvider } from './state/ReviewProvider'
 import { useRuntimeActions, useRuntimeState } from './state/runtimeContext'
 import { colorOf, colorVar } from './lib/projectColor'
 import { descendants } from './lib/sessionTree'
@@ -45,7 +46,9 @@ export default function App(): JSX.Element {
         <Chrome>
           <RuntimeProvider>
             <ActionsProvider>
-              <Shell />
+              <ReviewProvider>
+                <Shell />
+              </ReviewProvider>
             </ActionsProvider>
           </RuntimeProvider>
         </Chrome>
