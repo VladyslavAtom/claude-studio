@@ -49,12 +49,21 @@
   color: var(--del);
 }
 .diff-head .diff-count {
+  flex: none;
   white-space: nowrap;
   min-width: 4em;
   text-align: center;
 }
 .diff-head button.on {
   color: var(--accent);
+}
+/* a narrow pane gives way in the file name, never by wrapping a button onto two lines */
+.diff-head button {
+  flex: none;
+  white-space: nowrap;
+}
+.diff-head .file {
+  min-width: 0;
 }
 .diff-note {
   display: flex;
