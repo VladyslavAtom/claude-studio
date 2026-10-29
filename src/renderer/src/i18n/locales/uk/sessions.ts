@@ -66,4 +66,9 @@ export const sessions: SessionsArea = {
   },
   'children.collapse': 'Сховати відкриті нею сесії',
   'children.expand': 'Показати відкриті нею сесії',
+  'permission.aria': 'Запит дозволу в {tab}',
+  'permission.title':
+    '{tab} просить дозволу на {tool}. Відповідайте тут або в терміналі: зараховується перша відповідь.',
+  'permission.allow': 'Дозволити',
+  'permission.deny': 'Заборонити',
 }

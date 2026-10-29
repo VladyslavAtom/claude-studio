@@ -1,9 +1,16 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import type { AgentActivity, ArchivedSession, Project, Session } from '../../../shared/types'
+import type {
+  AgentActivity,
+  ArchivedSession,
+  PermissionAnswer,
+  PermissionAsk,
+  Project,
+  Session,
+} from '../../../shared/types'
 import type { T } from '../i18n'
 import { useT } from '../i18n'
-import { terminalStatus } from '../lib/status'
+import { shownPermission, terminalStatus } from '../lib/status'
 import { treeRows } from '../lib/sessionTree'
 import { formatTime } from '../lib/util'
 import { dragHandlers, middleClickClose } from '../lib/dnd'
@@ -21,6 +28,10 @@ interface Props {
   busyIds: Set<string>
   /** what each claude tab's own CLI says it is doing, for the tabs anything answers for */
   agentActivity: Map<string, AgentActivity>
+  /** the permission prompt each claude tab offered the window — see `lib/status.shownPermission` */
+  permissions: Map<string, PermissionAsk>
+  /** a click on a permission card: the only way an answer is ever given from here */
+  onAnswerPermission: (terminalId: string, askId: string, answer: PermissionAnswer) => void
   /** session directories that are not on disk */
   missing: ReadonlySet<string>
   /** put a deleted worktree back at its path, on its branch */
@@ -95,6 +106,80 @@ function SessionPulse({
   )
 }
 
+/**
+ * The permission prompts a session's tabs are blocked on, each with Allow and Deny — so a tab in
+ * the background can be answered without switching to it. The tab on screen gets no card: its
+ * prompt is right there in the terminal.
+ *
+ * A card is the same prompt the terminal shows, and the CLI takes whichever answer arrives first;
+ * the other is dropped, so nothing runs twice. Nothing is ever answered without a click, and there
+ * is no «always allow» here: a rule that outlives the prompt is a decision for the terminal, where
+ * the CLI shows exactly what it would add.
+ */
+function PermissionCards({
+  sessions,
+  onScreen,
+  permissions,
+  agentActivity,
+  onAnswer,
+  t,
+}: {
+  /** the row's session and, when it is folded, the descendants it hides — as the pulse counts them */
+  sessions: Session[]
+  /** the tab on screen in this project, which needs no card */
+  onScreen: string | null
+  permissions: Map<string, PermissionAsk>
+  agentActivity: Map<string, AgentActivity>
+  onAnswer: (terminalId: string, askId: string, answer: PermissionAnswer) => void
+  t: T
+}): JSX.Element | null {
+  const cards = sessions.flatMap((session) =>
+    session.terminals.flatMap((tab) => {
+      if (tab.id === onScreen) return []
+      const ask = shownPermission(permissions.get(tab.id), agentActivity.get(tab.id))
+      return ask ? [{ session, tab, ask }] : []
+    }),
+  )
+  if (!cards.length) return null
+  return (
+    <>
+      {cards.map(({ session, tab, ask }) => {
+        const name = tab.title || session.name
+        // the buttons only: a click elsewhere on the card selects the session, as on the rest of the row
+        const answer =
+          (choice: PermissionAnswer) =>
+          (e: { stopPropagation: () => void }): void => {
+            e.stopPropagation()
+            onAnswer(tab.id, ask.id, choice)
+          }
+        return (
+          <div
+            key={tab.id}
+            className="permission-card"
+            data-testid="permission-card"
+            role="group"
+            aria-label={t('sessions.permission.aria', { tab: name })}
+            title={t('sessions.permission.title', { tab: name, tool: ask.tool })}
+          >
+            <div className="permission-what">
+              <span className="permission-tool">{ask.tool}</span>
+              {ask.detail && <code className="permission-detail">{ask.detail}</code>}
+            </div>
+            <div className="permission-actions">
+              <button className="permission-allow" data-testid="permission-allow" onClick={answer('allow')}>
+                {t('sessions.permission.allow')}
+              </button>
+              <button className="permission-deny" data-testid="permission-deny" onClick={answer('deny')}>
+                {t('sessions.permission.deny')}
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 /** file tree: three levels of indentation, no emoji */
 function TreeIcon(): JSX.Element {
   return (
@@ -114,6 +199,8 @@ export default function SessionList({
   attention,
   busyIds,
   agentActivity,
+  permissions,
+  onAnswerPermission,
   missing,
   onRecreate,
   onSelect,
@@ -149,6 +236,7 @@ export default function SessionList({
 
   const history = project.history ?? []
   const parentName = (id: string | undefined): string => project.sessions.find((p) => p.id === id)?.name ?? ''
+  const onScreen = project.sessions.find((p) => p.id === project.activeSessionId)?.activeTerminalId ?? null
 
   return (
     <aside className="sessions">
@@ -273,6 +361,14 @@ export default function SessionList({
               <span className="tabs-count">{t.plural('sessions.tabCount', s.terminals.length)}</span>
               <span className="time">{formatTime(s.createdAt)}</span>
             </div>
+            <PermissionCards
+              sessions={[s, ...hidden]}
+              onScreen={onScreen}
+              permissions={permissions}
+              agentActivity={agentActivity}
+              onAnswer={onAnswerPermission}
+              t={t}
+            />
             {missing.has(s.cwd) && (
               <div className="session-missing" title={t('sessions.missing.title', { path: s.cwd })}>
                 <span className="missing-badge">{t('sessions.missing')}</span>

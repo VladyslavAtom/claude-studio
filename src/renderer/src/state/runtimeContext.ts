@@ -9,6 +9,7 @@ export const StateContext = createContext<TerminalRuntimeState>({
   agentActivity: new Map(),
   silent: new Set(),
   snapshots: new Map(),
+  permissions: new Map(),
 })
 export const ActionsContext = createContext<TerminalRuntimeActions>({
   wake: () => undefined,
@@ -17,6 +18,7 @@ export const ActionsContext = createContext<TerminalRuntimeActions>({
   markSeen: () => undefined,
   forgetTerminals: () => undefined,
   onBell: () => undefined,
+  answerPermission: () => undefined,
 })
 
 /** which tabs are alive, which are calling and which are noisy right now */

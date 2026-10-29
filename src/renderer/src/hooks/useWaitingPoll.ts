@@ -1,8 +1,9 @@
 import type { RefObject } from 'react'
 import { useEffect, useRef } from 'react'
-import type { AgentActivity, Project, Session } from '../../../shared/types'
+import type { AgentActivity, PermissionAsk, Project, Session } from '../../../shared/types'
 import { findAgent } from '../lib/agents'
 import { changesInvalidated } from '../lib/changesRefresh'
+import { blockOver } from '../lib/status'
 import { useDispatch, useLoaded } from '../state/appStateContext'
 import { useAppStateRef } from '../state/selectors'
 import { storeDir, useAgentTitleSync } from './useAgentTracking'
@@ -16,6 +17,8 @@ export interface WaitingPollOptions {
   onSilent: (terminalId: string, silent: boolean) => void
   /** what the tab's own CLI says it is doing, or null when nothing answers for it */
   onActivity: (terminalId: string, activity: AgentActivity | null) => void
+  /** the permission prompt the tab offered the window, or null; a state, set on every pass */
+  onPermission: (terminalId: string, ask: PermissionAsk | null) => void
 }
 
 /**
@@ -40,9 +43,14 @@ const SILENT_AFTER_MS = 20_000
  * rang the bell while the main agent went on working. That read is gone rather than kept as a
  * second path — one signal cannot be trusted while a second one is allowed to disagree with it.
  *
- * **`Notification` is «the agent wants you now»** — a permission prompt, or an agent left idle.
- * `Stop` cannot cover it: an agent blocked on a prompt has not stopped, and is waiting for
- * exactly one person. It rings, but it does not end a turn, so it does not re-read the name.
+ * **`Notification` is «the agent is blocked on you»** — a permission prompt or an elicitation
+ * dialog; the overlay does not ask for `idle_prompt`. `Stop` cannot cover it: an agent blocked on
+ * a prompt has not stopped, and is waiting for exactly one person. It rings, but it does not end
+ * a turn, so it does not re-read the name. It does not ring when the CLI's own state says the
+ * block is already over (`lib/status.blockOver`) — the person answered while it was on its way.
+ *
+ * **A permission prompt is also offered to the window** (`report.permission`), so that it can be
+ * answered from the session list. That is a state and is handed on as one, every pass.
  *
  * **A codex tab is polled for one thing only: which conversation it is in.** It reports no
  * events, so its counts are zero and it rings exactly as much as it did before — never. What it
@@ -72,7 +80,14 @@ const SILENT_AFTER_MS = 20_000
  * The poll walks the tabs one after another, over IPC, once every 4 s. This is temporary: main
  * owns these files and could send an event — then this hook disappears entirely.
  */
-export function useWaitingPoll({ awake, attentionRef, onBell, onSilent, onActivity }: WaitingPollOptions): void {
+export function useWaitingPoll({
+  awake,
+  attentionRef,
+  onBell,
+  onSilent,
+  onActivity,
+  onPermission,
+}: WaitingPollOptions): void {
   const stateRef = useAppStateRef()
   const loaded = useLoaded()
   const dispatch = useDispatch()
@@ -113,13 +128,16 @@ export function useWaitingPoll({ awake, attentionRef, onBell, onSilent, onActivi
               // id when there is one: after `/clear` the tab's own id is one conversation behind
               // for the rest of this pass. Only claude keeps such a file; a codex tab is never in
               // this map, and its dot is what it always was.
+              let activity: AgentActivity | null = null
               if (agent.sessionSource === 'uuid') {
                 const conversation = report.session?.sessionId ?? terminal.agentSessionId
-                const activity = conversation
+                activity = conversation
                   ? await window.api.agents.activity(conversation, storeDir(terminal, agent.env.CLAUDE_CONFIG_DIR))
                   : null
                 onActivity(terminal.id, activity)
               }
+              // a state, so it is handed on every pass, null included: that is how a card goes away
+              onPermission(terminal.id, report.permission)
 
               if (!report.session) {
                 // A claude tab this long awake has finished starting. If it has still said
@@ -155,13 +173,13 @@ export function useWaitingPoll({ awake, attentionRef, onBell, onSilent, onActivi
               // turn and a call for attention both mean «you»; they are counted apart because
               // only the first of them ends a turn.
               //
-              // A call for attention adds nothing while the tab is already calling: the CLI
-              // raises an idle notification a minute after a turn ends, so an unanswered `Stop`
-              // would otherwise ring a second time, in the same words, for the same reason. Once
-              // the person has looked, the tab leaves `attention` and a later notification is
-              // news again — it means the tab is still waiting.
+              // A call for attention adds nothing while the tab is already calling — it is the
+              // same reason, in the same words. Once the person has looked, the tab leaves
+              // `attention` and a later notification is news again. And it adds nothing when the
+              // CLI already says it is not blocked: the prompt was answered while the
+              // notification was on its way, and ringing now would paint a working tab amber.
               const calling = attentionRef.current.has(terminal.id) || report.stops > 0
-              const rings = report.stops + (calling ? 0 : report.notifications)
+              const rings = report.stops + (calling || blockOver(activity) ? 0 : report.notifications)
               for (let i = 0; i < rings; i++) {
                 onBell(project, session, terminal.id)
               }
@@ -195,5 +213,5 @@ export function useWaitingPoll({ awake, attentionRef, onBell, onSilent, onActivi
     const t = window.setInterval(() => void tick(), 4000)
     void tick()
     return () => window.clearInterval(t)
-  }, [loaded, awake, attentionRef, onBell, onSilent, onActivity, dispatch, stateRef, syncTitle])
+  }, [loaded, awake, attentionRef, onBell, onSilent, onActivity, onPermission, dispatch, stateRef, syncTitle])
 }

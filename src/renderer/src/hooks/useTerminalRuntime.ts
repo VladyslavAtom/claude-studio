@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { AgentActivity, Project, Session } from '../../../shared/types'
+import type { AgentActivity, PermissionAnswer, PermissionAsk, Project, Session } from '../../../shared/types'
 import { useT } from '../i18n'
 import { notifyAttention } from '../lib/notify'
 import { dropSnapshots, putSnapshot, type Snapshot } from '../lib/snapshots'
@@ -31,6 +31,11 @@ export interface TerminalRuntimeState {
    * card. Keyed by terminal id; see `lib/snapshots` for why it is kept here and not on disk.
    */
   snapshots: Map<string, Snapshot>
+  /**
+   * The permission prompt each claude tab offered the window, as its hook reported it. Whether
+   * it is worth a card is decided where it is drawn, against `agentActivity` — `lib/status`.
+   */
+  permissions: Map<string, PermissionAsk>
 }
 
 export interface TerminalRuntimeActions {
@@ -47,6 +52,8 @@ export interface TerminalRuntimeActions {
   forgetTerminals: (ids: string[]) => void
   /** a CLI may say nothing to the terminal — then it is the conversation record that calls */
   onBell: (project: Project, session: Session, terminalId: string) => void
+  /** the person's click on a permission card; never called on anyone's behalf */
+  answerPermission: (terminalId: string, askId: string, answer: PermissionAnswer) => void
 }
 
 /** how many closed tab ids are remembered — enough to outlive the unmount of the panes we close */
@@ -60,7 +67,7 @@ function withoutId(set: Set<string>, id: string): Set<string> {
 }
 
 /** the same identity rule as the sets above: an unchanged map has to come back as itself */
-function forgetActivity(map: Map<string, AgentActivity>, ids: string[]): Map<string, AgentActivity> {
+function forgetActivity<V>(map: Map<string, V>, ids: string[]): Map<string, V> {
   if (!ids.some((id) => map.has(id))) return map
   const next = new Map(map)
   for (const id of ids) next.delete(id)
@@ -86,6 +93,7 @@ export function useTerminalRuntime(): { state: TerminalRuntimeState; actions: Te
   const [agentActivity, setAgentActivity] = useState<Map<string, AgentActivity>>(new Map())
   const [silent, setSilent] = useState<Set<string>>(new Set())
   const [snapshots, setSnapshots] = useState<Map<string, Snapshot>>(new Map())
+  const [permissions, setPermissions] = useState<Map<string, PermissionAsk>>(new Map())
   const activityAt = useRef<Map<string, number>>(new Map())
   /**
    * Tabs that are gone. A pane serialises its last screen from its cleanup, and that cleanup runs
@@ -135,6 +143,7 @@ export function useTerminalRuntime(): { state: TerminalRuntimeState; actions: Te
     // whatever the previous process said about itself died with it: the tab starts with no state
     // of its own and gets one on the first pass of the poll, if anything answers for it at all
     setAgentActivity((prev) => forgetActivity(prev, [terminalId]))
+    setPermissions((prev) => forgetActivity(prev, [terminalId]))
     setAwake((prev) => (prev.has(terminalId) ? prev : new Set(prev).add(terminalId)))
   }, [])
 
@@ -172,6 +181,31 @@ export function useTerminalRuntime(): { state: TerminalRuntimeState; actions: Te
     })
   }, [])
 
+  // as with the two above: every pass, every live claude tab; only a different ask is a new map
+  const markPermission = useCallback((terminalId: string, ask: PermissionAsk | null) => {
+    setPermissions((prev) => {
+      if (!ask) return forgetActivity(prev, [terminalId])
+      if (prev.get(terminalId)?.id === ask.id) return prev
+      return new Map(prev).set(terminalId, ask)
+    })
+  }, [])
+
+  /**
+   * A click on Allow or Deny. The card goes at once and the tab stops calling — the person has
+   * just dealt with it — and a tab whose CLI reports a state is shown working: answering a prompt
+   * raises no hook, and the state file catches up only on the next pass. The pass after that has
+   * the CLI's own word again, whatever it is.
+   *
+   * Nothing here retries or decides. If the answer could not be delivered (the prompt was settled
+   * in the terminal first, or has gone), the terminal is where it stands, as before.
+   */
+  const answerPermission = useCallback((terminalId: string, askId: string, answer: PermissionAnswer) => {
+    setPermissions((prev) => (prev.get(terminalId)?.id === askId ? forgetActivity(prev, [terminalId]) : prev))
+    setAttention((prev) => withoutId(prev, terminalId))
+    setAgentActivity((prev) => (prev.get(terminalId) === 'waiting' ? new Map(prev).set(terminalId, 'busy') : prev))
+    void window.api.agents.answerPermission(terminalId, askId, answer)
+  }, [])
+
   const forgetTerminals = useCallback((ids: string[]) => {
     if (!ids.length) return
     const gone = new Set(ids)
@@ -186,6 +220,7 @@ export function useTerminalRuntime(): { state: TerminalRuntimeState; actions: Te
     setBusyIds(drop)
     setSilent(drop)
     setAgentActivity((prev) => forgetActivity(prev, ids))
+    setPermissions((prev) => forgetActivity(prev, ids))
     setSnapshots((prev) => dropSnapshots(prev, ids))
     gone.forEach((id) => activityAt.current.delete(id))
     forgotten.current = [...forgotten.current, ...ids].slice(-FORGOTTEN_KEEP)
@@ -213,15 +248,22 @@ export function useTerminalRuntime(): { state: TerminalRuntimeState; actions: Te
     attentionRef.current = attention
   }, [attention])
 
-  useWaitingPoll({ awake, attentionRef, onBell, onSilent: markSilent, onActivity: markAgentActivity })
+  useWaitingPoll({
+    awake,
+    attentionRef,
+    onBell,
+    onSilent: markSilent,
+    onActivity: markAgentActivity,
+    onPermission: markPermission,
+  })
 
   const state = useMemo<TerminalRuntimeState>(
-    () => ({ awake, attention, busyIds, agentActivity, silent, snapshots }),
-    [awake, attention, busyIds, agentActivity, silent, snapshots],
+    () => ({ awake, attention, busyIds, agentActivity, silent, snapshots, permissions }),
+    [awake, attention, busyIds, agentActivity, silent, snapshots, permissions],
   )
   const actions = useMemo<TerminalRuntimeActions>(
-    () => ({ wake, rememberSnapshot, markActivity, markSeen, forgetTerminals, onBell }),
-    [wake, rememberSnapshot, markActivity, markSeen, forgetTerminals, onBell],
+    () => ({ wake, rememberSnapshot, markActivity, markSeen, forgetTerminals, onBell, answerPermission }),
+    [wake, rememberSnapshot, markActivity, markSeen, forgetTerminals, onBell, answerPermission],
   )
   return { state, actions }
 }

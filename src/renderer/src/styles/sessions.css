@@ -357,3 +357,40 @@
   font-size: 11px;
   white-space: nowrap;
 }
+
+/* a permission prompt of a background tab, answered from the list */
+.permission-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 5px 6px;
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: default;
+}
+.permission-what {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.permission-tool {
+  color: var(--warn);
+  white-space: nowrap;
+}
+.permission-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-dim);
+}
+.permission-actions {
+  display: flex;
+  gap: 6px;
+}
+.permission-actions button {
+  font-size: 11px;
+  padding: 1px 8px;
+}

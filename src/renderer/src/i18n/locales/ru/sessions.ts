@@ -66,4 +66,8 @@ export const sessions: SessionsArea = {
   },
   'children.collapse': 'Скрыть открытые ею сессии',
   'children.expand': 'Показать открытые ею сессии',
+  'permission.aria': 'Запрос разрешения в {tab}',
+  'permission.title': '{tab} просит разрешения на {tool}. Ответьте здесь или в терминале: считается первый ответ.',
+  'permission.allow': 'Разрешить',
+  'permission.deny': 'Запретить',
 }

@@ -150,8 +150,8 @@ function Workspace({
   const dispatch = useDispatch()
   const t = useT()
   const activeSession = useActiveSession(project)
-  const { awake, attention, busyIds, agentActivity, silent, snapshots } = useRuntimeState()
-  const { markActivity, markSeen, onBell, rememberSnapshot } = useRuntimeActions()
+  const { awake, attention, busyIds, agentActivity, silent, snapshots, permissions } = useRuntimeState()
+  const { markActivity, markSeen, onBell, rememberSnapshot, answerPermission } = useRuntimeActions()
   const { sessions, terminals, layout } = useActions()
   const { openModal, setBusy, setError } = useUiActions()
   /** what changed in the current session's directory: the changes panel already knows, the tree colours it */
@@ -167,6 +167,8 @@ function Workspace({
           attention={attention}
           busyIds={busyIds}
           agentActivity={agentActivity}
+          permissions={permissions}
+          onAnswerPermission={answerPermission}
           missing={missing}
           onRecreate={(session) =>
             void sessions.recreateWorktree(project, session).then((ok) => {

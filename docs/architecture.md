@@ -144,9 +144,12 @@ cannot tell them apart: a Task subagent writes into the same file and its turn e
 `stop_reason: end_turn`. `Stop` fires for the main agent alone. There is no second way to find
 this out — the transcript read is gone, not kept as a fallback.
 
-**Whether it wants a person mid-turn.** Claude only, again. A permission prompt, or an agent left
-idle, is not the end of a turn: `Stop` never fires, and the record shows nothing. `Notification` is
-what the CLI raises for it. Codex has nothing of the kind a tab of ours can hear — its
+**Whether it is blocked on a person.** Claude only, again. A permission prompt or an MCP
+elicitation dialog is not the end of a turn: `Stop` never fires, and the record shows nothing.
+`Notification` is what the CLI raises for it, and the overlay asks for exactly those types
+(matcher `permission_prompt|elicitation_dialog|elicitation_url_dialog`). `idle_prompt`, raised
+about a minute after every finished turn, is not a block and is not asked for: it used to ring a
+second time for a turn the person had already looked at. Codex has nothing of the kind a tab of ours can hear — its
 `permission_request` is a hook, and hooks there sit behind a trust gate we do not open — and
 **a codex tab rings no more than it ever did, which is not at all**.
 
@@ -169,8 +172,10 @@ tab. The `-c` value is TOML inside a shell word, so the path is escaped for both
 | `<terminal id>.json`          | state: the conversation — claude rewrites it at every start, codex at every turn end. All a codex tab ever leaves |
 | `<terminal id>.stop.<unique>` | a claude event: a finished turn, one file each, deleted as it is read                                             |
 | `<terminal id>.note.<unique>` | a claude event: the CLI asking for a person, one file each, likewise                                              |
+| `<terminal id>.ask.<n>`       | state: a permission prompt the CLI holds open, written by the `PermissionRequest` hook still waiting on it        |
+| `<terminal id>.answer.<n>`    | the window's answer to that prompt, written by main on a click, read and deleted by the waiting hook              |
 
-Only `SessionStart`, `Stop` and `Notification` are registered. **`SubagentStop` deliberately is
+Only `SessionStart`, `Stop`, `Notification` and `PermissionRequest` are registered. **`SubagentStop` deliberately is
 not** — it is the event this exists to be rid of, and asking for it only to ignore it is a way to
 get it wrong later. The two kinds of event stay apart on disk and in the report: only the renderer
 knows that one of them ends a turn and the other interrupts it. The notify program writes no event
@@ -196,6 +201,41 @@ thread from the first call it accepts, and the first call to arrive can be a sub
 `last-assistant-message` and a `Notification`'s `message` are never read — they are the CLI's own
 wording, and main writes no interface copy. Everything a tab
 left is removed with its pty (`kill()`), and the whole directory is swept at startup.
+
+### Answering a permission prompt from the session list
+
+A claude tab blocked on a permission prompt in the background shows a card under its session row:
+the tool, what it would act on (the command, path or URL, clipped), **Allow** and **Deny**. The
+tab on screen gets none — its prompt is in the terminal.
+
+The contract this stands on (CLI 2.1.312, checked in the binary and in the hooks reference,
+code.claude.com/docs/en/hooks): in an interactive session `PermissionRequest` hooks are started
+**alongside** the terminal prompt, not awaited before it, and the prompt and the hooks share one
+claim — whichever answers first is applied, a later answer is dropped. A hook that prints nothing
+and exits 0 is «no decision». The output is
+`{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"allow"|"deny"}}}`;
+deny and ask rules still apply over a hook's allow.
+
+So the hook (`<userData>/agent-hooks/permission.sh`, run as `sh <path>`, CLI timeout 960 s):
+
+1. refuses at once a subagent's request (`agent_id` present — a background subagent's hooks are
+   awaited, and waiting would stall it) and `AskUserQuestion` / `ExitPlanMode` (their prompt is the
+   answer; the CLI ignores a hook's allow for them);
+2. publishes the payload as `<id>.ask.<n>` and waits up to 900 s for `<id>.answer.<n>`, checking
+   once a second;
+3. prints the answer, or nothing if the ask file was deleted, the wait ran out, or it was
+   signalled. It never decides on its own.
+
+Main (`takeHookReport`) offers the newest ask and withdraws older ones — the terminal shows one
+prompt at a time, so an older ask was almost certainly answered there — and withdraws every ask
+on `Stop`. `answerPermission` publishes the answer with `link`, so a second click cannot replace
+the first. The renderer shows a card only while the CLI's state is `waiting` or unknown
+(`lib/status.shownPermission`): a prompt answered in the terminal turns the state to `busy`, and
+the card goes on the next pass. A click clears the tab's `attention` and, where a state is known,
+shows it as working until the next pass reads the CLI's own word.
+
+There is no «always allow» on the card and no action in the desktop notification (Electron
+supports notification actions on macOS only).
 
 ### A tab that cannot report says so
 
@@ -242,6 +282,13 @@ pulse:
 `busy` and `shell` are «running» (the CLI's own session list counts both as working), `waiting` is
 «waiting» — it is set while the CLI is blocked on a person, and it draws the dot without ringing,
 covering the stretch `attention` cannot: that is cleared as soon as the person looks at the tab.
+
+The same state vetoes a late bell (`lib/status.blockOver`): a `Notification` rings only if the
+CLI's state, read on the same pass, is `waiting` or unknown. `permission_prompt` fires about six
+seconds into a prompt and reaches the window up to one poll later; a person who answered in
+between would otherwise be rung for a prompt that is gone, and the tab would sit amber while it
+works. Answering a prompt raises no hook of its own, so the state file is what returns the tab to
+«running».
 
 **A tab nothing answers for behaves exactly as it did before.** No file, an unreadable or
 half-written one, a status word no version we know writes, a session that simply keeps no file —

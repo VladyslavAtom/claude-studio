@@ -118,6 +118,8 @@ export const CHANNELS = {
     takeHookReport: 'agent:takeHookReport',
     /** what a running claude says it is doing, from the file it keeps per live session */
     activity: 'agent:activity',
+    /** the person's answer to a permission prompt a tab offered the window; true if it was still open */
+    answerPermission: 'agent:answerPermission',
     /** main -> renderer: an agent asked, through its MCP tool, for a session to be opened */
     toolRequest: 'agent:toolRequest',
     /** the renderer's answer to one such request; it travels back to the agent that asked */

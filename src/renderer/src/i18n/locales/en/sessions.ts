@@ -52,6 +52,11 @@ export const sessions = {
   'children.count': { one: '{count} child', other: '{count} children' },
   'children.collapse': 'Hide the sessions it opened',
   'children.expand': 'Show the sessions it opened',
+  /** a permission prompt of a tab in this session, answered from the list; see `PermissionCard` */
+  'permission.aria': 'Permission asked in {tab}',
+  'permission.title': '{tab} asks to use {tool}. Answer here or in the terminal: the first answer counts.',
+  'permission.allow': 'Allow',
+  'permission.deny': 'Deny',
 } as const
 
 export type SessionsArea = AreaOf<typeof sessions>

@@ -1,4 +1,4 @@
-import type { AgentActivity, TerminalStatus } from '../../../shared/types'
+import type { AgentActivity, PermissionAsk, TerminalStatus } from '../../../shared/types'
 // the key types only: this module must not drag the React provider into a test that has no DOM
 import type { PluralKey } from '../i18n/keys'
 
@@ -55,6 +55,39 @@ export function terminalStatus(input: StatusInput): TerminalStatus {
       return 'idle'
   }
   return input.busy ? 'running' : 'idle'
+}
+
+/**
+ * Whether a permission prompt a tab offered is still worth a card.
+ *
+ * The ask comes from the tab's `PermissionRequest` hook, and nothing tells that hook when the
+ * person answers in the terminal instead — so an ask on disk can outlive its prompt. The CLI's
+ * own state is what says the prompt is gone: anything but `waiting` means the process is no
+ * longer blocked, and a card then would be a button that does nothing (the CLI drops an answer to
+ * a settled prompt). With no state at all the ask is believed: it ends with the turn, with a
+ * newer prompt, or with the hook's own wait.
+ */
+export function shownPermission(
+  ask: PermissionAsk | undefined,
+  activity: AgentActivity | null | undefined,
+): PermissionAsk | null {
+  if (!ask) return null
+  if (activity && activity !== 'waiting') return null
+  return ask
+}
+
+/**
+ * Whether a tab's call for attention still describes it when it is heard.
+ *
+ * `Notification` is raised for a real block only (a permission prompt, an elicitation dialog),
+ * but it reaches the window up to one poll late, and the CLI raises `permission_prompt` some six
+ * seconds into the prompt. A person who answered in between would be rung for a prompt that is
+ * already gone, and the tab would sit amber while it works. So the CLI's own state has the last
+ * word where there is one: anything but `waiting` means the block is over. No state, no veto —
+ * the notification rings, as it always did.
+ */
+export function blockOver(activity: AgentActivity | null | undefined): boolean {
+  return !!activity && activity !== 'waiting'
 }
 
 /**

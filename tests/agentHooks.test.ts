@@ -57,8 +57,8 @@ function notePayload(over: Record<string, unknown> = {}): string {
     cwd: '/tmp/work',
     prompt_id: 'dee25ace-9de7-464d-bcd3-47a6139bc87c',
     hook_event_name: 'Notification',
-    message: 'Claude is waiting for your input',
-    notification_type: 'idle_prompt',
+    message: 'Claude needs your permission to use Bash',
+    notification_type: 'permission_prompt',
     ...over,
   })
 }
@@ -273,7 +273,12 @@ describe('takeHookReport — the conversation', () => {
 
   it('reads a codex thread out of the same file', async () => {
     await writeReport(TERM, turnPayload())
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: { sessionId: THREAD }, stops: 0, notifications: 0 })
+    expect(await hooks.takeHookReport(TERM)).toEqual({
+      session: { sessionId: THREAD },
+      stops: 0,
+      notifications: 0,
+      permission: null,
+    })
   })
 
   it('is null while the last thing written was a subagent’s turn', async () => {
@@ -285,21 +290,26 @@ describe('takeHookReport — the conversation', () => {
 
   it('is null when no hook has run for this tab', async () => {
     await fs.mkdir(hooks.reportsDir(), { recursive: true })
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0 })
+    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
   })
 
   it('is null when the reports directory does not exist at all', async () => {
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0 })
+    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
   })
 
   it('never reads outside the reports directory', async () => {
     await writeReport(TERM, payload())
-    expect(await hooks.takeHookReport(`../reports/${TERM}`)).toEqual({ session: null, stops: 0, notifications: 0 })
+    expect(await hooks.takeHookReport(`../reports/${TERM}`)).toEqual({
+      session: null,
+      stops: 0,
+      notifications: 0,
+      permission: null,
+    })
   })
 })
 
 describe('takeHookReport — events', () => {
-  const empty = { session: null, stops: 0, notifications: 0 }
+  const empty = { session: null, stops: 0, notifications: 0, permission: null }
 
   it('counts a turn and consumes it, so it rings exactly once', async () => {
     await writeEvent(TERM, 'stop', stopPayload(), '1785100765.457196')
@@ -347,6 +357,7 @@ describe('takeHookReport — events', () => {
       session: { sessionId: SID, transcriptPath: TRANSCRIPT },
       stops: 1,
       notifications: 1,
+      permission: null,
     })
   })
 })
@@ -360,7 +371,7 @@ describe('clearReports', () => {
     await writeEvent(other, 'stop', stopPayload(), '1.2')
     hooks.clearReports(TERM)
     await vi.waitFor(async () =>
-      expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0 }),
+      expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null }),
     )
     const kept = await hooks.takeHookReport(other)
     expect([kept.session?.sessionId, kept.stops]).toEqual([SID, 1])
@@ -375,7 +386,7 @@ describe('clearReports', () => {
 })
 
 describe('hookPaths', () => {
-  it('asks for three events, and for nothing else', async () => {
+  it('asks for four events, and for nothing else', async () => {
     const paths = await hooks.hookPaths()
     expect(paths).toEqual({
       settings: join(dir, 'agent-hooks', 'settings.json'),
@@ -384,15 +395,33 @@ describe('hookPaths', () => {
       mcp: join(dir, 'agent-tools', 'mcp.json'),
     })
     const parsed = JSON.parse(await fs.readFile(paths?.settings as string, 'utf8')) as {
-      hooks: Record<string, { hooks: { type: string; command: string }[] }[]>
+      hooks: Record<string, { matcher?: string; hooks: { type: string; command: string; timeout?: number }[] }[]>
     }
     // SubagentStop is the one that must never be here: it is what rang for a finished subagent
-    expect(Object.keys(parsed.hooks)).toEqual(['SessionStart', 'Stop', 'Notification'])
+    expect(Object.keys(parsed.hooks)).toEqual(['SessionStart', 'Stop', 'Notification', 'PermissionRequest'])
     for (const event of ['SessionStart', 'Stop', 'Notification']) {
       const hook = parsed.hooks[event]?.[0]?.hooks[0]
       expect(hook?.type).toBe('command')
       expect(hook?.command).toContain('$CLAUDE_STUDIO_HOOK_DIR')
       expect(hook?.command).toContain('$CLAUDE_STUDIO_SESSION')
+    }
+    const permission = parsed.hooks.PermissionRequest?.[0]?.hooks[0]
+    expect(permission?.command).toBe(`sh '${join(dir, 'agent-hooks', 'permission.sh')}'`)
+    // the CLI's limit sits above the program's own wait, so the program always ends by itself
+    expect(permission?.timeout).toBeGreaterThan(900)
+  })
+
+  it('asks to be told of a real block only: idle_prompt is not one', async () => {
+    const paths = await hooks.hookPaths()
+    const parsed = JSON.parse(await fs.readFile(paths?.settings as string, 'utf8')) as {
+      hooks: Record<string, { matcher?: string }[]>
+    }
+    const matcher = new RegExp(`^(?:${parsed.hooks.Notification?.[0]?.matcher ?? ''})$`)
+    for (const type of ['permission_prompt', 'elicitation_dialog', 'elicitation_url_dialog']) {
+      expect(matcher.test(type)).toBe(true)
+    }
+    for (const type of ['idle_prompt', 'auth_success', 'agent_completed', 'elicitation_complete']) {
+      expect(matcher.test(type)).toBe(false)
     }
   })
 
@@ -400,7 +429,7 @@ describe('hookPaths', () => {
     await writeReport(TERM, payload())
     await writeEvent(TERM, 'stop', stopPayload(), '1.1')
     await hooks.hookPaths()
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0 })
+    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
   })
 
   it('is prepared once, so a later report is not swept away', async () => {
@@ -416,7 +445,7 @@ describe('hookPaths', () => {
     vi.resetModules()
     const fresh = (await import('../src/main/agentHooks')) as Hooks
     expect(await fresh.hookPaths()).toBeNull()
-    expect(await fresh.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0 })
+    expect(await fresh.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
   })
 })
 
@@ -563,7 +592,12 @@ describe('the notify program itself', () => {
   it('names the tab’s conversation, and rings nothing', async () => {
     const { out, code } = await run(await program(), turnPayload(), env())
     expect([out, code]).toEqual(['', 0])
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: { sessionId: THREAD }, stops: 0, notifications: 0 })
+    expect(await hooks.takeHookReport(TERM)).toEqual({
+      session: { sessionId: THREAD },
+      stops: 0,
+      notifications: 0,
+      permission: null,
+    })
   })
 
   it('leaves exactly one file, whatever it is called with', async () => {
@@ -624,6 +658,225 @@ describe('the notify program itself', () => {
     // the program writes what it was handed; a subagent's turn is refused where the parser is,
     // and the tab is left with no reported conversation rather than with somebody else's
     await run(await program(), subturnPayload(), env())
-    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0 })
+    expect(await hooks.takeHookReport(TERM)).toEqual({ session: null, stops: 0, notifications: 0, permission: null })
+  })
+})
+
+/**
+ * A permission prompt, as the CLI hands it to `PermissionRequest` (shape from the 2.1.312 binary's
+ * own schema: the common fields, `tool_name`, `tool_input`, optional `permission_suggestions`; no
+ * `tool_use_id`).
+ */
+function askPayload(over: Record<string, unknown> = {}): string {
+  return JSON.stringify({
+    session_id: SID,
+    transcript_path: TRANSCRIPT,
+    cwd: '/tmp/work',
+    permission_mode: 'default',
+    hook_event_name: 'PermissionRequest',
+    tool_name: 'Bash',
+    tool_input: { command: 'rm -rf node_modules', description: 'Remove node_modules' },
+    permission_suggestions: [
+      {
+        type: 'addRules',
+        rules: [{ toolName: 'Bash', ruleContent: 'rm -rf node_modules' }],
+        behavior: 'allow',
+        destination: 'localSettings',
+      },
+    ],
+    ...over,
+  })
+}
+
+async function writeAsk(terminalId: string, askId: string, body: string): Promise<void> {
+  await fs.mkdir(hooks.reportsDir(), { recursive: true })
+  await fs.writeFile(join(hooks.reportsDir(), `${terminalId}.ask.${askId}`), body, 'utf8')
+}
+
+describe('parsePermissionRequest', () => {
+  it('names the tool and what it would act on', () => {
+    expect(hooks.parsePermissionRequest(askPayload())).toEqual({ tool: 'Bash', detail: 'rm -rf node_modules' })
+  })
+
+  it('takes the path of a file tool, and no detail when there is nothing to show', () => {
+    const edit = askPayload({
+      tool_name: 'Edit',
+      tool_input: { file_path: '/w/a.ts', old_string: 'a', new_string: 'b' },
+    })
+    expect(hooks.parsePermissionRequest(edit)).toEqual({ tool: 'Edit', detail: '/w/a.ts' })
+    const bare = askPayload({ tool_name: 'mcp__srv__do', tool_input: { n: 1 } })
+    expect(hooks.parsePermissionRequest(bare)).toEqual({ tool: 'mcp__srv__do', detail: null })
+  })
+
+  it('folds and clips a long command', () => {
+    const long = askPayload({ tool_input: { command: 'echo\n' + 'x'.repeat(500) } })
+    const detail = hooks.parsePermissionRequest(long)?.detail ?? ''
+    expect(detail.startsWith('echo x')).toBe(true)
+    expect(detail.length).toBe(300)
+  })
+
+  it('leaves a subagent’s request to the CLI', () => {
+    expect(hooks.parsePermissionRequest(askPayload({ agent_id: 'a1', agent_type: 'general-purpose' }))).toBeNull()
+  })
+
+  it('leaves a prompt that is itself the answer to the terminal', () => {
+    expect(hooks.parsePermissionRequest(askPayload({ tool_name: 'AskUserQuestion' }))).toBeNull()
+    expect(hooks.parsePermissionRequest(askPayload({ tool_name: 'ExitPlanMode' }))).toBeNull()
+  })
+
+  it('refuses another event, a broken payload and a request with nothing to show', () => {
+    expect(hooks.parsePermissionRequest(askPayload({ hook_event_name: 'PreToolUse' }))).toBeNull()
+    expect(hooks.parsePermissionRequest('{"hook_event_name":"Permis')).toBeNull()
+    expect(hooks.parsePermissionRequest(askPayload({ tool_name: '' }))).toBeNull()
+    expect(hooks.parsePermissionRequest(askPayload({ tool_input: 'rm' }))).toBeNull()
+    expect(hooks.parsePermissionRequest(askPayload({ session_id: 'x' }))).toBeNull()
+  })
+})
+
+describe('permissionOutput', () => {
+  it('is the CLI’s own decision shape, and nothing more', () => {
+    expect(JSON.parse(hooks.permissionOutput('allow'))).toEqual({
+      hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'allow' } },
+    })
+    const deny = JSON.parse(hooks.permissionOutput('deny')) as {
+      hookSpecificOutput: { decision: { behavior: string; message: string; interrupt?: boolean } }
+    }
+    expect(deny.hookSpecificOutput.decision.behavior).toBe('deny')
+    expect(typeof deny.hookSpecificOutput.decision.message).toBe('string')
+    // a deny lets the agent go on; stopping the turn is not what the person clicked
+    expect(deny.hookSpecificOutput.decision.interrupt).toBeUndefined()
+  })
+})
+
+describe('takeHookReport — permission prompts', () => {
+  it('offers the open prompt and does not consume it', async () => {
+    await writeAsk(TERM, '100.7', askPayload())
+    const ask = { id: '100.7', tool: 'Bash', detail: 'rm -rf node_modules' }
+    expect((await hooks.takeHookReport(TERM)).permission).toEqual(ask)
+    expect((await hooks.takeHookReport(TERM)).permission).toEqual(ask)
+  })
+
+  it('keeps the newest only, and withdraws the older ones', async () => {
+    await writeAsk(TERM, '100.7', askPayload())
+    await writeAsk(TERM, '100.12', askPayload({ tool_input: { command: 'ls' } }))
+    await writeAsk(TERM, '99.900', askPayload())
+    expect((await hooks.takeHookReport(TERM)).permission?.id).toBe('100.12')
+    expect(await fs.readdir(hooks.reportsDir())).toEqual([`${TERM}.ask.100.12`])
+  })
+
+  it('withdraws every prompt once the turn has ended', async () => {
+    await writeAsk(TERM, '100.7', askPayload())
+    await writeEvent(TERM, 'stop', stopPayload(), '101.1')
+    const report = await hooks.takeHookReport(TERM)
+    expect([report.stops, report.permission]).toEqual([1, null])
+    expect(await fs.readdir(hooks.reportsDir())).toEqual([])
+  })
+
+  it('withdraws a request the window must not offer', async () => {
+    await writeAsk(TERM, '100.7', askPayload({ agent_id: 'a1' }))
+    expect((await hooks.takeHookReport(TERM)).permission).toBeNull()
+    expect(await fs.readdir(hooks.reportsDir())).toEqual([])
+  })
+})
+
+describe('answerPermission', () => {
+  it('leaves the answer beside the ask, once', async () => {
+    await writeAsk(TERM, '100.7', askPayload())
+    expect(await hooks.answerPermission(TERM, '100.7', 'deny')).toBe(true)
+    // a second click — or a second answer of the other kind — changes nothing
+    expect(await hooks.answerPermission(TERM, '100.7', 'allow')).toBe(false)
+    const written = await fs.readFile(join(hooks.reportsDir(), `${TERM}.answer.100.7`), 'utf8')
+    expect(written).toBe(hooks.permissionOutput('deny'))
+    expect((await fs.readdir(hooks.reportsDir())).filter((n) => n.endsWith('.tmp'))).toEqual([])
+  })
+
+  it('answers nothing that is not open', async () => {
+    expect(await hooks.answerPermission(TERM, '100.7', 'allow')).toBe(false)
+    await writeAsk(TERM, '100.7', askPayload())
+    expect(await hooks.answerPermission(TERM, '../100.7', 'allow')).toBe(false)
+    expect(await hooks.answerPermission(`../${TERM}`, '100.7', 'allow')).toBe(false)
+    expect(await hooks.answerPermission(TERM, '100.7', 'always' as 'allow')).toBe(false)
+    expect(await fs.readdir(hooks.reportsDir())).toEqual([`${TERM}.ask.100.7`])
+  })
+})
+
+/**
+ * The permission program, run the way the CLI runs it: `sh <path>`, the payload on stdin, the
+ * tab's environment. The wait is cut to seconds through the variable that exists for this.
+ */
+describe('the permission program itself', () => {
+  const env = (over: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => ({
+    ...process.env,
+    CLAUDE_STUDIO_HOOK_DIR: hooks.reportsDir(),
+    CLAUDE_STUDIO_SESSION: TERM,
+    CLAUDE_STUDIO_PERMISSION_WAIT: '3',
+    ...over,
+  })
+
+  async function start(vars: NodeJS.ProcessEnv, stdin: string): Promise<{ out: string; code: number }> {
+    await hooks.hookPaths()
+    const path = join(dir, 'agent-hooks', 'permission.sh')
+    return new Promise((resolve) => {
+      const child = spawn('/bin/sh', [path], { env: vars })
+      let out = ''
+      child.stdout.setEncoding('utf8')
+      child.stdout.on('data', (chunk: string) => (out += chunk))
+      child.on('close', (code) => resolve({ out, code: code ?? -1 }))
+      child.stdin.on('error', () => undefined) // a program that exits before reading closes the pipe
+      child.stdin.end(stdin)
+    })
+  }
+
+  async function openAsk(): Promise<string> {
+    let id = ''
+    await vi.waitFor(
+      async () => {
+        const ask = (await hooks.takeHookReport(TERM)).permission
+        expect(ask).not.toBeNull()
+        id = ask?.id ?? ''
+      },
+      { timeout: 2000, interval: 50 },
+    )
+    return id
+  }
+
+  it('prints the window’s answer and cleans up after itself', async () => {
+    const done = start(env(), askPayload())
+    const id = await openAsk()
+    expect(await hooks.answerPermission(TERM, id, 'allow')).toBe(true)
+    expect(await done).toEqual({ out: hooks.permissionOutput('allow'), code: 0 })
+    expect(await fs.readdir(hooks.reportsDir())).toEqual([])
+  })
+
+  it('decides nothing when nobody clicks: the wait runs out, silently', async () => {
+    const { out, code } = await start(env({ CLAUDE_STUDIO_PERMISSION_WAIT: '1' }), askPayload())
+    expect([out, code]).toEqual(['', 0])
+    expect(await fs.readdir(hooks.reportsDir())).toEqual([])
+  })
+
+  it('stops waiting, silently, when main withdraws the ask', async () => {
+    const done = start(env({ CLAUDE_STUDIO_PERMISSION_WAIT: '30' }), askPayload())
+    await openAsk()
+    await writeEvent(TERM, 'stop', stopPayload(), '1.1')
+    await hooks.takeHookReport(TERM)
+    expect(await done).toEqual({ out: '', code: 0 })
+  })
+
+  it('does not wait at all for a subagent or for a prompt that is the answer', async () => {
+    for (const body of [
+      askPayload({ agent_id: 'a1' }),
+      askPayload({ tool_name: 'AskUserQuestion' }),
+      askPayload({ tool_name: 'ExitPlanMode' }),
+    ]) {
+      expect(await start(env({ CLAUDE_STUDIO_PERMISSION_WAIT: '30' }), body)).toEqual({ out: '', code: 0 })
+    }
+    expect(await fs.readdir(hooks.reportsDir())).toEqual([])
+  })
+
+  it('falls through at once when the app did not mark this terminal or its directory is gone', async () => {
+    expect(await start(env({ CLAUDE_STUDIO_SESSION: '' }), askPayload())).toEqual({ out: '', code: 0 })
+    await hooks.hookPaths()
+    await rm(hooks.reportsDir(), { recursive: true, force: true })
+    expect(await start(env(), askPayload())).toEqual({ out: '', code: 0 })
   })
 })

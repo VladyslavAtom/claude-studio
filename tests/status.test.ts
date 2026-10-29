@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { PULSE_LOOK, PULSE_ORDER, projectPulse, terminalStatus } from '../src/renderer/src/lib/status'
+import {
+  PULSE_LOOK,
+  PULSE_ORDER,
+  blockOver,
+  projectPulse,
+  shownPermission,
+  terminalStatus,
+} from '../src/renderer/src/lib/status'
 import type { StatusInput } from '../src/renderer/src/lib/status'
 
 /**
@@ -97,5 +104,34 @@ describe('projectPulse', () => {
       expect(PULSE_LOOK[status].cls, status).toBeTruthy()
       expect(PULSE_LOOK[status].key, status).toMatch(/^sessions\.pulse\./)
     }
+  })
+})
+
+describe('shownPermission', () => {
+  const ask = { id: '100.7', tool: 'Bash', detail: 'ls' }
+
+  it('shows the prompt while the CLI says it is blocked, or says nothing', () => {
+    expect(shownPermission(ask, 'waiting')).toBe(ask)
+    expect(shownPermission(ask, null)).toBe(ask)
+    expect(shownPermission(ask, undefined)).toBe(ask)
+  })
+
+  it('hides a prompt the CLI is no longer blocked on: it was answered in the terminal', () => {
+    for (const activity of ['busy', 'shell', 'idle'] as const) expect(shownPermission(ask, activity)).toBeNull()
+  })
+
+  it('shows nothing when nothing was offered', () => {
+    expect(shownPermission(undefined, 'waiting')).toBeNull()
+  })
+})
+
+describe('blockOver', () => {
+  it('vetoes a late call for attention only on the CLI’s own word', () => {
+    expect(blockOver('busy')).toBe(true)
+    expect(blockOver('shell')).toBe(true)
+    expect(blockOver('idle')).toBe(true)
+    expect(blockOver('waiting')).toBe(false)
+    expect(blockOver(null)).toBe(false)
+    expect(blockOver(undefined)).toBe(false)
   })
 })

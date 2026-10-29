@@ -1,7 +1,13 @@
 import { ipcMain } from 'electron'
 import { CHANNELS } from '../../shared/channels'
-import type { AgentToolResult, ConversationRef, ExternalSessionQuery, ServiceConfig } from '../../shared/types'
-import { hookPaths, takeHookReport } from '../agentHooks'
+import type {
+  AgentToolResult,
+  ConversationRef,
+  ExternalSessionQuery,
+  PermissionAnswer,
+  ServiceConfig,
+} from '../../shared/types'
+import { answerPermission, hookPaths, takeHookReport } from '../agentHooks'
 import { replyToolRequest } from '../agentTools'
 import { agentActivity, listExternalSessions, sessionExists, sessionTitle } from '../agentSessions'
 import { readConversationLog } from '../conversationLog'
@@ -33,6 +39,9 @@ export function register(): void {
   ipcMain.handle(CH.hookPaths, () => hookPaths())
   ipcMain.handle(CH.takeHookReport, (_e, terminalId: string) => takeHookReport(terminalId))
   ipcMain.handle(CH.activity, (_e, sessionId: string, configDir?: string) => agentActivity(sessionId, configDir))
+  ipcMain.handle(CH.answerPermission, (_e, terminalId: string, askId: string, answer: PermissionAnswer) =>
+    answerPermission(terminalId, askId, answer),
+  )
   // the answer to a request an agent made through its tool; it travels back as a file the
   // blocked tool call is watching for
   ipcMain.handle(CH.toolReply, (_e, id: string, result: AgentToolResult) => replyToolRequest(id, result))

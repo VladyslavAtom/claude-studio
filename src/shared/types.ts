@@ -443,13 +443,37 @@ export interface AgentHookReport {
    */
   stops: number
   /**
-   * Times the CLI itself asked for a person mid-turn: a permission prompt, or an agent left
-   * idle. Counted apart from `stops` because it is not the same event — the turn has not ended,
-   * so nothing about the conversation is final and its name is not re-read. Claude only: codex
-   * raises nothing of the kind that a tab of ours can hear.
+   * Times the CLI itself asked for a person mid-turn: a permission prompt or an MCP elicitation
+   * dialog — never `idle_prompt`, which the overlay's matcher leaves out. Counted apart from
+   * `stops` because it is not the same event — the turn has not ended, so nothing about the
+   * conversation is final and its name is not re-read. Claude only: codex raises nothing of the
+   * kind that a tab of ours can hear.
    */
   notifications: number
+  /**
+   * The permission prompt the tab's CLI is holding open and has offered to the window, or null.
+   * A **state**, not an event: it stays until it is answered, withdrawn or replaced by a newer one.
+   * Claude only, main thread only — see `main/agentHooks`.
+   */
+  permission: PermissionAsk | null
 }
+
+/**
+ * One permission prompt a claude tab is showing, as its `PermissionRequest` hook handed it over.
+ * The hook is still running while this exists, waiting for an answer from the window; the
+ * terminal shows the same prompt at the same time, and the CLI takes whichever answer comes first.
+ */
+export interface PermissionAsk {
+  /** names this one prompt; an answer is addressed to it and to nothing else */
+  id: string
+  /** the CLI's own tool name: `Bash`, `Edit`, `mcp__server__tool` */
+  tool: string
+  /** what the tool would act on — a command, a path, a URL — verbatim and clipped; null if none */
+  detail: string | null
+}
+
+/** the two answers a person can give from the window; «always allow» stays in the terminal */
+export type PermissionAnswer = 'allow' | 'deny'
 
 /**
  * What a running claude says about itself, taken from the file it keeps per live session — see

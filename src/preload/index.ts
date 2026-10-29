@@ -6,6 +6,7 @@ import type {
   AgentHookReport,
   AgentToolRequest,
   AgentToolResult,
+  PermissionAnswer,
   AppState,
   BranchInfo,
   ChangedFile,
@@ -237,6 +238,9 @@ const api = {
     /** the state a running claude reports for this conversation; null when nothing answers for it */
     activity: (sessionId: string, configDir?: string): Promise<AgentActivity | null> =>
       ipcRenderer.invoke(CHANNELS.agent.activity, sessionId, configDir),
+    /** answers one permission prompt a tab offered; false when it was no longer open */
+    answerPermission: (terminalId: string, askId: string, answer: PermissionAnswer): Promise<boolean> =>
+      ipcRenderer.invoke(CHANNELS.agent.answerPermission, terminalId, askId, answer),
     /** an agent asked, through the tool its tab was started with, for a session to be opened */
     onToolRequest: (cb: (r: AgentToolRequest) => void): (() => void) => {
       const handler = (_e: IpcRendererEvent, payload: AgentToolRequest): void => cb(payload)
