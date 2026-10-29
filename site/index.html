@@ -33,11 +33,11 @@
   </header>
 
   <div class="hero">
-    <div class="pill"><span><b>v0.1.0</b></span><span>Linux</span><span>build from source</span><span>MIT</span></div>
+    <div class="pill"><span><b>v0.1.0</b></span><span>Linux</span><span>AppImage · deb</span><span>MIT</span></div>
     <h1>A team of <span class="grad">Claude Code agents</span>, side by side in git worktrees</h1>
     <p class="lead">Claude Studio is a desktop app for parallel agent work. Open a repository, start a session, and let the lead agent hand parts of the task to sessions of their own: each on its own branch, each with one job, all in one window.</p>
     <div class="cta">
-      <a class="btn primary" href="#install">Build from source</a>
+      <a class="btn primary" href="#install">Download for Linux</a>
       <a class="btn" href="https://github.com/VladyslavAtom/claude-studio">View on GitHub</a>
     </div>
     <div class="frame"><a href="img/hero.webp"><img src="img/hero.webp" width="1560" height="960" alt="A lead session with three child sessions in the sidebar, and the diff of one child"></a></div>
@@ -250,13 +250,20 @@
 
   <section id="install">
     <div class="kicker">Install</div>
-    <h2>Build from source</h2>
-    <p class="sub">No release binaries yet: one command on Linux builds it from source, or the same steps by hand.</p>
+    <h2>Download for Linux</h2>
+    <p class="sub">Every release has x64 builds: an AppImage that runs as it is, and a .deb for Ubuntu and Debian. There are no macOS or Windows builds yet; there, build from source.</p>
     <div class="req">
-      <div class="card"><h3>Linux</h3><p>X11 or Wayland. Developed on Ubuntu 24.04 with KDE Plasma.</p></div>
-      <div class="card"><h3>Node.js 22.5+, git</h3><p><code>gh</code> for pull requests.</p></div>
+      <div class="card"><h3>Linux x64</h3><p>X11 or Wayland, Ubuntu 22.04 / Debian 12 or newer. Developed on Ubuntu 24.04 with KDE Plasma.</p></div>
+      <div class="card"><h3>git</h3><p><code>gh</code> for pull requests. Node.js 22.5+ only to build from source.</p></div>
       <div class="card"><h3>Claude Code or Codex</h3><p>On <code>PATH</code> and signed in. The app starts them; it does not bundle them.</p></div>
     </div>
+    <div class="cta left"><a class="btn primary" href="https://github.com/VladyslavAtom/claude-studio/releases/latest">Download the latest release</a></div>
+    <h3>AppImage</h3>
+    <div class="oneline"><pre><code>chmod +x Claude-Studio-*.AppImage &amp;&amp; ./Claude-Studio-*.AppImage</code></pre><button type="button" class="copy" data-copy="chmod +x Claude-Studio-*.AppImage &amp;&amp; ./Claude-Studio-*.AppImage">Copy</button></div>
+    <h3>Ubuntu, Debian</h3>
+    <div class="oneline"><pre><code>sudo apt install ./claude-studio_*.deb</code></pre><button type="button" class="copy" data-copy="sudo apt install ./claude-studio_*.deb">Copy</button></div>
+    <p class="note">The .deb adds Claude Studio to the application menu and an AppArmor profile, so the Chromium sandbox works on Ubuntu 24.04+; the AppImage starts without the sandbox where AppArmor blocks it. The app makes no network calls and does not update itself: download a newer release to update. <code>SHA256SUMS</code> sits next to the files.</p>
+    <h2 class="next">Build from source</h2>
     <h3>One command</h3>
     <div class="oneline"><pre><code>curl -fsSL https://raw.githubusercontent.com/VladyslavAtom/claude-studio/main/install.sh | bash</code></pre><button type="button" class="copy" data-copy="curl -fsSL https://raw.githubusercontent.com/VladyslavAtom/claude-studio/main/install.sh | bash">Copy</button></div>
     <p class="note">Clones into <code>~/.local/share/claude-studio</code>, installs the dependencies, builds, adds <code>claude-studio</code> to <code>~/.local/bin</code> and the application menu, and starts the app. Run it again to update. <a href="https://github.com/VladyslavAtom/claude-studio/blob/main/install.sh">Read the script</a> first if you like.</p>
@@ -266,7 +273,7 @@ cd claude-studio
 npm install
 npm run rebuild      <span class="c"># node-pty against the Electron ABI</span>
 ./claude-studio.sh   <span class="c"># build if needed and start; --help for the rest</span>
-npm run dist         <span class="c"># or build an AppImage into release/</span></code></pre>
+npm run dist         <span class="c"># or build the AppImage and .deb into release/</span></code></pre>
     <p class="note">Ubuntu 24.04+ restricts unprivileged user namespaces through AppArmor, so the scripts set <code>ELECTRON_DISABLE_SANDBOX=1</code>.</p>
     <div class="status"><b>Status: 0.1.0.</b> A personal tool, published in case it is useful: one developer, one Linux desktop. Issues and patches are welcome on <a href="https://github.com/VladyslavAtom/claude-studio/issues">GitHub</a>.</div>
   </section>

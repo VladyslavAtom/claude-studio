@@ -238,6 +238,8 @@ html:has(.zoom[open]) { overflow: hidden; }
 }
 .fine { font-size: 13.5px; color: var(--fg-faint); }
 #install h3 { margin-top: 28px; }
+#install h2.next { margin-top: 56px; }
+.cta.left { justify-content: flex-start; }
 .oneline { position: relative; }
 .oneline pre { padding-right: 96px; }
 .copy { position: absolute; top: 14px; right: 14px; padding: 6px 14px; border-radius: 7px; border: 1px solid #3b4147; background: #23272b; color: #e1e4e8; font: 600 13px system-ui, sans-serif; cursor: pointer; }

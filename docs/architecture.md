@@ -723,3 +723,7 @@ otherwise the person will decide that the projects are gone.
 
 The build and the smoke run are started by the user — see [performance.md](performance.md).
 Neither the pre-commit hook nor CI calls them.
+
+## Releases
+
+A tag `v*` builds the Linux x64 AppImage and .deb on GitHub (`.github/workflows/release.yml`, inside an `ubuntu:22.04` container) and attaches them with `SHA256SUMS` to a release for the tag; the tag must equal `version` in `package.json`. A manual run of the workflow keeps the files as artifacts only. node-pty is rebuilt for Electron's ABI by electron-builder and lives unpacked next to `app.asar`. The sandbox is left to the packages: the AppImage adds `--no-sandbox` only where user namespaces are denied, the .deb installs an AppArmor profile. There is no updater and no update feed.

@@ -4,7 +4,15 @@
   "description": "Desktop UI for running Claude Code sessions in parallel: projects, git worktrees, diffs, terminals",
   "main": "out/main/index.js",
   "license": "MIT",
-  "author": "bv",
+  "author": {
+    "name": "VladyslavAtom",
+    "email": "VladyslavAtom@users.noreply.github.com"
+  },
+  "homepage": "https://vladyslavatom.github.io/claude-studio/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VladyslavAtom/claude-studio.git"
+  },
   "private": true,
   "type": "commonjs",
   "engines": {
@@ -38,11 +46,38 @@
     ],
     "linux": {
       "target": [
-        "AppImage"
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "category": "Development",
-      "icon": "resources/icon.png"
+      "icon": "resources/icon.png",
+      "executableName": "claude-studio",
+      "maintainer": "VladyslavAtom <VladyslavAtom@users.noreply.github.com>",
+      "synopsis": "Run Claude Code sessions in parallel",
+      "desktop": {
+        "entry": {
+          "Name": "Claude Studio",
+          "Comment": "Agent sessions in parallel: worktrees, changes, terminals",
+          "Categories": "Development;Utility;",
+          "StartupWMClass": "claude-studio"
+        }
+      }
     },
+    "appImage": {
+      "artifactName": "Claude-Studio-${version}-${arch}.${ext}"
+    },
+    "npmRebuild": true,
+    "publish": null,
     "mac": {
       "target": [
         "dmg",

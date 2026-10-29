@@ -1,0 +1,129 @@
+name: Release
+
+# A tag v* builds the Linux packages and attaches them to a GitHub Release for that tag.
+# A manual run builds the same files and keeps them as workflow artifacts only, so the packaging
+# can be tried before anything is tagged.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# two pushes of the same tag must not race each other to the same release
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    name: Linux x64
+    runs-on: ubuntu-latest
+    # Built inside Ubuntu 22.04, not on the runner's own image: node-pty is compiled here and
+    # links against this glibc, so the oldest glibc we build on is the oldest system the
+    # packages start on (2.35 — Ubuntu 22.04, Debian 12). The 22.04 runner image is deprecated.
+    container: ubuntu:22.04
+    steps:
+      # toolchain for node-pty, xz for the deb, and the libraries the electron binary links
+      # against, which the load check below needs to start it as plain node
+      - name: Install system packages
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: >
+          apt-get update &&
+          apt-get install -y --no-install-recommends
+          build-essential ca-certificates curl git python3 xz-utils
+          libasound2 libatk-bridge2.0-0 libatspi2.0-0 libcups2 libdbus-1-3 libdrm2 libgbm1 libgtk-3-0
+          libnss3 libxcomposite1 libxdamage1 libxfixes3 libxkbcommon0 libxrandr2 libxshmfence1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      # the file names carry package.json's version: a tag that disagrees would publish
+      # v0.2.0 with files named 0.1.0
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          [ "${GITHUB_REF_NAME#v}" = "$version" ] || {
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          }
+
+      - run: npm ci
+
+      - run: npm run build
+
+      # npmRebuild (package.json `build`) rebuilds node-pty against Electron's ABI inside the
+      # package; --publish never keeps electron-builder from uploading anything itself
+      - name: Package
+        run: npx electron-builder --linux --publish never
+
+      # node-pty must sit outside the asar, compiled, and load in the packaged Electron with no
+      # toolchain involved: it is required from the package and spawns a real process
+      - name: Check node-pty in the package
+        run: |
+          app=release/linux-unpacked
+          ls -l "$app"/resources/app.asar.unpacked/node_modules/node-pty/build/Release/pty.node
+          if ldd "$app"/claude-studio | grep 'not found'; then exit 1; fi
+          ELECTRON_RUN_AS_NODE=1 "$app"/claude-studio -e "
+            const pty = require(process.argv[1] + '/node_modules/node-pty')
+            const p = pty.spawn('/bin/echo', ['pty ok'], {})
+            p.onData((d) => process.stdout.write(d))
+            p.onExit(({ exitCode }) => process.exit(exitCode))
+          " "$PWD/$app/resources/app.asar"
+
+      - name: Checksums
+        working-directory: release
+        run: |
+          sha256sum Claude-Studio-*.AppImage claude-studio_*.deb > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: claude-studio-linux-x64
+          if-no-files-found: error
+          path: |
+            release/Claude-Studio-*.AppImage
+            release/claude-studio_*.deb
+            release/SHA256SUMS
+
+  release:
+    name: GitHub Release
+    needs: linux
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: claude-studio-linux-x64
+          path: dist
+
+      # a re-run of the same tag replaces the files instead of failing on an existing release
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cat > notes.md <<'EOF'
+          Linux x64 builds: an AppImage and a .deb. There are no macOS or Windows builds; on those systems run from source (see the README).
+
+          - AppImage: `chmod +x Claude-Studio-*.AppImage && ./Claude-Studio-*.AppImage`
+          - deb: `sudo apt install ./claude-studio_*.deb`
+          - `SHA256SUMS`: `sha256sum -c SHA256SUMS --ignore-missing`
+
+          The app does not update itself: download a newer release to update.
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "Claude Studio $TAG" --notes-file notes.md --generate-notes --verify-tag
+          fi

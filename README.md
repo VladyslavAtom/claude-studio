@@ -34,7 +34,17 @@ An agent in its own session, with the task it was started with. The same session
 
 ## Running
 
-One command on Linux: clones into `~/.local/share/claude-studio`, builds, adds `claude-studio` to `~/.local/bin` and the application menu, starts the app. Run it again to update.
+Download the Linux x64 build from [the latest release](https://github.com/VladyslavAtom/claude-studio/releases/latest): an AppImage, or a .deb for Ubuntu 22.04 / Debian 12 and newer. There are no macOS or Windows builds.
+
+```bash
+chmod +x Claude-Studio-*.AppImage && ./Claude-Studio-*.AppImage
+# or
+sudo apt install ./claude-studio_*.deb
+```
+
+The .deb installs an AppArmor profile so the Chromium sandbox works on Ubuntu 24.04+; the AppImage starts without the sandbox where AppArmor blocks it. The app does not update itself: download a newer release to update. `SHA256SUMS` sits next to the files.
+
+From source, one command on Linux: clones into `~/.local/share/claude-studio`, builds, adds `claude-studio` to `~/.local/bin` and the application menu, starts the app. Run it again to update.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/VladyslavAtom/claude-studio/main/install.sh | bash
@@ -47,7 +57,7 @@ npm install
 npm run rebuild              # node-pty against the Electron ABI
 npm run dev                  # development, renderer HMR
 npm run build && npm start   # production build
-npm run dist                 # AppImage (Linux) or dmg/zip (macOS) in release/
+npm run dist                 # AppImage and .deb (Linux) or dmg/zip (macOS) in release/
 ./claude-studio.sh           # build if needed, start in the background, --help for the rest
 
 npm run typecheck            # tsc -b: main and renderer are separate projects
@@ -74,6 +84,6 @@ PTYs live in main and are addressed by `terminalId`; `pty:start` is idempotent, 
 
 ## Status
 
-A personal tool, published in case it is useful: 0.1.0, one developer, one Linux desktop, no release binaries yet. The parts that have never run anywhere else — the AppArmor workaround, the Codex index, the node-pty rebuild — are the ones most likely to break for you.
+A personal tool, published in case it is useful: 0.1.0, one developer, one Linux desktop. The parts that have never run anywhere else — the AppArmor workaround, the Codex index, the node-pty rebuild — are the ones most likely to break for you.
 
 MIT.
