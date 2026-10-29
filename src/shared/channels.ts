@@ -150,4 +150,8 @@ export const CHANNELS = {
     slept: 'pty:slept',
     command: 'pty:command',
   },
+  gh: {
+    /** the PR and checks of each session directory's branch; `force` skips the cache */
+    branchPrs: 'gh:branchPrs',
+  },
 } as const

@@ -17,6 +17,7 @@ import AgentHistoryModal from './components/AgentHistoryModal'
 import Splitter from './components/Splitter'
 import { COLLAPSED_W } from './hooks/useLayout'
 import { useMissingDirs } from './hooks/useMissingDirs'
+import { usePrStatus } from './hooks/usePrStatus'
 import { diffTab, fileTab, mergeTab } from './hooks/useTerminalActions'
 import { ActionsProvider } from './state/ActionsProvider'
 import { useActions } from './state/actionsContext'
@@ -160,6 +161,8 @@ function Workspace({
   /** what changed in the current session's directory: the changes panel already knows, the tree colours it */
   const [changedFiles, setChangedFiles] = useState<Record<string, ChangeStatus>>({})
   const { filesOpen, changesCollapsed, layout: sizes } = layout
+  /** the PR and checks of each session branch of this project, keyed by session directory */
+  const prs = usePrStatus(project)
 
   return (
     <div className="workspace">
@@ -172,6 +175,7 @@ function Workspace({
           agentActivity={agentActivity}
           permissions={permissions}
           onAnswerPermission={answerPermission}
+          prs={prs}
           missing={missing}
           onRecreate={(session) =>
             void sessions.recreateWorktree(project, session).then((ok) => {
@@ -268,6 +272,7 @@ function Workspace({
           <div className="pane" style={{ width: changesCollapsed ? COLLAPSED_W : sizes.changes }}>
             <ChangesPanel
               session={activeSession}
+              pr={prs[activeSession.cwd] ?? null}
               projectPath={project.path}
               settings={state.settings}
               onOpenDiff={(spec) => terminals.openTab(project, activeSession, diffTab(spec))}

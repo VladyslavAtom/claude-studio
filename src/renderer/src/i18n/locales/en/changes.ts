@@ -152,6 +152,23 @@ export const changes = {
   'merge.sideFailed': 'could not take the side',
 
   /** the same action in the conflict row of the panel and in the head of the merge editor */
+
+  // pull request and checks of the session branch (badge in the panel head and on the session row)
+  'pr.badge': 'PR #{number}',
+  'pr.state.open': 'open',
+  'pr.state.draft': 'draft',
+  'pr.state.merged': 'merged',
+  'pr.state.closed': 'closed',
+  'pr.title': 'Pull request #{number}, {state}',
+  'pr.aria': 'Pull request #{number}, {state}: show checks',
+  'pr.open': 'Open PR #{number} in the browser',
+  'pr.checks.pass': { one: '{count} passing', other: '{count} passing' },
+  'pr.checks.fail': { one: '{count} failing', other: '{count} failing' },
+  'pr.checks.pending': { one: '{count} pending', other: '{count} pending' },
+  'pr.checks.skipped': { one: '{count} skipped', other: '{count} skipped' },
+  'pr.checks.none': 'no checks',
+  'pr.checks.truncated': 'only the first {count} checks are listed',
+  'pr.check.noLink': '{name} — no link',
 } as const
 
 export type ChangesArea = AreaOf<typeof changes>

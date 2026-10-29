@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type {
   AgentActivity,
   ArchivedSession,
+  BranchPrs,
   PermissionAnswer,
   PermissionAsk,
   Project,
@@ -17,6 +18,7 @@ import { dragHandlers, middleClickClose } from '../lib/dnd'
 import InlineRename from '../ui/InlineRename'
 import { activateOnKey, useRovingFocus } from '../ui/rows'
 import ContextMenu from './ContextMenu'
+import PrBadge from './PrBadge'
 
 interface Props {
   project: Project
@@ -32,6 +34,8 @@ interface Props {
   permissions: Map<string, PermissionAsk>
   /** a click on a permission card: the only way an answer is ever given from here */
   onAnswerPermission: (terminalId: string, askId: string, answer: PermissionAnswer) => void
+  /** the PR of each session's branch, by directory; a session absent from it shows no badge */
+  prs: BranchPrs
   /** session directories that are not on disk */
   missing: ReadonlySet<string>
   /** put a deleted worktree back at its path, on its branch */
@@ -201,6 +205,7 @@ export default function SessionList({
   agentActivity,
   permissions,
   onAnswerPermission,
+  prs,
   missing,
   onRecreate,
   onSelect,
@@ -355,6 +360,7 @@ export default function SessionList({
               ) : (
                 <span className="branch main">{t('sessions.mainRepo')}</span>
               )}
+              <PrBadge pr={prs[s.cwd]} compact />
               {childCount > 0 && (
                 <span className="children-count">{t.plural('sessions.children.count', childCount)}</span>
               )}

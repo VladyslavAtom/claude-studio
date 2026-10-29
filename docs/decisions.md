@@ -1089,3 +1089,17 @@ The person comments lines of a diff's new side and sends them all at once into t
 **A sleeping agent is woken, not typed into.** Waiting for the TUI to be ready has no reliable signal for every agent (codex has no hooks); a paste typed before bracketed paste is on arrives as keystrokes and submits line by line. So the tab is woken and shown, the comments are kept, and the person sends again.
 
 **One typing path.** The bracketed paste and the delayed Enter moved from `useAgentToolRequests` into `lib/agentInput` + `lib/agentSubmit`, used by `send_to_session` and by review comments alike.
+
+## 2026-10-29 — PR and CI status: one GraphQL call per repository, answers held per upstream sha
+
+Each session branch shows its pull request (number, open/draft/merged/closed) and the checks of its head commit, in the changes-panel head and as a small badge on the session row. Prior art: Okena (`okena-daemon-core/src/git_poll.rs`) polls only visible projects, skips the CI fetch while the upstream sha matches a settled one, and backs off on rate limiting.
+
+**Data.** `gh api graphql` with one `pullRequests(headRefName:…)` alias per branch, not `gh pr list --head` per branch: one process and one API request per repository per refresh, whatever the number of sessions. The branch names go in as GraphQL variables, never into the query text. The head name is the upstream's remote name (`%(upstream:remoteref)`), which is what GitHub calls the PR head.
+
+**When.** No new timers beside events: a write or a turn end (`changesInvalidated`), a PR opened from the app (`prStatusInvalidated`, forced, since the upstream did not move), focus and visibility, a session switch, a project switch. A 30 s interval runs only while some open PR has pending checks. Only the project on screen is asked about.
+
+**What reaches GitHub.** Main keeps an answer per (repository, head) with the upstream sha it was taken for. A moved upstream always asks. Otherwise: pending checks are held 20 s, «no PR» 2 min (an agent may open one with its own `gh pr create`, after its push), settled checks 10 min. The strict «never re-ask a settled sha» was not taken: a merge or close on GitHub does not move the upstream, and the badge would say «open» forever.
+
+**Failure is silence.** No `gh`, no GitHub remote, not signed in, rate-limited or any other failure: the directories are left out of the answer, the UI shows no badge, and asking pauses (30 min for a missing `gh` or remote, 10 min for sign-in, 5 min doubling to 60 for the rate limit, 2 min otherwise). `gh`'s «no GitHub remote» message also mentions `gh auth login`, so it is matched before the sign-in case. No toast: the feature is optional, and a toast per refresh would be noise.
+
+**Not done.** GitHub Enterprise hosts (`gh api` defaults to github.com), a PR whose head is a same-named branch in someone else's fork is not told apart, re-runs of one check are listed as separate rows.

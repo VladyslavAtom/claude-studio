@@ -9,6 +9,7 @@ import type {
   PermissionAnswer,
   AppState,
   BranchInfo,
+  BranchPrs,
   ChangedFile,
   CommitDraftConfig,
   CommitInfo,
@@ -297,6 +298,11 @@ const api = {
       ipcRenderer.on(CHANNELS.pty.command, handler)
       return () => ipcRenderer.removeListener(CHANNELS.pty.command, handler)
     },
+  },
+  gh: {
+    /** the PR of each directory's branch; a directory left out has nothing to show */
+    branchPrs: (cwds: string[], force?: boolean): Promise<BranchPrs> =>
+      ipcRenderer.invoke(CHANNELS.gh.branchPrs, cwds, force),
   },
 }
 

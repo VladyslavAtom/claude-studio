@@ -502,6 +502,28 @@ Sleeping tabs and the app's own editor/diff/merge tabs never keep it alive. An i
 repository state keeps the previous object, so an unchanged list is not re-rendered, and the file
 tree is handed the change map only when it differs.
 
+### Pull request and checks
+
+A session branch with a PR on GitHub shows it in the panel head (`#N`, its state, ✓/✗/● counts)
+and, compact (`#N` and one mark), on its session row (`components/PrBadge`). Either opens a
+popover: the PR link first, then each check with its own link; links go out through
+`openExternal`. Nothing is shown — no badge, no toast — when there is no PR, no upstream, no
+`gh`, no GitHub remote, no sign-in, or GitHub refuses.
+
+`hooks/usePrStatus` (in `Workspace`, so only the project on screen) asks `gh:branchPrs` with
+session directories on: opening the project, a session switch, focus/visibility,
+`changesInvalidated` for an overlapping path (turn end, push, any write), and
+`prStatusInvalidated` after a PR is opened from the app (forced). A 30 s interval runs only
+while an open PR has pending checks. Asks that arrive mid-request fold into one follow-up; an
+answer for a project no longer on screen is dropped.
+
+`main/gh.ts` `branchPrs` reads each directory's upstream with two local git calls
+(`--git-common-dir`, `for-each-ref`), groups worktrees by repository and sends one
+`gh api graphql` per repository, covering only branches `needsAsk` lets through: a moved
+upstream sha always; otherwise pending checks after 20 s, «no PR» after 2 min, settled after
+10 min. Failures are sorted by `classifyGhFailure` into pauses (rate limit doubling 5 → 60 min,
+sign-in 10 min, missing `gh` or remote 30 min, other 2 min).
+
 A rebase/merge/pull stopping on a conflict is a normal outcome, not an error: git returns a
 non-zero code, the panel catches it and writes «Rebase stopped on a conflict…». Red output stays
 for real failures.

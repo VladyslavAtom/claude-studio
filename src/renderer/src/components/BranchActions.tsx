@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 import type { PullStrategy, Session } from '../../../shared/types'
 import { useT } from '../i18n'
+import { prStatusInvalidated } from '../lib/prStatus'
 import { Menu, MenuItem, MenuSep } from '../ui/Menu'
 import { useMenu } from '../ui/useMenu'
 import type { GitActionResult } from '../ui/useGitAction'
@@ -170,9 +171,10 @@ export default function BranchActions({
           </MenuItem>
           <MenuItem
             onClick={() =>
+              // the PR now exists although the upstream did not move: the badge re-asks GitHub
               void run(t('git.run.createPr'), () =>
                 window.api.git.createPullRequest(session.cwd, session.name, '', worktree.baseRef),
-              )
+              ).then(() => prStatusInvalidated(session.cwd))
             }
           >
             {t('git.createPr')} <span className="muted small">gh</span>

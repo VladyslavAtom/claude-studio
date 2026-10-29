@@ -5,6 +5,7 @@ import { hookPaths } from './agentHooks'
 import * as agentTools from './agentTools'
 import * as ipcAgents from './ipc/agents'
 import * as ipcFiles from './ipc/files'
+import * as ipcGh from './ipc/gh'
 import * as ipcGit from './ipc/git'
 import * as ipcPty from './ipc/pty'
 import * as ipcSystem from './ipc/system'
@@ -155,6 +156,7 @@ function registerIpc(): void {
   ipcFiles.register()
   ipcAgents.register()
   ipcPty.register()
+  ipcGh.register()
 }
 
 // dev: run against a throwaway state dir (screenshots, smoke runs)

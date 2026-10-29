@@ -145,4 +145,25 @@ export const changes: ChangesArea = {
   'merge.addFailed': 'git add не прошёл',
   'merge.sideFailed': 'не удалось принять сторону',
 
+  // pull request и проверки ветки сессии (значок в шапке панели и в строке сессии)
+  'pr.badge': 'PR #{number}',
+  'pr.state.open': 'открыт',
+  'pr.state.draft': 'черновик',
+  'pr.state.merged': 'влит',
+  'pr.state.closed': 'закрыт',
+  'pr.title': 'Pull request #{number}, {state}',
+  'pr.aria': 'Pull request #{number}, {state}: показать проверки',
+  'pr.open': 'Открыть PR #{number} в браузере',
+  'pr.checks.pass': { one: '{count} прошла', few: '{count} прошли', many: '{count} прошли', other: '{count} прошли' },
+  'pr.checks.fail': { one: '{count} упала', few: '{count} упали', many: '{count} упали', other: '{count} упали' },
+  'pr.checks.pending': { one: '{count} идёт', few: '{count} идут', many: '{count} идут', other: '{count} идут' },
+  'pr.checks.skipped': {
+    one: '{count} пропущена',
+    few: '{count} пропущены',
+    many: '{count} пропущены',
+    other: '{count} пропущены',
+  },
+  'pr.checks.none': 'проверок нет',
+  'pr.checks.truncated': 'показаны только первые {count} проверок',
+  'pr.check.noLink': '{name} — без ссылки',
 }

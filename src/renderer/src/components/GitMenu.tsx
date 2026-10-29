@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { BranchInfo, Project, PullStrategy } from '../../../shared/types'
 import { useT } from '../i18n'
 import { changesInvalidated } from '../lib/changesRefresh'
+import { prStatusInvalidated } from '../lib/prStatus'
 import { formatTime } from '../lib/util'
 import Modal from '../ui/Modal'
 import { Menu, MenuItem, MenuSep } from '../ui/Menu'
@@ -196,7 +197,10 @@ export default function GitMenu({
         run: async () => {
           // base for the PR: the remote HEAD, with the current branch as a fallback
           const base = (await window.api.git.defaultBranch(project.path)) || current || 'main'
-          return window.api.git.createPullRequest(project.path, '', '', base)
+          const res = await window.api.git.createPullRequest(project.path, '', '', base)
+          // the PR now exists although the upstream did not move: a session here re-asks GitHub
+          prStatusInvalidated(project.path)
+          return res
         },
       },
     ],

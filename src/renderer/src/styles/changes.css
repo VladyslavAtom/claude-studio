@@ -429,3 +429,103 @@ button.ghost.danger:hover:not(:disabled) {
 .push-modal .modal-actions {
   align-items: center;
 }
+
+/* the session branch's PR and its checks: the panel head and, compact, the session row */
+.pr-badge-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.pr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0 5px;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  color: var(--fg-dim);
+}
+.pr-badge:hover {
+  background: var(--bg-3);
+}
+.pr-badge.pr-open {
+  color: var(--fg);
+}
+.pr-badge.pr-merged {
+  color: var(--accent-2);
+}
+.pr-badge.pr-closed {
+  color: var(--fg-faint);
+}
+.pr-badge.compact {
+  font-size: 10px;
+  line-height: 14px;
+  padding: 0 4px;
+}
+.pr-badge .pr-state {
+  color: var(--fg-dim);
+}
+.ci-pass .pr-mark,
+.pr-count.ci-pass {
+  color: var(--add);
+}
+.ci-fail .pr-mark,
+.pr-count.ci-fail {
+  color: var(--del);
+}
+.ci-pending .pr-mark,
+.pr-count.ci-pending {
+  color: var(--warn);
+}
+.ci-skipped .pr-mark {
+  color: var(--fg-faint);
+}
+.pr-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  z-index: 45;
+  width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-menu);
+}
+.changes-head .pr-popover {
+  left: auto;
+  right: 0;
+}
+.pr-popover button {
+  display: flex;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 5px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pr-popover button:hover:not(:disabled),
+.pr-popover [role='menuitem']:focus {
+  background: var(--bg-3);
+  outline: none;
+}
+.pr-popover .pr-summary {
+  padding: 2px 8px 4px;
+}
+.pr-popover .sep {
+  height: 1px;
+  background: var(--line);
+  margin: 4px 0;
+}

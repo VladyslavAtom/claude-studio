@@ -146,4 +146,35 @@ export const changes: ChangesArea = {
   'merge.addFailed': 'git add не пройшов',
   'merge.sideFailed': 'не вдалося прийняти сторону',
 
+  // pull request і перевірки гілки сесії (значок у шапці панелі та в рядку сесії)
+  'pr.badge': 'PR #{number}',
+  'pr.state.open': 'відкритий',
+  'pr.state.draft': 'чернетка',
+  'pr.state.merged': 'злитий',
+  'pr.state.closed': 'закритий',
+  'pr.title': 'Pull request #{number}, {state}',
+  'pr.aria': 'Pull request #{number}, {state}: показати перевірки',
+  'pr.open': 'Відкрити PR #{number} у браузері',
+  'pr.checks.pass': {
+    one: '{count} пройшла',
+    few: '{count} пройшли',
+    many: '{count} пройшли',
+    other: '{count} пройшли',
+  },
+  'pr.checks.fail': { one: '{count} впала', few: '{count} впали', many: '{count} впали', other: '{count} впали' },
+  'pr.checks.pending': {
+    one: '{count} триває',
+    few: '{count} тривають',
+    many: '{count} тривають',
+    other: '{count} тривають',
+  },
+  'pr.checks.skipped': {
+    one: '{count} пропущена',
+    few: '{count} пропущені',
+    many: '{count} пропущені',
+    other: '{count} пропущені',
+  },
+  'pr.checks.none': 'перевірок немає',
+  'pr.checks.truncated': 'показано лише перші {count} перевірок',
+  'pr.check.noLink': '{name} — без посилання',
 }

@@ -1113,3 +1113,45 @@ export interface WorktreePrepared {
 export interface WorktreeAddResult extends OpResult {
   prepared?: WorktreePrepared
 }
+
+// ── Pull request and CI of a session branch (`gh`) ──────────────────────────────────────────
+
+/** an open PR marked as a draft is its own state: it is what the person sees on GitHub */
+export type PrState = 'open' | 'draft' | 'merged' | 'closed'
+
+/** one check as `gh pr checks` buckets it: skipped and neutral runs neither pass nor fail */
+export type CheckOutcome = 'pass' | 'fail' | 'pending' | 'skipped'
+
+export interface PrCheck {
+  name: string
+  outcome: CheckOutcome
+  /** the run or the status page; absent when GitHub gives none */
+  url?: string
+}
+
+/** the checks of the PR's head commit, counted per outcome */
+export interface PrChecks {
+  pass: number
+  fail: number
+  pending: number
+  skipped: number
+  items: PrCheck[]
+  /** GitHub reported more checks than were fetched: the counts cover only `items` */
+  truncated: boolean
+}
+
+export interface PrInfo {
+  number: number
+  state: PrState
+  url: string
+  /** null: the head commit has no checks at all (no CI on the repository) */
+  checks: PrChecks | null
+}
+
+/**
+ * The answer for a set of session directories: a directory with a branch on GitHub maps to its
+ * latest PR or null for none. A directory that is absent has nothing to show — no upstream, no
+ * GitHub remote, no `gh`, not signed in, rate-limited — and the UI shows nothing for it rather
+ * than an error: the feature is optional, and a toast on every refresh would be noise.
+ */
+export type BranchPrs = Record<string, PrInfo | null>

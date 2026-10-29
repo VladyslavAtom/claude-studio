@@ -5,6 +5,7 @@ import type {
   ChangesView,
   DiffMode,
   GitStatusResult,
+  PrInfo,
   RepoState,
   Session,
   Settings,
@@ -19,6 +20,7 @@ import { useRovingFocus } from '../ui/rows'
 import { resultMessage, useGitAction } from '../ui/useGitAction'
 import BranchActions from './BranchActions'
 import ChangedFileRow from './ChangedFileRow'
+import PrBadge from './PrBadge'
 import PushModal from './PushModal'
 import RevertConfirmModal from './RevertConfirmModal'
 
@@ -43,6 +45,8 @@ interface Props {
   onChangedFiles: (files: Record<string, ChangedFile['status']>) => void
   /** a running agent tab: it can be asked a question through /btw */
   agentTabId: string | null
+  /** the PR of the session's branch and its checks; null when there is none or nothing is known */
+  pr: PrInfo | null
   onOpenDiff: (spec: {
     cwd: string
     path: string
@@ -81,6 +85,7 @@ export default function ChangesPanel({
   onPullStrategy,
   onChangedFiles,
   agentTabId,
+  pr,
 }: Props): JSX.Element {
   const t = useT()
   const [status, setStatus] = useState<GitStatusResult | null>(null)
@@ -613,6 +618,8 @@ export default function ChangesPanel({
               {t('changes.sync.neverShort')}
             </button>
           )}
+          {/* the session branch's PR: not while the shared project folder is on screen */}
+          {!(scope === 'project' && separate) && <PrBadge pr={pr} />}
           <div className="spacer" />
           <button
             className="ghost"
