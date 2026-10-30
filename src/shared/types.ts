@@ -405,6 +405,9 @@ export type AgentToolRequest = { id: string; terminalId: string | null } & (
   | { tool: 'send'; session: string; text: string }
   /** the child's conversation since `cursor` (see `main/conversationLog`); `tab` picks one of its agent tabs */
   | { tool: 'read'; session: string; tab?: string; cursor?: string }
+  /** the child's agent tabs stopped, conversation kept; a woken one resumes it */
+  | { tool: 'sleep'; session: string }
+  | { tool: 'wake'; session: string }
 )
 
 /**

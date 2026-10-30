@@ -5,8 +5,8 @@
  * is the opposite direction: a claude tab is started with an MCP server of ours
  * (`--mcp-config`), the server exposes `open_session`, and a call to it becomes a new session in
  * the window — a worktree, a tab, an agent already holding its first task. That session is the
- * asker's child, and four more tools act on children only: `list_sessions`, `close_session`,
- * `send_to_session`, `read_session`. Which session is whose is checked in the renderer, which
+ * asker's child, and six more tools act on children only: `list_sessions`, `close_session`,
+ * `send_to_session`, `read_session`, `sleep_session`, `wake_session`. Which session is whose is checked in the renderer, which
  * owns the state; `read_session` is then answered from the child's conversation file by
  * `conversationLog`.
  *
@@ -177,6 +177,32 @@ const TOOLS = [
     },
   },
   {
+    name: 'sleep_session',
+    description: [
+      'Put a session you opened (or one opened by it) to sleep: its agent process stops and frees',
+      'its memory, the conversation is kept. A turn in progress is cut off. wake_session resumes it.',
+    ].join(' '),
+    inputSchema: {
+      type: 'object',
+      properties: { session: SESSION_ARG },
+      required: ['session'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'wake_session',
+    description: [
+      'Wake a sleeping session you opened (or one opened by it): its agent starts again and resumes',
+      'its conversation, then waits for a message.',
+    ].join(' '),
+    inputSchema: {
+      type: 'object',
+      properties: { session: SESSION_ARG },
+      required: ['session'],
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'read_session',
     description: [
       'Read what a session you opened (or one opened by it), open or closed, said and did: its conversation since',
@@ -248,6 +274,8 @@ function requestFor(name, args) {
     if (typeof args.text !== 'string' || !args.text.trim()) return 'text is required.'
     return { tool: 'send', session: session, text: args.text }
   }
+  if (name === 'sleep_session') return { tool: 'sleep', session: session }
+  if (name === 'wake_session') return { tool: 'wake', session: session }
   if (name === 'read_session') {
     const r = { tool: 'read', session: session }
     if (typeof args.cursor === 'string' && args.cursor.trim()) r.cursor = args.cursor.trim()
@@ -428,6 +456,10 @@ export function parseToolRequest(raw: string): AgentToolRequest | null {
       ...(typeof o.tab === 'string' ? { tab: o.tab } : {}),
       ...(typeof o.cursor === 'string' ? { cursor: o.cursor } : {}),
     }
+  }
+  if (tool === 'sleep' || tool === 'wake') {
+    if (typeof o.session !== 'string' || !UUID.test(o.session)) return null
+    return { ...head, tool, session: o.session }
   }
   if (tool === 'close' || tool === 'send') {
     if (typeof o.session !== 'string' || !UUID.test(o.session)) return null

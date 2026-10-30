@@ -366,11 +366,13 @@ written next to the settings overlay by `src/main/agentTools.ts`. `open_session`
 `isolate`) becomes an ordinary session in the window: a worktree, a tab, an agent already holding
 the task, and the answer names its session id.
 
-That session is the asker's **child**: `Session.parentId`. Four more tools act on the asker's
+That session is the asker's **child**: `Session.parentId`. More tools act on the asker's
 descendants and nothing else — `list_sessions` (id, branch, conversation id, tab state,
 uncommitted files, agent tab ids when there is more than one), `send_to_session` (typed into the
-child's agent tab and submitted; multi-line text as a bracketed paste), `read_session` and
-`close_session`. Closing removes the worktree only when it is clean
+child's agent tab and submitted; multi-line text as a bracketed paste), `read_session`,
+`sleep_session` (its awake agent tabs go through `pty.sleep`, as the tab menu does),
+`wake_session` (its sleeping agent tabs start without a pane, as «start all» does, resuming the
+conversation) and `close_session`. Closing removes the worktree only when it is clean
 and the branch only when it has no commits outside the parent's branch; otherwise it is refused,
 and `force` closes the session but keeps both on disk. A child with open children of its own is
 refused. Descendants include closed ones: the project history keeps a closed session's

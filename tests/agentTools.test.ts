@@ -109,6 +109,13 @@ describe('parseToolRequest', () => {
   it('takes the tools that act on a child, and refuses a session id that is not one', () => {
     const head = { id: ID, terminalId: TAB }
     expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'list' }))).toEqual({ ...head, tool: 'list' })
+    for (const tool of ['sleep', 'wake'])
+      expect(tools.parseToolRequest(JSON.stringify({ ...head, tool, session: TAB }))).toEqual({
+        ...head,
+        tool,
+        session: TAB,
+      })
+    expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'wake', session: 'x' }))).toBeNull()
     expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'close', session: TAB, force: true }))).toEqual({
       ...head,
       tool: 'close',
@@ -246,6 +253,8 @@ describe('the MCP server', () => {
         'list_sessions',
         'close_session',
         'send_to_session',
+        'sleep_session',
+        'wake_session',
         'read_session',
       ])
     } finally {

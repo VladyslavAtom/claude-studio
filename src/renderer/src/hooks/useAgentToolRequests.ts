@@ -6,8 +6,8 @@
  * goes back the same way to the tool call that is still blocked on it.
  *
  * A session opened through `open_session` is the asker's **child** (`Session.parentId`). The
- * other four tools act on the asker's descendants only — listing them, typing into them, reading
- * their conversation, closing them — and the check is made here, against the state, never trusted
+ * other tools act on the asker's descendants only — listing them, typing into them, reading
+ * their conversation, putting them to sleep and waking them, closing them — and the check is made here, against the state, never trusted
  * from the request. Reading is the one thing main does for us: the conversation is a file.
  *
  * The renderer does the work because a session is a renderer thing — the project, the worktree,
@@ -48,7 +48,8 @@ import { MAX_CHILDREN, MAX_DEPTH, depthOf, family, isClosed } from '../lib/sessi
 import { terminalStatus } from '../lib/status'
 import { useHookPaths } from '../state/appStateContext'
 import { useAppStateRef } from '../state/selectors'
-import { useRuntimeState } from '../state/runtimeContext'
+import { useRuntimeActions, useRuntimeState } from '../state/runtimeContext'
+import { useResolveLaunched } from './useAgentTracking'
 import type { SessionActions } from './useSessionActions'
 
 /** a leftover directory of a removed worktree: git refuses to put a new one there */
@@ -111,6 +112,8 @@ export function useAgentToolRequests(sessions: SessionActions): void {
   useEffect(() => {
     hookPathsRef.current = hookPaths
   }, [hookPaths])
+  const { wake } = useRuntimeActions()
+  const resolveLaunched = useResolveLaunched()
   const t = useT()
   /** requests are carried out one after another: two worktrees must not be planned on one state */
   const queue = useRef<Promise<void>>(Promise.resolve())
@@ -404,6 +407,50 @@ export function useAgentToolRequests(sessions: SessionActions): void {
     [resolveChild, stateRef],
   )
 
+  /** the child's agent tabs stop; main answers `slept` and the runtime drops them from `awake` */
+  const sleepChild = useCallback(
+    async (request: Extract<AgentToolRequest, { tool: 'sleep' }>): Promise<AgentToolResult> => {
+      const found = resolveChild(request)
+      if (typeof found === 'string') return { ok: false, error: found }
+      const { child } = found
+      if (isClosed(child)) return { ok: false, error: `"${child.name}" is closed; nothing runs in it.` }
+      const live = child.terminals.filter((x) => x.kind === 'agent' && runtimeRef.current.awake.has(x.id))
+      if (!live.length) return { ok: true, text: `"${child.name}" is already asleep.` }
+      await Promise.all(live.map((x) => window.api.pty.sleep(x.id)))
+      return { ok: true, text: `"${child.name}" is asleep; its conversation is kept. wake_session resumes it.` }
+    },
+    [resolveChild],
+  )
+
+  /** started without a pane, as «start all» does: the child is rarely the session on screen */
+  const wakeChild = useCallback(
+    async (request: Extract<AgentToolRequest, { tool: 'wake' }>): Promise<AgentToolResult> => {
+      const found = resolveChild(request)
+      if (typeof found === 'string') return { ok: false, error: found }
+      const { asker, child } = found
+      if (isClosed(child)) return { ok: false, error: `"${child.name}" is closed; it cannot be woken.` }
+      const asleep = child.terminals.filter((x) => x.kind === 'agent' && !runtimeRef.current.awake.has(x.id))
+      if (!child.terminals.some((x) => x.kind === 'agent'))
+        return { ok: false, error: `"${child.name}" has no agent tab to wake.` }
+      if (!asleep.length) return { ok: true, text: `"${child.name}" is already awake.` }
+      const { settings } = stateRef.current
+      let started = 0
+      for (const tab of asleep) {
+        const launched = await resolveLaunched(asker.project.id, child.id, tab).catch(() => false)
+        const alive = await startWithoutPane(settings, hookPathsRef.current, asker.project.path, child, {
+          ...tab,
+          launched,
+        })
+        wake(tab.id)
+        if (alive) started++
+      }
+      return started
+        ? { ok: true, text: `"${child.name}" is awake; its agent resumed the conversation and waits for a message.` }
+        : { ok: false, error: `The agent of "${child.name}" could not be started.` }
+    },
+    [resolveChild, resolveLaunched, stateRef, wake],
+  )
+
   const carryOut = useCallback(
     (request: AgentToolRequest): Promise<AgentToolResult> => {
       switch (request.tool) {
@@ -417,9 +464,13 @@ export function useAgentToolRequests(sessions: SessionActions): void {
           return sendTo(request)
         case 'read':
           return read(request)
+        case 'sleep':
+          return sleepChild(request)
+        case 'wake':
+          return wakeChild(request)
       }
     },
-    [close, list, open, read, sendTo],
+    [close, list, open, read, sendTo, sleepChild, wakeChild],
   )
 
   useEffect(() => {
