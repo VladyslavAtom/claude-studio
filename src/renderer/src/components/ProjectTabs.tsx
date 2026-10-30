@@ -12,7 +12,7 @@ import { PROJECT_COLORS } from '../../../shared/types'
 import GitMenu from './GitMenu'
 import { useT } from '../i18n'
 import { dragHandlers, middleClickClose } from '../lib/dnd'
-import { colorOf, colorVar } from '../lib/projectColor'
+import { colorVar, picked, projectColors } from '../lib/projectColor'
 import type { PulsePart } from '../lib/status'
 import { PULSE_LOOK, projectPulse, terminalStatus } from '../lib/status'
 import InlineRename from '../ui/InlineRename'
@@ -61,7 +61,8 @@ interface Props {
   onInfo: (msg: string | null) => void
   onNewWorktree: (baseRef: string) => void
   onRename: (id: string, name: string) => void
-  onColor: (id: string, color: ProjectColor) => void
+  /** undefined: back to the colour from the name */
+  onColor: (id: string, color: ProjectColor | undefined) => void
   pullStrategy: PullStrategy
   onPullStrategy: (strategy: PullStrategy) => void
 }
@@ -145,6 +146,9 @@ export default function ProjectTabs({
     tabsRef.current?.querySelector('.tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [activeId, projects.length])
 
+  const colors = projectColors(projects)
+  const current = menuAt ? projects.find((p) => p.id === menuAt.id) : undefined
+
   return (
     <div className="project-tabs">
       {/* only the tabs scroll: «+», the git menu and settings stay pinned at any number of projects.
@@ -167,7 +171,7 @@ export default function ProjectTabs({
             <div
               key={p.id}
               className={'tab' + (p.id === activeId ? ' active' : '') + (gone ? ' missing' : '')}
-              style={{ '--tab-color': colorVar(colorOf(p)) }}
+              style={{ '--tab-color': colors.get(p.id) }}
               role="button"
               aria-current={p.id === activeId}
               aria-label={
@@ -254,12 +258,19 @@ export default function ProjectTabs({
               hint: t('projects.menu.rename.hint'),
               onPick: () => setEditing({ id: menuAt.id, initial: menuAt.name }),
             },
+            {
+              label: t('projects.color.byName'),
+              swatch: projectColors(
+                projects.map((p) => (p.id === menuAt.id ? { id: p.id, name: p.name } : p)),
+              ).get(menuAt.id) ?? '',
+              ...(current && !picked(current) ? { hint: '✓' } : {}),
+              onPick: () => onColor(menuAt.id, undefined),
+            },
             ...PROJECT_COLORS.map((color) => {
-              const current = projects.find((p) => p.id === menuAt.id)
               return {
                 label: t(COLOR_KEY[color]),
                 swatch: colorVar(color),
-                ...(current && colorOf(current) === color ? { hint: '✓' } : {}),
+                ...(current && picked(current) === color ? { hint: '✓' } : {}),
                 onPick: () => onColor(menuAt.id, color),
               }
             }),

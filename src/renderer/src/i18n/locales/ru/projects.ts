@@ -19,6 +19,7 @@ export const projects: ProjectsArea = {
   'rename.label': 'Имя проекта',
   'menu.rename': 'Переименовать',
   'menu.rename.hint': 'двойной клик',
+  'color.byName': 'По названию',
   'color.blue': 'Синий',
   'color.teal': 'Бирюзовый',
   'color.green': 'Зелёный',

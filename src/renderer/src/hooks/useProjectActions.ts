@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import type { Project, ProjectColor } from '../../../shared/types'
 import { useT } from '../i18n'
-import { freeColor } from '../lib/projectColor'
 import { basename, uid } from '../lib/util'
 import { useDispatch } from '../state/appStateContext'
 import { useRuntimeActions } from '../state/runtimeContext'
@@ -16,7 +15,7 @@ export interface ProjectActions {
   forgetClosedProject: (projectId: string) => void
   selectProject: (projectId: string) => void
   renameProject: (projectId: string, name: string) => void
-  colorProject: (projectId: string, color: ProjectColor) => void
+  colorProject: (projectId: string, color: ProjectColor | undefined) => void
   reorderProjects: (from: number, to: number) => void
 }
 
@@ -58,7 +57,6 @@ export function useProjectActions(): ProjectActions {
         name: basename(projectPath),
         path: projectPath,
         isGit: Boolean(root),
-        color: freeColor(stateRef.current.projects),
         sessions: [],
         activeSessionId: null,
         history: [],
@@ -117,7 +115,7 @@ export function useProjectActions(): ProjectActions {
   )
 
   const colorProject = useCallback(
-    (projectId: string, color: ProjectColor) => dispatch({ type: 'projectColored', projectId, color }),
+    (projectId: string, color: ProjectColor | undefined) => dispatch({ type: 'projectColored', projectId, color }),
     [dispatch],
   )
 

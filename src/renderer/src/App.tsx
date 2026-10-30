@@ -30,7 +30,7 @@ import { useAppState, useDispatch, useLoaded } from './state/appStateContext'
 import { RuntimeProvider } from './state/RuntimeProvider'
 import { ReviewProvider } from './state/ReviewProvider'
 import { useRuntimeActions, useRuntimeState } from './state/runtimeContext'
-import { colorOf, colorVar } from './lib/projectColor'
+import { projectColors } from './lib/projectColor'
 import { descendants } from './lib/sessionTree'
 import { useActiveProject, useActiveSession } from './state/selectors'
 import { UiProvider } from './state/UiProvider'
@@ -84,10 +84,12 @@ function Shell(): JSX.Element {
   const t = useT()
   const { missing, recheck } = useMissingDirs(state.projects)
 
+  const colors = projectColors(state.projects)
+
   if (!loaded) return <div className="boot">{t('common.loading')}</div>
 
   return (
-    <div className="app" style={activeProject ? { '--project': colorVar(colorOf(activeProject)) } : undefined}>
+    <div className="app" style={activeProject ? { '--project': colors.get(activeProject.id) } : undefined}>
       <ProjectTabs
         projects={state.projects}
         closedProjects={state.closedProjects}

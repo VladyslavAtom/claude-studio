@@ -1141,3 +1141,9 @@ Measured on the owner's state: every session sat in the main checkout, so every 
 The owner kept mixing up project tabs: the colour was a 3 px line and a 6% tint, the active tab's tint was overridden by a later rule, and nothing read at a glance.
 
 **Owner decision:** the current tab and the window take the current project's colour; neighbouring tabs keep their own. So each tab wears its own colour (a cap behind, filled at 50% on screen), and the tab strip stays neutral: the old line along the top of the window painted the current colour across every neighbour. The window: the sidebar tinted 12% with a 4 px bar down its left edge, its head 32% with the project's name at 16 px in place of «Sessions», the terminal tab bar 18% and a 2 px frame round the terminal.
+
+## 2026-10-30 — A project's colour comes from its name
+
+**Owner decision:** colours are generated from the tab name, within a sane palette. Eight fixed colours hashed from the path gave two of the owner's six projects the same blue and three more near-identical warm tones.
+
+A derived colour is `oklch(L C hue)`: the hue from an FNV-1a hash of the name, L and C fixed per theme (`--project-l`, `--project-c`), so every derived colour is as muted as the eight that can still be picked from the tab menu. Two hues closer than 40° (or 300°/n with many projects) are pulled apart: projects are taken in id order, which no tab reorder changes, and one that lands too near a taken hue moves to the nearest free one. A picked colour counts as taken. New projects no longer get a palette colour written at open; «By name» in the tab menu drops a picked one. A rename recolours the project.

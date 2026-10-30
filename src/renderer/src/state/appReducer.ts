@@ -30,7 +30,7 @@ export type Action =
   /** sessions whose directory vanished while the project was closed; they move to its history */
   | { type: 'projectSessionsPruned'; projectId: string; sessionIds: string[]; prunedAt: number }
   | { type: 'projectRenamed'; projectId: string; name: string }
-  | { type: 'projectColored'; projectId: string; color: ProjectColor }
+  | { type: 'projectColored'; projectId: string; color: ProjectColor | undefined }
   | { type: 'projectsReordered'; from: number; to: number }
   | { type: 'sessionCreated'; projectId: string; session: Session }
   | { type: 'sessionActivated'; projectId: string; sessionId: string }
@@ -199,7 +199,11 @@ export function appReducer(state: AppState, action: Action): AppState {
       return withProject(state, action.projectId, (p) => ({ ...p, name: action.name }))
 
     case 'projectColored':
-      return withProject(state, action.projectId, (p) => ({ ...p, color: action.color }))
+      return withProject(state, action.projectId, (p) => {
+        // undefined is «never chosen»: the key goes, the name decides again
+        const { color: _old, ...rest } = p
+        return action.color ? { ...rest, color: action.color } : rest
+      })
 
     case 'projectsReordered':
       return { ...state, projects: moveItem(state.projects, action.from, action.to) }

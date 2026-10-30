@@ -18,6 +18,7 @@ export const projects = {
   'menu.rename': 'Rename',
   'menu.rename.hint': 'double click',
   /** the colour the window is marked with while this project is open; the menu names each one */
+  'color.byName': 'By name',
   'color.blue': 'Blue',
   'color.teal': 'Teal',
   'color.green': 'Green',

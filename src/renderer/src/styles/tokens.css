@@ -129,6 +129,9 @@
 
   /* --- project colours: what marks the window with the project it shows (lib/projectColor).
      Muted on purpose — they sit next to add/del/warn and must not be read as states --- */
+  /* a colour derived from the name: these two, and a hue of its own (lib/projectColor) */
+  --project-l: 0.72;
+  --project-c: 0.09;
   --project-blue: #6f9fd4;
   --project-teal: #5fb0a6;
   --project-green: #82b27c;
@@ -235,6 +238,8 @@
   --scrollbar-thumb-hover: #a8b0b8;
 
   /* --- project colours: dark enough for the 3:1 a marking line needs on the light panels --- */
+  --project-l: 0.52;
+  --project-c: 0.1;
   --project-blue: #3d6fae;
   --project-teal: #2c7d74;
   --project-green: #4a8244;
