@@ -59,7 +59,7 @@
       <div class="feat flip">
         <div>
           <h3>Light on memory</h3>
-          <p>The window itself takes about 290 MB; every running Claude Code process about 240 MB more. An agent idle for N minutes goes to sleep: the process stops and gives its memory back, the conversation and the last screen stay. One click on Wake up and it carries on where it stopped.</p>
+          <p>The window itself takes about 290 MB; every running Claude Code process about 240 MB more. An agent idle for N minutes goes to sleep: the process stops and gives its memory back, the conversation and the last screen stay. One click on Wake up and it carries on where it stopped. Sleeping sessions, tabs and projects are drawn faded, so you do not wake one by accident.</p>
           <p class="fine">Measured here: PSS of the app's processes and of 18 <code>claude</code> processes on one Linux desktop.</p>
         </div>
         <div class="frame"><a href="img/sleep.webp"><img src="img/sleep.webp" width="1230" height="330" alt="An asleep tab keeps its last screen, with a Wake up button" loading="lazy"></a></div>
@@ -85,7 +85,7 @@
         <div>
           <div class="num">1</div>
           <h3>Open a project</h3>
-          <p>A project is a folder, and every project is a tab with a colour of its own. It does not have to be one repository:</p>
+          <p>A project is a folder, and every project is a tab with a colour of its own, derived from its name. The current tab and the window around it wear that colour, so you know which project you are in at a glance. It does not have to be one repository:</p>
           <ul class="ticks">
             <li><b>One repository.</b> Each session gets its own worktree and branch. A folder inside a repository opens the whole repository.</li>
             <li><b>A folder with several repositories</b>, say <code>backend/</code>, <code>frontend/</code> and <code>infra/</code> side by side. Sessions then work in that folder itself, without worktrees, and an agent can reach every repository in it.</li>
@@ -110,9 +110,9 @@
         <div>
           <div class="num">3</div>
           <h3>Ask the lead to split the work</h3>
-          <p>Every Claude tab carries five tools. Ask for a split in plain words:</p>
+          <p>Every Claude tab carries seven tools. Ask for a split in plain words:</p>
           <div class="prompt">Add gift cards. Split this feature into three parts: the backend, the frontend and the tests. Open a session for each, check on them, and tell me when they are ready to merge.</div>
-          <p>The lead calls <code>open_session</code> once per part: a visible session on a branch forked from its own, with a Claude already holding the sub-task. It checks on them with <code>list_sessions</code> (tab state, uncommitted files), reads what each one said and did with <code>read_session</code>, sends follow-ups with <code>send_to_session</code>, and closes them with <code>close_session</code>.</p>
+          <p>The lead calls <code>open_session</code> once per part: a visible session on a branch forked from its own, with a Claude already holding the sub-task. It checks on them with <code>list_sessions</code> (working, waiting, asleep or closed, uncommitted files), reads what each one said and did with <code>read_session</code>, closed ones too, sends follow-ups with <code>send_to_session</code>, puts an idle one to sleep with <code>sleep_session</code> and wakes it with <code>wake_session</code>, and closes them with <code>close_session</code>.</p>
           <p style="font-size:14px;color:var(--fg-faint)">Backend, frontend and tests is an example: the split is whatever you ask for. Up to 3 levels deep, 8 open children per session.</p>
         </div>
         <div class="team" aria-label="A lead session and three child sessions">
@@ -152,6 +152,7 @@
           <li><b>Three-way merge</b> for conflicts: yours, the result and incoming, an arrow per conflict, and a result you can edit by hand.</li>
           <li><b>Review comments to the agent:</b> comment lines in the diff, then send them all to the session's agent as one prompt.</li>
           <li><b>Branch work</b> without leaving the window: push, pull with a choice of strategy, rebase, merge, a pull request. The PR and its CI checks show on the session row.</li>
+          <li><b>Worktrees an agent made on its own</b> are found too: the session row names its branch, the panels follow the worktree you pick, and the ⎇ view lists every worktree of the project with branch, PR and changes, and removes the merged ones in one go. A folder a running agent works in is never offered for removal.</li>
         </ul>
       </div>
       <div class="frame"><a href="img/review.webp"><img src="img/review.webp" width="1260" height="680" alt="Side-by-side diff with a review comment, ready to send to the agent" loading="lazy"></a></div>
@@ -196,7 +197,7 @@
       <div class="feat">
         <div>
           <h3>Files and editor where the agent works</h3>
-          <p>A file tree per session with the context menu you expect: new, rename, move, duplicate, copy path, open in a terminal, show the diff or the history of a file, revert it. A CodeMirror editor that saves on a pause and picks up what an agent wrote meanwhile.</p>
+          <p>A file tree per session with the context menu you expect: new, rename, move, duplicate, copy path, open in a terminal, show the diff or the history of a file, revert it. A CodeMirror editor that saves on a pause and picks up what an agent wrote meanwhile, with a Wrap button for long lines.</p>
         </div>
         <div class="frame"><a href="img/filemenu.webp"><img src="img/filemenu.webp" width="880" height="610" alt="File tree context menu with the Git submenu open" loading="lazy"></a></div>
       </div>
@@ -238,7 +239,7 @@
     </details>
     <details>
       <summary>Do child sessions work with Codex?</summary>
-      <p>Codex runs fine as a tab, with its own conversation, history and search. The five session tools are given to Claude tabs only, so a split is led by Claude.</p>
+      <p>Codex runs fine as a tab, with its own conversation, history and search. The seven session tools are given to Claude tabs only, so a split is led by Claude.</p>
     </details>
     <details>
       <summary>What does it send over the network?</summary>
