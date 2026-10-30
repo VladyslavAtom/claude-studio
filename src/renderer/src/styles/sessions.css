@@ -5,20 +5,28 @@
   display: flex;
   flex-direction: column;
   /* tinted with the project's colour: the panel itself says which project this is */
-  background: color-mix(in srgb, var(--project) 6%, var(--bg-1));
+  background: color-mix(in srgb, var(--project) 12%, var(--bg-1));
   border-right: 1px solid var(--line);
+  /* and a bar down its left edge */
+  box-shadow: inset 4px 0 0 var(--project);
   min-height: 0;
 }
 .sessions-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 6px 8px 12px;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--fg-dim);
+  padding: 9px 6px 9px 12px;
+  background: color-mix(in srgb, var(--project) 32%, var(--bg-1));
+  color: var(--fg);
   border-bottom: 1px solid var(--line);
+}
+.sessions-head .project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 700;
 }
 .sessions-head .icon-btn {
   background: transparent;

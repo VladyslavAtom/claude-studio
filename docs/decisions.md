@@ -1132,6 +1132,12 @@ Measured on the owner's state: every session sat in the main checkout, so every 
 
 **Primary = most mentions, not most recent.** The design said «most recent mention». On the owner's data that made a session's side worktree primary: 678 mentions of `.worktrees/mad-372` up to 10-26, then 9 of `dagster-wt-mad372-roi` on 10-29, and the owner expects `mad-372`. One look into another folder must not move the panels; the switcher covers a session that really moved. The latest mention only breaks a tie.
 
-**Live guard has more than processes.** Live ptys and running claudes (their `sessions/<pid>.json`) catch an agent standing in a folder, but agents stand in the main folder. So the renderer adds the primary worktree of every session whose agent tab runs, and every session's own folder: a session's worktree is removed by «close session», which knows its teardown script, not from this view.
+**Live guard has more than processes.** Live ptys and running claudes (their `sessions/<pid>.json`) catch an agent standing in a folder, but agents stand in the main folder. So the renderer adds every worktree the agent of a running session has touched (not only its primary: it may go back to any), and every session's own folder: a session's worktree is removed by «close session», which knows its teardown script, not from this view.
 
 **Merged** is ancestry in the remote default branch or a merged PR (the existing `gh:branchPrs` lookup, by upstream). Not done: a branch squash-merged whose remote branch is gone has no upstream, so neither test sees it, and its commits are on no remote — it is not safe, and goes one at a time with the warning. `migrate()` needed no line for `Session.worktreeView`: projects and sessions pass through it whole; only settings are listed field by field.
+
+## 2026-10-30 — The project on screen is told by colour, loudly
+
+The owner kept mixing up project tabs: the colour was a 3 px line and a 6% tint, the active tab's tint was overridden by a later rule, and nothing read at a glance.
+
+**Owner decision:** the current tab and the window take the current project's colour; neighbouring tabs keep their own. So each tab wears its own colour (a cap behind, filled at 50% on screen), and the tab strip stays neutral: the old line along the top of the window painted the current colour across every neighbour. The window: the sidebar tinted 12% with a 4 px bar down its left edge, its head 32% with the project's name at 16 px in place of «Sessions», the terminal tab bar 18% and a 2 px frame round the terminal.

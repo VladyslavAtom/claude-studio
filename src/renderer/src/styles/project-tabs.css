@@ -41,28 +41,21 @@
   max-width: 240px;
   flex: none;
 }
-/* the project's colour: a line along the top of the window, and a cap on every tab, full on the
-   one on screen and half-strength on the rest — the tab bar reads as a row of colours */
-.project-tabs {
-  box-shadow: inset 0 3px 0 var(--project);
-}
+/* Each tab wears its own project's colour, so the strip reads as a row of colours: a cap on the
+   ones behind, the whole tab filled on the one on screen. The strip itself stays neutral: tinted
+   with the current project it would paint the neighbours in a colour that is not theirs. */
 .project-tabs .tab {
-  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--tab-color) 50%, transparent);
-}
-.project-tabs .tab.active {
   box-shadow: inset 0 3px 0 var(--tab-color);
-  background: color-mix(in srgb, var(--tab-color) 10%, var(--bg-2));
 }
 .project-tabs .tab:hover {
-  background: var(--bg-2);
+  background: color-mix(in srgb, var(--tab-color) 14%, var(--bg-2));
 }
 .project-tabs .tab.active {
-  background: var(--bg-2);
-  border-color: var(--line);
+  background: color-mix(in srgb, var(--tab-color) 50%, var(--bg-2));
+  border-color: var(--tab-color);
   color: var(--fg);
+  font-weight: 600;
 }
-/* the strip is one Tab stop and arrows walk it: :focus-visible only, or a click on a tab
-   would leave the ring behind. Inset, so the tab's own border stays visible. */
 .project-tabs .tab:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;

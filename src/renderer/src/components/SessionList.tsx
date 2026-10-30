@@ -306,8 +306,11 @@ export default function SessionList({
 
   return (
     <aside className="sessions">
-      <div className="sessions-head">
-        <span>{t('sessions.title')}</span>
+      {/* the project's name, large on its colour: which project this is, before reading anything */}
+      <div className="sessions-head" aria-label={t('sessions.title')}>
+        <span className="project-name" title={project.path}>
+          {project.name}
+        </span>
         <div className="spacer" />
         <button
           className={'icon-btn' + (filesOpen ? ' on' : '')}
