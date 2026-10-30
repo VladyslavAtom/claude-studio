@@ -4,10 +4,9 @@
   flex: none;
   display: flex;
   flex-direction: column;
-  /* tinted with the project's colour: the panel itself says which project this is */
-  background: color-mix(in srgb, var(--project) 12%, var(--bg-1));
+  /* the session rows stay neutral; the head and a bar down the left edge say which project */
+  background: var(--bg-1);
   border-right: 1px solid var(--line);
-  /* and a bar down its left edge */
   box-shadow: inset 4px 0 0 var(--project);
   min-height: 0;
 }

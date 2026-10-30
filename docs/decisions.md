@@ -1151,3 +1151,7 @@ A derived colour is `oklch(L C hue)`: the hue from an FNV-1a hash of the name, L
 ## 2026-10-30 — A session row names one worktree
 
 **Owner decision:** one line under the session name: the primary worktree's branch, its PR badge, «+N more». Two lines of full paths plus a count made a row five lines tall: worktrees outside the repository folder show as absolute paths, and an audit session had touched 31. Paths stay in tooltips; the changes panel switcher and the ⎇ view list every worktree.
+
+## 2026-10-30 — Session rows are not tinted
+
+**Owner decision:** the sidebar's session rows stop taking the project's colour. The sidebar keeps its tinted head with the project name and the 4 px bar down its left edge; the list itself is the neutral surface.
