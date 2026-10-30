@@ -256,6 +256,12 @@ function TreeIcon(): JSX.Element {
   )
 }
 
+/** nothing of the session runs: opening it wakes its agent, so its row is drawn faded */
+function isAsleep(session: Session, awake: ReadonlySet<string>): boolean {
+  const live = session.terminals.filter((tab) => tab.kind === 'agent' || tab.kind === 'shell')
+  return live.length > 0 && !live.some((tab) => awake.has(tab.id))
+}
+
 export default function SessionList({
   project,
   awake,
@@ -350,7 +356,8 @@ export default function SessionList({
               'session' +
               (s.id === project.activeSessionId ? ' active' : '') +
               (depth ? ' child' : '') +
-              (missing.has(s.cwd) ? ' missing' : '')
+              (missing.has(s.cwd) ? ' missing' : '') +
+              (isAsleep(s, awake) ? ' asleep' : '')
             }
             style={{ '--depth': depth }}
             data-testid={depth ? 'session-child' : 'session'}

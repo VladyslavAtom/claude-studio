@@ -436,3 +436,12 @@
 .session-where .branch.main {
   color: var(--fg-dim);
 }
+
+/* A session with nothing running: opening it wakes its agent, which costs memory and a start,
+   so the row recedes and an accidental click is less likely. The one on screen keeps its look. */
+.session.asleep:not(.active) {
+  opacity: 0.5;
+}
+.session.asleep:not(.active) .session-row .name {
+  font-style: italic;
+}

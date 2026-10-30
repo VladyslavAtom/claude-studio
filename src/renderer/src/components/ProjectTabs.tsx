@@ -170,7 +170,13 @@ export default function ProjectTabs({
           return (
             <div
               key={p.id}
-              className={'tab' + (p.id === activeId ? ' active' : '') + (gone ? ' missing' : '')}
+              className={
+                'tab' +
+                (p.id === activeId ? ' active' : '') +
+                (gone ? ' missing' : '') +
+                // every tab of it asleep: faded like a sleeping session row
+                (pulse.length > 0 && pulse.every((part) => part.status === 'asleep') ? ' asleep' : '')
+              }
               style={{ '--tab-color': colors.get(p.id) }}
               role="button"
               aria-current={p.id === activeId}

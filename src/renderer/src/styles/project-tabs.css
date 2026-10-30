@@ -211,3 +211,8 @@
   color: var(--fg-dim);
   text-decoration: line-through;
 }
+/* every tab of the project asleep: the tab recedes like a sleeping session row */
+.project-tabs .tab.asleep:not(.active) .label {
+  opacity: 0.5;
+  font-style: italic;
+}
