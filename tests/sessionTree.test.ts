@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Session } from '../src/shared/types'
-import { depthOf, descendants, treeRows } from '../src/renderer/src/lib/sessionTree'
+import type { ArchivedSession, Session } from '../src/shared/types'
+import { depthOf, descendants, family, isClosed, treeRows } from '../src/renderer/src/lib/sessionTree'
 
 function s(id: string, parentId?: string): Session {
   return {
@@ -63,5 +63,25 @@ describe('descendants and depthOf', () => {
     expect(depthOf(list, 'a')).toBe(0)
     expect(depthOf(list, 'c')).toBe(2)
     expect(depthOf([s('x', 'gone')], 'x')).toBe(0)
+  })
+})
+
+describe('family', () => {
+  const closed = (id: string, parentId?: string): ArchivedSession => ({ ...s(id, parentId), closedAt: 1 })
+
+  it('finds closed children and the open ones below a closed child', () => {
+    const open = [s('a'), s('b', 'a'), s('d', 'c')]
+    const history = [closed('c', 'a'), closed('x')]
+    const kids = family(open, history, 'a')
+    expect(kids.map((k) => [k.id, isClosed(k)])).toEqual([
+      ['b', false],
+      ['c', true],
+      ['d', false],
+    ])
+  })
+
+  it('takes the open copy of a session that is also in the history', () => {
+    const kids = family([s('a'), s('b', 'a')], [closed('b', 'a')], 'a')
+    expect(kids.map((k) => [k.id, isClosed(k)])).toEqual([['b', false]])
   })
 })

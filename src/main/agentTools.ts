@@ -134,8 +134,9 @@ const TOOLS = [
   {
     name: 'list_sessions',
     description: [
-      'List the sessions you opened, and the ones they opened in turn: id, name, parent, branch,',
-      'directory, conversation id, whether its agent is working or waiting, and uncommitted files.',
+      'List the sessions you opened, and the ones they opened in turn, in any state - working,',
+      'waiting, asleep or closed: id, name, parent, branch, directory, conversation id, state,',
+      'and uncommitted files for open ones.',
     ].join(' '),
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
@@ -178,7 +179,7 @@ const TOOLS = [
   {
     name: 'read_session',
     description: [
-      'Read what a session you opened (or one opened by it) said and did: its conversation since',
+      'Read what a session you opened (or one opened by it), open or closed, said and did: its conversation since',
       'a cursor, one line per event - [user] prompts, [assistant] text, [tool] calls with their',
       'main argument, [result] tool output clipped to a few hundred characters. Thinking is left',
       'out. One answer holds at most 20 KB; the last line gives the cursor to pass next time, and',

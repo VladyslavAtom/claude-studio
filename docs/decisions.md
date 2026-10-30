@@ -1155,3 +1155,7 @@ A derived colour is `oklch(L C hue)`: the hue from an FNV-1a hash of the name, L
 ## 2026-10-30 — Session rows are not tinted
 
 **Owner decision:** the sidebar's session rows stop taking the project's colour. The sidebar keeps its tinted head with the project name and the 4 px bar down its left edge; the list itself is the neutral surface.
+
+## 2026-10-30 — A parent sees its children in any state
+
+**Owner decision:** a parent session's agent sees its children whatever their state, closed included. Sleeping children were already listed; closed ones dropped out of `list_sessions` and `read_session` once they left `project.sessions`. They are now found in the project history, which keeps `parentId`; reading needs only the conversation file, which outlives the session. Typing into or closing a closed child is refused.

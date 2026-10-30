@@ -6,7 +6,7 @@
  * restored child whose parent is gone) means no parent: the session is shown at the top level
  * rather than hidden under something that does not exist.
  */
-import type { Session } from '../../../shared/types'
+import type { ArchivedSession, Session } from '../../../shared/types'
 
 /** how deep sessions may nest: a session at this depth is refused another child */
 export const MAX_DEPTH = 3
@@ -29,9 +29,9 @@ function parentIdOf(byId: Map<string, Session>, s: Session): string | null {
   return s.parentId && s.parentId !== s.id && byId.has(s.parentId) ? s.parentId : null
 }
 
-function childrenMap(sessions: readonly Session[]): Map<string | null, Session[]> {
-  const byId = new Map(sessions.map((s) => [s.id, s]))
-  const map = new Map<string | null, Session[]>()
+function childrenMap<S extends Session>(sessions: readonly S[]): Map<string | null, S[]> {
+  const byId = new Map<string, Session>(sessions.map((s) => [s.id, s]))
+  const map = new Map<string | null, S[]>()
   for (const s of sessions) {
     const key = parentIdOf(byId, s)
     map.set(key, [...(map.get(key) ?? []), s])
@@ -40,9 +40,9 @@ function childrenMap(sessions: readonly Session[]): Map<string | null, Session[]
 }
 
 /** every session below `id`, parents before their children */
-export function descendants(sessions: readonly Session[], id: string): Session[] {
+export function descendants<S extends Session>(sessions: readonly S[], id: string): S[] {
   const map = childrenMap(sessions)
-  const out: Session[] = []
+  const out: S[] = []
   const seen = new Set<string>([id])
   const walk = (pid: string): void => {
     for (const c of map.get(pid) ?? []) {
@@ -54,6 +54,25 @@ export function descendants(sessions: readonly Session[], id: string): Session[]
   }
   walk(id)
   return out
+}
+
+/** a session out of the project history rather than the open list */
+export function isClosed(s: Session | ArchivedSession): s is ArchivedSession {
+  return 'closedAt' in s
+}
+
+/**
+ * Every session below `id`, open or closed: a closed one keeps its `parentId` in the project
+ * history, so its parent's agent can still list it and read its conversation.
+ */
+export function family(
+  sessions: readonly Session[],
+  history: readonly ArchivedSession[],
+  id: string,
+): (Session | ArchivedSession)[] {
+  // an id both open and archived is the open one: a restore takes it out of the history
+  const open = new Set(sessions.map((s) => s.id))
+  return descendants<Session | ArchivedSession>([...sessions, ...history.filter((h) => !open.has(h.id))], id)
 }
 
 /** 0 for a top-level session */

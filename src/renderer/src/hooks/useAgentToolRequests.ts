@@ -30,14 +30,21 @@
  * message code and it is not translated — the one place in the renderer where that is true.
  */
 import { useCallback, useEffect, useRef } from 'react'
-import type { AgentToolRequest, AgentToolResult, Project, Session, Settings } from '../../../shared/types'
+import type {
+  AgentToolRequest,
+  AgentToolResult,
+  ArchivedSession,
+  Project,
+  Session,
+  Settings,
+} from '../../../shared/types'
 import type { NewSessionResult } from '../components/NewSessionModal'
 import { useT } from '../i18n'
 import { submitToAgent } from '../lib/agentSubmit'
 import { conversationKind, findAgent } from '../lib/agents'
 import { startWithoutPane } from '../lib/headlessStart'
 import { autoBranch, worktreePathFor } from '../lib/sessionDefaults'
-import { MAX_CHILDREN, MAX_DEPTH, depthOf, descendants } from '../lib/sessionTree'
+import { MAX_CHILDREN, MAX_DEPTH, depthOf, family, isClosed } from '../lib/sessionTree'
 import { terminalStatus } from '../lib/status'
 import { useHookPaths } from '../state/appStateContext'
 import { useAppStateRef } from '../state/selectors'
@@ -221,11 +228,14 @@ export function useAgentToolRequests(sessions: SessionActions): void {
 
   /** the asker and the descendant it named, or the sentence saying why not */
   const resolveChild = useCallback(
-    (request: AgentToolRequest & { session: string }): { asker: Asker; child: Session } | string => {
+    (request: AgentToolRequest & { session: string }): { asker: Asker; child: Session | ArchivedSession } | string => {
       const asker = findAsker(request.terminalId)
       if (!asker) return 'Claude Studio cannot tell which session is asking, so it cannot act on its children.'
-      const child = descendants(asker.project.sessions, asker.session.id).find((s) => s.id === request.session)
-      if (!child) return `No open session ${request.session} was opened by this session or by its children.`
+      const { project } = asker
+      const child = family(project.sessions, project.history ?? [], asker.session.id).find(
+        (s) => s.id === request.session,
+      )
+      if (!child) return `No session ${request.session} was opened by this session or by its children.`
       return { asker, child }
     },
     [findAsker],
@@ -249,8 +259,8 @@ export function useAgentToolRequests(sessions: SessionActions): void {
       const asker = findAsker(request.terminalId)
       if (!asker) return { ok: false, error: 'Claude Studio cannot tell which session is asking.' }
       const { project } = asker
-      const kids = descendants(project.sessions, asker.session.id)
-      if (!kids.length) return { ok: true, text: 'This session has no open children.' }
+      const kids = family(project.sessions, project.history ?? [], asker.session.id)
+      if (!kids.length) return { ok: true, text: 'This session has no children.' }
       const blocks = await Promise.all(
         kids.map(async (s) => {
           const tab = s.terminals.find((x) => x.kind === 'agent')
@@ -262,6 +272,11 @@ export function useAgentToolRequests(sessions: SessionActions): void {
           ]
           if (s.worktree) lines.push(`  branch: ${s.worktree.branch}`)
           if (tab?.agentSessionId) lines.push(`  claude session id: ${tab.agentSessionId}`)
+          if (isClosed(s)) {
+            const at = new Date(s.closedAt).toLocaleString()
+            lines.push(`  state: closed ${at}, worktree ${s.worktreeRemoved ? 'removed' : 'kept'}`)
+            return lines.join('\n')
+          }
           lines.push(`  state: ${statusOf(s)}`)
           // a session the person added a second agent to: read_session can be pointed at either
           const agentTabs = s.terminals.filter((x) => x.kind === 'agent')
@@ -283,6 +298,7 @@ export function useAgentToolRequests(sessions: SessionActions): void {
       const found = resolveChild(request)
       if (typeof found === 'string') return { ok: false, error: found }
       const { asker, child } = found
+      if (isClosed(child)) return { ok: false, error: `"${child.name}" is already closed.` }
       const project = asker.project
       if (project.sessions.some((s) => s.parentId === child.id))
         return { ok: false, error: `"${child.name}" has open children of its own; close those first.` }
@@ -325,6 +341,7 @@ export function useAgentToolRequests(sessions: SessionActions): void {
       const found = resolveChild(request)
       if (typeof found === 'string') return { ok: false, error: found }
       const { child } = found
+      if (isClosed(child)) return { ok: false, error: `"${child.name}" is closed; nothing runs in it to type into.` }
       const tab = child.terminals.find((x) => x.kind === 'agent')
       if (!tab) return { ok: false, error: `"${child.name}" has no agent tab to type into.` }
       if (!runtimeRef.current.awake.has(tab.id))

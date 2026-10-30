@@ -373,7 +373,10 @@ child's agent tab and submitted; multi-line text as a bracketed paste), `read_se
 `close_session`. Closing removes the worktree only when it is clean
 and the branch only when it has no commits outside the parent's branch; otherwise it is refused,
 and `force` closes the session but keeps both on disk. A child with open children of its own is
-refused. The child forks from the parent's branch, and its first prompt opens with a line naming
+refused. Descendants include closed ones: the project history keeps a closed session's
+`parentId` (`lib/sessionTree.family`), so `list_sessions` lists it as `closed` and
+`read_session` reads its conversation; `send_to_session` and `close_session` refuse it. A session
+forgotten from the history, or pushed out past its 50 entries, is gone. The child forks from the parent's branch, and its first prompt opens with a line naming
 the parent and its conversation id. Limits: depth 3, 8 open children per session
 (`lib/sessionTree`).
 
