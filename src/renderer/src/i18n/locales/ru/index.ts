@@ -9,6 +9,7 @@ import { projects } from './projects'
 import { sessions } from './sessions'
 import { settings } from './settings'
 import { terminal } from './terminal'
+import { worktrees } from './worktrees'
 
 /** typed as Dict: a whole area left out here is an error, not a hole found in the UI later */
 export const ru: Dict = {
@@ -22,4 +23,5 @@ export const ru: Dict = {
   sessions,
   settings,
   terminal,
+  worktrees,
 }

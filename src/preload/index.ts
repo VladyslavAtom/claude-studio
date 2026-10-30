@@ -38,6 +38,10 @@ import type {
   StateHealth,
   WorktreeAddOptions,
   WorktreeAddResult,
+  ProjectWorktrees,
+  SessionTranscripts,
+  WorktreeRemoveRequest,
+  WorktreeStatus,
 } from '../shared/types'
 
 // The payload shapes are declared once, in shared/types: a copy on the preload side drifted
@@ -303,6 +307,17 @@ const api = {
     /** the PR of each directory's branch; a directory left out has nothing to show */
     branchPrs: (cwds: string[], force?: boolean): Promise<BranchPrs> =>
       ipcRenderer.invoke(CHANNELS.gh.branchPrs, cwds, force),
+  },
+  worktrees: {
+    /** the project's worktrees, and per session the ones its conversations worked in */
+    list: (projectPath: string, sessions: SessionTranscripts[]): Promise<ProjectWorktrees> =>
+      ipcRenderer.invoke(CHANNELS.worktrees.list, projectPath, sessions),
+    /** `hints`: folders the renderer knows are in use (session folders, running agents' worktrees) */
+    status: (items: { repo: string; path: string }[], hints: string[]): Promise<WorktreeStatus[]> =>
+      ipcRenderer.invoke(CHANNELS.worktrees.status, items, hints),
+    /** `warning`: removed, but the branch stayed (git's own refusal) */
+    remove: (req: WorktreeRemoveRequest, hints: string[]): Promise<OpResult & { warning?: string }> =>
+      ipcRenderer.invoke(CHANNELS.worktrees.remove, req, hints),
   },
 }
 

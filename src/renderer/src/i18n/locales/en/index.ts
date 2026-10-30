@@ -8,6 +8,7 @@ import { projects } from './projects'
 import { sessions } from './sessions'
 import { settings } from './settings'
 import { terminal } from './terminal'
+import { worktrees } from './worktrees'
 
 /**
  * English is the source of truth: the key set of this object is the key set of the app, and
@@ -24,4 +25,5 @@ export const en = {
   sessions,
   settings,
   terminal,
+  worktrees,
 }

@@ -7,11 +7,13 @@ import type {
   PermissionAnswer,
   PermissionAsk,
   Project,
+  ProjectWorktrees,
   Session,
 } from '../../../shared/types'
 import type { T } from '../i18n'
 import { useT } from '../i18n'
 import { shownPermission, terminalStatus } from '../lib/status'
+import { mainFolder, sessionWorktrees } from '../lib/worktrees'
 import { treeRows } from '../lib/sessionTree'
 import { formatTime } from '../lib/util'
 import { dragHandlers, middleClickClose } from '../lib/dnd'
@@ -36,6 +38,10 @@ interface Props {
   onAnswerPermission: (terminalId: string, askId: string, answer: PermissionAnswer) => void
   /** the PR of each session's branch, by directory; a session absent from it shows no badge */
   prs: BranchPrs
+  /** the project's worktrees and which each session worked in; null until the first read */
+  worktrees: ProjectWorktrees | null
+  /** the project's worktrees view */
+  onWorktrees: () => void
   /** session directories that are not on disk */
   missing: ReadonlySet<string>
   /** put a deleted worktree back at its path, on its branch */
@@ -184,6 +190,59 @@ function PermissionCards({
   )
 }
 
+/** a row shows this many worktrees; the rest are counted */
+const ROW_WORKTREES = 2
+
+/**
+ * Where a session works: its worktrees, the primary one first, each with its branch and that
+ * branch's PR — or, with none, the folder it was started in and that folder's branch, with no PR
+ * badge: the main folder's branch is whatever was last checked out there, not this session's work.
+ */
+function SessionWhere({
+  session,
+  worktrees,
+  prs,
+  t,
+}: {
+  session: Session
+  worktrees: ProjectWorktrees | null
+  prs: BranchPrs
+  t: T
+}): JSX.Element {
+  const list = sessionWorktrees(session, worktrees)
+  if (!list.length) {
+    // before the first read the session's own record is all there is
+    if (!worktrees && session.worktree)
+      return (
+        <div className="session-where">
+          <span className="branch">⎇ {session.worktree.branch}</span>
+          <PrBadge pr={prs[session.cwd]} compact />
+        </div>
+      )
+    const main = mainFolder(session, worktrees)
+    return (
+      <div className="session-where">
+        <span className="branch main" title={main.path}>
+          {main.branch ? t('worktrees.row.mainFolder', { branch: main.branch }) : t('worktrees.row.mainFolderNoBranch')}
+        </span>
+      </div>
+    )
+  }
+  const more = list.length - ROW_WORKTREES
+  return (
+    <div className="session-where">
+      {list.slice(0, ROW_WORKTREES).map((w) => (
+        <div key={w.path} className="session-worktree" title={t('worktrees.row.title', { path: w.path })}>
+          <span className="wt-name">{w.rel}</span>
+          <span className="branch">⎇ {w.branch ?? t('worktrees.item.detached')}</span>
+          <PrBadge pr={prs[w.path]} compact />
+        </div>
+      ))}
+      {more > 0 && <div className="muted small">{t.plural('worktrees.row.more', more)}</div>}
+    </div>
+  )
+}
+
 /** file tree: three levels of indentation, no emoji */
 function TreeIcon(): JSX.Element {
   return (
@@ -206,6 +265,8 @@ export default function SessionList({
   permissions,
   onAnswerPermission,
   prs,
+  worktrees,
+  onWorktrees,
   missing,
   onRecreate,
   onSelect,
@@ -256,6 +317,15 @@ export default function SessionList({
           aria-pressed={filesOpen}
         >
           <TreeIcon />
+        </button>
+        <button
+          className="icon-btn"
+          data-testid="worktrees-open"
+          onClick={onWorktrees}
+          title={t('worktrees.open')}
+          aria-label={t('worktrees.open')}
+        >
+          ⎇
         </button>
         <button className="add" onClick={onNew} title={t('sessions.empty.new')} aria-label={t('sessions.empty.new')}>
           +
@@ -355,18 +425,13 @@ export default function SessionList({
                 agentActivity={agentActivity}
                 t={t}
               />
-              {s.worktree ? (
-                <span className="branch">⎇ {s.worktree.branch}</span>
-              ) : (
-                <span className="branch main">{t('sessions.mainRepo')}</span>
-              )}
-              <PrBadge pr={prs[s.cwd]} compact />
               {childCount > 0 && (
                 <span className="children-count">{t.plural('sessions.children.count', childCount)}</span>
               )}
               <span className="tabs-count">{t.plural('sessions.tabCount', s.terminals.length)}</span>
               <span className="time">{formatTime(s.createdAt)}</span>
             </div>
+            <SessionWhere session={s} worktrees={worktrees} prs={prs} t={t} />
             <PermissionCards
               sessions={[s, ...hidden]}
               onScreen={onScreen}

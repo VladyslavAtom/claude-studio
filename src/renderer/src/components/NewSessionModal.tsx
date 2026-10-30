@@ -25,6 +25,11 @@ export interface NewSessionResult {
   startPrompt: string
   /** the session whose agent asked for this one; the window itself never sets it */
   parentId?: string
+  /**
+   * A folder that already exists to work in — a worktree an agent made, opened from the worktrees
+   * view. No worktree is created; the window itself never sets it.
+   */
+  cwd?: string
 }
 
 interface Props {

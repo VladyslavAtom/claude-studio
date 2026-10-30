@@ -547,6 +547,13 @@ export interface Session {
    * the list treats an unknown id as no parent rather than hiding the session.
    */
   parentId?: string
+  /**
+   * The worktree the changes panel and the file tree show, chosen in the panel head. Absent: the
+   * session's primary worktree (see `lib/worktrees`). A path that is no longer one of the
+   * session's worktrees is ignored rather than cleared, so a worktree recreated at the same path
+   * is picked again.
+   */
+  worktreeView?: string
 }
 
 export interface ArchivedSession extends Session {
@@ -882,6 +889,12 @@ export type AppMessageCode =
   | 'worktree-teardown-failed'
   /** the repository has a teardown script nobody approved in its current form, so it did not run */
   | 'worktree-teardown-unapproved'
+  /** a worktree is not removed: an agent or a terminal works in it, or a session lives there */
+  | 'worktree-live'
+  /** a worktree is not removed without the warning dialog: it has changes, unpushed commits or is not merged */
+  | 'worktree-not-safe'
+  /** the path is not a removable worktree of that repository: unknown, or the main working copy */
+  | 'worktree-not-removable'
   /** the repository's scripts changed after the setup tab was opened: approve the new ones from a new session */
   | 'worktree-scripts-changed'
   /** scripts are run only for a project the person opened in the app */
@@ -1166,3 +1179,75 @@ export interface PrInfo {
  * than an error: the feature is optional, and a toast on every refresh would be noise.
  */
 export type BranchPrs = Record<string, PrInfo | null>
+
+// ── Worktrees of a project, including the ones agents made themselves (main/worktrees.ts) ─────
+
+/** one entry of `git worktree list --porcelain` */
+export interface RepoWorktree {
+  path: string
+  /** the commit checked out; null when git printed none */
+  head: string | null
+  /** the short branch name; null when the worktree is on a detached HEAD */
+  branch: string | null
+  locked: boolean
+  /** its directory is gone; `git worktree prune` would drop the record */
+  prunable: boolean
+  /** the repository's own working copy (git lists it first): never removed from here */
+  isMain: boolean
+}
+
+export interface RepoWorktrees {
+  /** the main working copy of the repository */
+  repo: string
+  worktrees: RepoWorktree[]
+}
+
+/** how much a session's conversations worked in one worktree */
+export interface WorktreeMention {
+  path: string
+  mentions: number
+  /** the time of the latest mention, ms; 0 when the records carry no time */
+  lastAt: number
+}
+
+/** the conversations of one session, whose transcripts say where it worked */
+export interface SessionTranscripts {
+  sessionId: string
+  refs: ConversationRef[]
+}
+
+export interface ProjectWorktrees {
+  repos: RepoWorktrees[]
+  /**
+   * Per session id: the worktrees its conversations worked in. Linked worktrees first, the most
+   * named first; a main working copy (counted only through `cwd`) after them.
+   */
+  sessions: Record<string, WorktreeMention[]>
+}
+
+/** what removing a worktree would lose, read on demand */
+export interface WorktreeStatus {
+  path: string
+  /** files `git status` lists; null when it could not be read */
+  changed: number | null
+  /** commits on no upstream (on no remote at all when there is no upstream); null when unknown */
+  unpushed: number | null
+  /** the tip is in the remote default branch, or the branch's PR is merged */
+  merged: boolean
+  /** the PR of the branch, when `gh` knows one */
+  pr: PrInfo | null
+  /** an agent or a terminal works in it, or a session lives there: never removed */
+  live: boolean
+  /** the bulk «remove merged» may take it: see `shared/worktrees.safeToRemove` */
+  safe: boolean
+}
+
+export interface WorktreeRemoveRequest {
+  repo: string
+  path: string
+  /**
+   * The person confirmed the warning: `git worktree remove --force` and `git branch -D`. Without
+   * it the worktree has to be safe (checked again in main), and the branch goes with `-d`.
+   */
+  force: boolean
+}

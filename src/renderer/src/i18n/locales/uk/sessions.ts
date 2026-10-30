@@ -25,7 +25,6 @@ export const sessions: SessionsArea = {
   'menu.rename': 'Перейменувати',
   'menu.rename.hint': 'подвійний клік',
   'menu.close.hint': 'середня кнопка',
-  mainRepo: 'основний репозиторій',
   // «вкл.» is an abbreviation of «вкладок» and does not agree with the number
   tabCount: { one: '{count} вкл.', few: '{count} вкл.', many: '{count} вкл.', other: '{count} вкл.' },
   // the subject is «вкладка», hence the feminine participle in «запущена»

@@ -40,6 +40,8 @@ export type Action =
   | { type: 'sessionForgotten'; projectId: string; archivedId: string }
   | { type: 'sessionRenamed'; projectId: string; sessionId: string; name: string }
   | { type: 'sessionsReordered'; projectId: string; from: number; to: number }
+  /** the worktree the session's panels show; null follows the primary one again */
+  | { type: 'sessionViewChosen'; projectId: string; sessionId: string; path: string | null }
   | { type: 'terminalAdded'; projectId: string; sessionId: string; terminal: TerminalTab }
   | { type: 'terminalClosed'; projectId: string; sessionId: string; terminalId: string }
   | { type: 'terminalActivated'; projectId: string; sessionId: string; terminalId: string }
@@ -255,6 +257,13 @@ export function appReducer(state: AppState, action: Action): AppState {
         name: action.name,
         nameAuto: false,
       }))
+
+    case 'sessionViewChosen':
+      return withSession(state, action.projectId, action.sessionId, (s) => {
+        // null goes back to following the primary worktree: the key is dropped, not set to undefined
+        const { worktreeView: _previous, ...rest } = s
+        return action.path === null ? rest : { ...rest, worktreeView: action.path }
+      })
 
     case 'sessionsReordered':
       return withProject(state, action.projectId, (p) => ({

@@ -71,7 +71,7 @@ export function useSessionActions(): SessionActions {
   const createSession = useCallback(
     async (project: Project, res: NewSessionResult, quiet = false): Promise<CreateSessionResult> => {
       setError(null)
-      let cwd = project.path
+      let cwd = res.cwd ?? project.path
       let worktree: Session['worktree']
       let prepared: WorktreePrepared | undefined
 

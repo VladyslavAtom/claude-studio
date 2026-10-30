@@ -6,6 +6,7 @@ import * as agentTools from './agentTools'
 import * as ipcAgents from './ipc/agents'
 import * as ipcFiles from './ipc/files'
 import * as ipcGh from './ipc/gh'
+import * as ipcWorktrees from './ipc/worktrees'
 import * as ipcGit from './ipc/git'
 import * as ipcPty from './ipc/pty'
 import * as ipcSystem from './ipc/system'
@@ -157,6 +158,7 @@ function registerIpc(): void {
   ipcAgents.register()
   ipcPty.register()
   ipcGh.register()
+  ipcWorktrees.register()
 }
 
 // dev: run against a throwaway state dir (screenshots, smoke runs)

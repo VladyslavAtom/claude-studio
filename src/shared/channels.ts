@@ -150,6 +150,14 @@ export const CHANNELS = {
     slept: 'pty:slept',
     command: 'pty:command',
   },
+  worktrees: {
+    /** the worktrees of a project's repositories, and which of them each session worked in */
+    list: 'worktrees:list',
+    /** changed files, unpushed commits, merged, live: what removing each one would lose */
+    status: 'worktrees:status',
+    /** one worktree and its local branch; main checks live and safe again before it acts */
+    remove: 'worktrees:remove',
+  },
   gh: {
     /** the PR and checks of each session directory's branch; `force` skips the cache */
     branchPrs: 'gh:branchPrs',

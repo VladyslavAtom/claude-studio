@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from 'react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ChangeStatus, Project } from '../../shared/types'
+import { relativeTo } from '../../shared/worktrees'
 import { I18nProvider, useT } from './i18n'
 import { ThemeProvider } from './theme/ThemeProvider'
 import ProjectTabs from './components/ProjectTabs'
@@ -14,10 +15,13 @@ import CloseSessionModal from './components/CloseSessionModal'
 import SettingsPage from './components/SettingsPage'
 import StartupModal from './components/StartupModal'
 import AgentHistoryModal from './components/AgentHistoryModal'
+import WorktreesModal from './components/WorktreesModal'
 import Splitter from './components/Splitter'
 import { COLLAPSED_W } from './hooks/useLayout'
 import { useMissingDirs } from './hooks/useMissingDirs'
 import { usePrStatus } from './hooks/usePrStatus'
+import { useProjectWorktrees } from './hooks/useProjectWorktrees'
+import { liveHints, mainFolder, sessionWorktrees, viewPath, viewSession } from './lib/worktrees'
 import { diffTab, fileTab, mergeTab } from './hooks/useTerminalActions'
 import { ActionsProvider } from './state/ActionsProvider'
 import { useActions } from './state/actionsContext'
@@ -161,8 +165,31 @@ function Workspace({
   /** what changed in the current session's directory: the changes panel already knows, the tree colours it */
   const [changedFiles, setChangedFiles] = useState<Record<string, ChangeStatus>>({})
   const { filesOpen, changesCollapsed, layout: sizes } = layout
-  /** the PR and checks of each session branch of this project, keyed by session directory */
-  const prs = usePrStatus(project)
+  /** the project's worktrees and which of them each session worked in */
+  const worktrees = useProjectWorktrees(project, state.settings)
+  const [worktreesOpen, setWorktreesOpen] = useState(false)
+  /** every worktree some session works in: each gets its own PR badge on the session row */
+  const worktreeDirs = useMemo(
+    () => [...new Set(project.sessions.flatMap((s) => sessionWorktrees(s, worktrees.data).map((w) => w.path)))],
+    [project.sessions, worktrees.data],
+  )
+  /** the folder the panels of the session on screen follow: its picked or primary worktree */
+  const activeWorktrees = activeSession ? sessionWorktrees(activeSession, worktrees.data) : []
+  const shownPath = activeSession ? viewPath(activeSession, activeWorktrees) : undefined
+  /** the PR and checks of each session branch of this project, keyed by directory */
+  const prs = usePrStatus(project, worktreeDirs, shownPath)
+  const shownSession = activeSession && shownPath ? viewSession(activeSession, shownPath) : null
+  // the switcher: the session's worktrees, and its own folder when that is not one of them
+  const views = activeWorktrees.map((w) => ({ path: w.path, label: `${w.rel} ⎇ ${w.branch ?? 'HEAD'}` }))
+  if (activeSession && !activeWorktrees.some((w) => w.path === activeSession.cwd)) {
+    const branch = mainFolder(activeSession, worktrees.data).branch
+    const main = t('worktrees.switch.main')
+    views.push({ path: activeSession.cwd, label: branch ? `${main} ⎇ ${branch}` : main })
+  }
+  const defaultAgentId =
+    state.settings.lastAgentId === undefined
+      ? (state.settings.agents.find((a) => a.enabled)?.id ?? null)
+      : state.settings.lastAgentId
 
   return (
     <div className="workspace">
@@ -176,6 +203,11 @@ function Workspace({
           permissions={permissions}
           onAnswerPermission={answerPermission}
           prs={prs}
+          worktrees={worktrees.data}
+          onWorktrees={() => {
+            worktrees.refresh()
+            setWorktreesOpen(true)
+          }}
           missing={missing}
           onRecreate={(session) =>
             void sessions.recreateWorktree(project, session).then((ok) => {
@@ -209,7 +241,7 @@ function Workspace({
             <>
               <div className="pane" style={{ width: sizes.files }}>
                 <FileTree
-                  root={activeSession.cwd}
+                  root={shownPath ?? activeSession.cwd}
                   terminals={activeSession.terminals}
                   changed={changedFiles}
                   selected={
@@ -259,11 +291,7 @@ function Workspace({
                 terminals.setLaunched(project, activeSession, terminalId, launched)
               }
               onError={setError}
-              defaultAgentId={
-                state.settings.lastAgentId === undefined
-                  ? (state.settings.agents.find((a) => a.enabled)?.id ?? null)
-                  : state.settings.lastAgentId
-              }
+              defaultAgentId={defaultAgentId}
               onDefaultAgent={(agentId) => dispatch({ type: 'settingsPatched', patch: { lastAgentId: agentId } })}
             />
           </div>
@@ -271,8 +299,12 @@ function Workspace({
           {!changesCollapsed && <Splitter onResize={(dx: number) => layout.resize('changes', dx)} />}
           <div className="pane" style={{ width: changesCollapsed ? COLLAPSED_W : sizes.changes }}>
             <ChangesPanel
-              session={activeSession}
-              pr={prs[activeSession.cwd] ?? null}
+              session={shownSession ?? activeSession}
+              pr={prs[shownPath ?? activeSession.cwd] ?? null}
+              views={views}
+              onView={(path) =>
+                dispatch({ type: 'sessionViewChosen', projectId: project.id, sessionId: activeSession.id, path })
+              }
               projectPath={project.path}
               settings={state.settings}
               onOpenDiff={(spec) => terminals.openTab(project, activeSession, diffTab(spec))}
@@ -302,6 +334,38 @@ function Workspace({
             {t('sessions.empty.new')}
           </button>
         </div>
+      )}
+
+      {worktreesOpen && (
+        <WorktreesModal
+          project={project}
+          data={worktrees.data}
+          onRefresh={worktrees.refresh}
+          hints={() => liveHints(state.projects, awake, worktrees.data)}
+          canOpenShell={activeSession !== null}
+          onOpenSession={(path) => {
+            const repo = worktrees.data?.repos.find((r) => r.worktrees.some((w) => w.path === path))?.repo
+            setWorktreesOpen(false)
+            void sessions.createSession(project, {
+              name: repo ? relativeTo(path, repo) : path,
+              nameAuto: true,
+              createWorktree: false,
+              branch: '',
+              baseRef: '',
+              worktreePath: '',
+              agentId: defaultAgentId,
+              startPrompt: '',
+              cwd: path,
+            })
+          }}
+          onOpenShell={(path) => {
+            if (!activeSession) return
+            setWorktreesOpen(false)
+            terminals.openShellAt(project, activeSession, path)
+          }}
+          onClose={() => setWorktreesOpen(false)}
+          onError={setError}
+        />
       )}
     </div>
   )

@@ -14,12 +14,18 @@ interface Shown {
  * directory. See `lib/prStatus` for when it asks; asks that land while one is running are folded
  * into a single follow-up, so a burst of events is one round trip.
  */
-export function usePrStatus(project: Project): BranchPrs {
+export function usePrStatus(
+  project: Project,
+  /** more directories to ask about: the worktrees the sessions work in, and the one each panel shows */
+  extra: readonly string[] = NO_DIRS,
+  /** the directory the panels of the session on screen show, when it is not the session's own */
+  activeView?: string,
+): BranchPrs {
   const [shown, setShown] = useState<Shown>({ projectId: project.id, prs: {} })
-  const cwds = useMemo(() => project.sessions.map((s) => s.cwd), [project.sessions])
+  const cwds = useMemo(() => [...new Set([...project.sessions.map((s) => s.cwd), ...extra])], [project.sessions, extra])
   // a string, so the effects below re-arm when the set of directories changes, not on every edit
   const cwdKey = cwds.join('\0')
-  const activeCwd = project.sessions.find((s) => s.id === project.activeSessionId)?.cwd
+  const activeCwd = activeView ?? project.sessions.find((s) => s.id === project.activeSessionId)?.cwd
 
   const projectRef = useRef(project.id)
   const cwdsRef = useRef(cwds)
@@ -111,3 +117,4 @@ export function usePrStatus(project: Project): BranchPrs {
 }
 
 const EMPTY: BranchPrs = {}
+const NO_DIRS: readonly string[] = []

@@ -529,3 +529,16 @@ button.ghost.danger:hover:not(:disabled) {
   background: var(--line);
   margin: 4px 0;
 }
+
+/* which of the session's worktrees the panels show */
+.changes-head .worktree-switch {
+  min-width: 0;
+  max-width: 160px;
+  font-size: 12px;
+  padding: 2px 4px;
+  background: var(--bg-2);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  text-overflow: ellipsis;
+}

@@ -47,6 +47,12 @@ interface Props {
   agentTabId: string | null
   /** the PR of the session's branch and its checks; null when there is none or nothing is known */
   pr: PrInfo | null
+  /**
+   * The folders the panel can show: the session's worktrees and its main folder. The switcher
+   * appears when there is more than one; `session.cwd` is the one on screen.
+   */
+  views: readonly { path: string; label: string }[]
+  onView: (path: string) => void
   onOpenDiff: (spec: {
     cwd: string
     path: string
@@ -86,6 +92,8 @@ export default function ChangesPanel({
   onChangedFiles,
   agentTabId,
   pr,
+  views,
+  onView,
 }: Props): JSX.Element {
   const t = useT()
   const [status, setStatus] = useState<GitStatusResult | null>(null)
@@ -581,6 +589,22 @@ export default function ChangesPanel({
             onInfo={onInfo}
             onRefresh={invalidate}
           />
+          {views.length > 1 && (
+            <select
+              className="worktree-switch"
+              data-testid="worktree-switch"
+              aria-label={t('worktrees.switch.aria')}
+              title={session.cwd}
+              value={session.cwd}
+              onChange={(e) => onView(e.target.value)}
+            >
+              {views.map((v) => (
+                <option key={v.path} value={v.path} title={v.path}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          )}
           {!session.worktree && status?.branch && (
             <span className="branch-name static" title={cwd}>
               ⑂ {status.branch}

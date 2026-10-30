@@ -31,7 +31,6 @@ export const sessions = {
   'menu.rename': 'Rename',
   'menu.rename.hint': 'double click',
   'menu.close.hint': 'middle button',
-  mainRepo: 'main repository',
   /** how many terminal tabs a session holds; a badge, so the wording is as short as it can be */
   tabCount: { one: '{count} tab', other: '{count} tabs' },
   'pulse.calling': { one: '{count} is waiting for you', other: '{count} are waiting for you' },

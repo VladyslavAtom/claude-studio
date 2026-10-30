@@ -692,3 +692,46 @@ export async function agentActivity(sessionId: string, configDir?: string): Prom
   }
   return null
 }
+
+/** the pid and the directory of one `sessions/<pid>.json`; null when either is missing */
+export function parseSessionCwd(raw: string): { pid: number; cwd: string } | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null
+  const o = parsed as Record<string, unknown>
+  if (typeof o.pid !== 'number' || !Number.isInteger(o.pid) || o.pid <= 0) return null
+  if (typeof o.cwd !== 'string' || !o.cwd.startsWith('/')) return null
+  return { pid: o.pid, cwd: o.cwd }
+}
+
+/**
+ * The directories every running claude was started in, whichever window or terminal started it:
+ * one file per live process under each profile's `sessions/`, the dead ones left out. Read for
+ * the worktree guard, which must not remove a folder an agent outside this app works in.
+ */
+export async function liveClaudeCwds(): Promise<string[]> {
+  const out: string[] = []
+  for (const home of await claudeHomes()) {
+    const dir = join(home, 'sessions')
+    let names: string[]
+    try {
+      names = await fs.readdir(dir)
+    } catch {
+      continue
+    }
+    for (const name of names) {
+      if (!/^\d+\.json$/.test(name)) continue
+      try {
+        const found = parseSessionCwd(await fs.readFile(join(dir, name), 'utf8'))
+        if (found && processAlive(found.pid)) out.push(found.cwd)
+      } catch {
+        /* the session ended between the listing and the read */
+      }
+    }
+  }
+  return out
+}

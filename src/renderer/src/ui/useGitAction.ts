@@ -137,6 +137,9 @@ const WORDING: Record<AppMessageCode, Wording> = {
     return t('git.error.worktreeRemoveFailed.record')
   },
   'worktree-removed-branch-kept': (t) => t('git.warning.worktreeRemovedBranchKept'),
+  'worktree-live': (t) => t('worktrees.error.live'),
+  'worktree-not-safe': (t) => t('worktrees.error.notSafe'),
+  'worktree-not-removable': (t) => t('worktrees.error.notRemovable'),
   'worktree-teardown-failed': (t, p) => {
     const reason = str(p, 'reason')
     if (reason === 'timeout') return t('git.warning.worktreeTeardownFailed.timeout', { seconds: num(p, 'seconds') })

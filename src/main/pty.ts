@@ -1,4 +1,5 @@
 import type { WebContents } from 'electron'
+import { promises as fs } from 'node:fs'
 import * as pty from 'node-pty'
 import { CHANNELS } from '../shared/channels'
 import type { PtyStartOptions, PtyStartResult } from '../shared/types'
@@ -407,4 +408,23 @@ export function bufferOf(id: string): string {
 
 export function isAlive(id: string): boolean {
   return terms.get(id)?.alive ?? false
+}
+
+/**
+ * Where the live terminals are: the directory each was started in, and where its shell is now
+ * (`/proc/<pid>/cwd`, Linux only; elsewhere the start directory is all there is). What the worktree
+ * guard reads — a folder a terminal stands in is not removed from under it.
+ */
+export async function liveCwds(): Promise<string[]> {
+  const out: string[] = []
+  for (const term of terms.values()) {
+    if (!term.alive) continue
+    out.push(term.cwd)
+    try {
+      out.push(await fs.readlink(`/proc/${term.proc.pid}/cwd`))
+    } catch {
+      /* not Linux, or the process has just gone */
+    }
+  }
+  return out
 }

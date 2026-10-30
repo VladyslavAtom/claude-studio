@@ -394,3 +394,37 @@
   font-size: 11px;
   padding: 1px 8px;
 }
+
+/* where a session works: its worktrees, primary first, or its main folder */
+.session-where {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  min-width: 0;
+}
+.session-where .session-worktree {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.session-where .wt-name {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.session-where .branch {
+  color: var(--accent);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-where .branch.main {
+  color: var(--fg-dim);
+}

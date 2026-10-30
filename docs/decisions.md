@@ -1121,3 +1121,17 @@ A tag `v*` runs `.github/workflows/release.yml`: an AppImage and a .deb for x64,
 ## 2026-10-29 — «Start them all» starts the agents a few at a time
 
 Once «start them all» really started every agent (it used to start only the session on screen, the rest waited for a visit), sixteen CLIs starting in one second froze the desktop: load average 25, 12 GB in swap. Each CLI loads at full speed for its first seconds. The session on screen still starts at once; the others go two at a time with a 4 s gap (`START_AT_ONCE`, `START_GAP_MS` in `useStartupPolicy.ts`), sixteen tabs in about half a minute. A fixed gap rather than waiting for each CLI's SessionStart: that report is consumed by the status poll, and a gap needs no second reader.
+
+## 2026-10-30 — Worktrees agents made: found, attributed to sessions, panels follow, cleanup
+
+Measured on the owner's state: every session sat in the main checkout, so every row carried the PR badge of whatever branch the main checkout had (dagster: a merged PR on all eight). Agents had made 8 worktrees in dagster and 138 across 12 repositories of another project; the app saw none.
+
+**Owner decisions.** (1) Studio discovers the worktrees agents make; agents keep working as they do, and Studio's own worktree creation stays. (2) A session's changes panel, file tree, diff and PR badge follow its worktree: the primary one by default, a switcher in the panel head when there are several, plus the main folder. (3) Cleanup: a bulk «remove merged» takes only safe worktrees (clean, merged, nothing unpushed) with their local branch, after showing the list; anything else one at a time, with a warning of what is lost; a live agent's folder is never removed.
+
+**Attribution from transcripts, not `cwd`.** Agents run `cd <worktree> && …` per command and the recorded `cwd` stays the main folder, so tool-call inputs are read too. A main working copy counts only through `cwd`: its path prefixes every in-repo worktree and half of all commands. Tool results are not read: a printed `git worktree list` names every worktree.
+
+**Primary = most mentions, not most recent.** The design said «most recent mention». On the owner's data that made a session's side worktree primary: 678 mentions of `.worktrees/mad-372` up to 10-26, then 9 of `dagster-wt-mad372-roi` on 10-29, and the owner expects `mad-372`. One look into another folder must not move the panels; the switcher covers a session that really moved. The latest mention only breaks a tie.
+
+**Live guard has more than processes.** Live ptys and running claudes (their `sessions/<pid>.json`) catch an agent standing in a folder, but agents stand in the main folder. So the renderer adds the primary worktree of every session whose agent tab runs, and every session's own folder: a session's worktree is removed by «close session», which knows its teardown script, not from this view.
+
+**Merged** is ancestry in the remote default branch or a merged PR (the existing `gh:branchPrs` lookup, by upstream). Not done: a branch squash-merged whose remote branch is gone has no upstream, so neither test sees it, and its commits are on no remote — it is not safe, and goes one at a time with the warning. `migrate()` needed no line for `Session.worktreeView`: projects and sessions pass through it whole; only settings are listed field by field.
