@@ -438,10 +438,14 @@
 }
 
 /* A session with nothing running: opening it wakes its agent, which costs memory and a start,
-   so the row recedes and an accidental click is less likely. The one on screen keeps its look. */
+   so the row recedes and an accidental click is less likely. The one on screen keeps its
+   highlight and fades only its name, so it still reads as asleep. */
 .session.asleep:not(.active) {
   opacity: 0.5;
 }
-.session.asleep:not(.active) .session-row .name {
+.session.asleep .session-row .name {
   font-style: italic;
+}
+.session.asleep.active .session-row .name {
+  opacity: 0.6;
 }

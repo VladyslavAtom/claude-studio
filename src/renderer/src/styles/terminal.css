@@ -132,10 +132,16 @@
   color: var(--fg-faint);
   background: transparent;
 }
-/* a click wakes it: it recedes, so it is not hit by accident; the one on screen keeps its look */
+/* a click wakes it: it recedes, so it is not hit by accident; the one on screen keeps its
+   highlight and fades only its title */
+.term-tab.asleep {
+  font-style: italic;
+}
 .term-tab.asleep:not(.active) {
   opacity: 0.55;
-  font-style: italic;
+}
+.term-tab.asleep.active .tab-title {
+  opacity: 0.6;
 }
 .term-tab.asleep .kind {
   background: var(--dot-neutral);
