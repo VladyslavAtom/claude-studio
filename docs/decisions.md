@@ -1147,3 +1147,7 @@ The owner kept mixing up project tabs: the colour was a 3 px line and a 6% tint,
 **Owner decision:** colours are generated from the tab name, within a sane palette. Eight fixed colours hashed from the path gave two of the owner's six projects the same blue and three more near-identical warm tones.
 
 A derived colour is `oklch(L C hue)`: the hue from an FNV-1a hash of the name, L and C fixed per theme (`--project-l`, `--project-c`), so every derived colour is as muted as the eight that can still be picked from the tab menu. Two hues closer than 40° (or 300°/n with many projects) are pulled apart: projects are taken in id order, which no tab reorder changes, and one that lands too near a taken hue moves to the nearest free one. A picked colour counts as taken. New projects no longer get a palette colour written at open; «By name» in the tab menu drops a picked one. A rename recolours the project.
+
+## 2026-10-30 — A session row names one worktree
+
+**Owner decision:** one line under the session name: the primary worktree's branch, its PR badge, «+N more». Two lines of full paths plus a count made a row five lines tall: worktrees outside the repository folder show as absolute paths, and an audit session had touched 31. Paths stay in tooltips; the changes panel switcher and the ⎇ view list every worktree.

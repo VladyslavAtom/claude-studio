@@ -449,3 +449,6 @@
 .session.asleep.active .session-row .name {
   opacity: 0.6;
 }
+.session-where .more {
+  flex: none;
+}

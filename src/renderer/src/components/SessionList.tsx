@@ -190,12 +190,9 @@ function PermissionCards({
   )
 }
 
-/** a row shows this many worktrees; the rest are counted */
-const ROW_WORKTREES = 2
-
 /**
- * Where a session works: its worktrees, the primary one first, each with its branch and that
- * branch's PR — or, with none, the folder it was started in and that folder's branch, with no PR
+ * Where a session works: the branch of its primary worktree with that branch's PR, the other
+ * worktrees counted — or, with none, the folder it was started in and that folder's branch, with no PR
  * badge: the main folder's branch is whatever was last checked out there, not this session's work.
  */
 function SessionWhere({
@@ -209,8 +206,8 @@ function SessionWhere({
   prs: BranchPrs
   t: T
 }): JSX.Element {
-  const list = sessionWorktrees(session, worktrees)
-  if (!list.length) {
+  const [first, ...rest] = sessionWorktrees(session, worktrees)
+  if (!first) {
     // before the first read the session's own record is all there is
     if (!worktrees && session.worktree)
       return (
@@ -228,17 +225,19 @@ function SessionWhere({
       </div>
     )
   }
-  const more = list.length - ROW_WORKTREES
+  // one line: the primary worktree's branch; the rest are counted, listed in the tooltip and
+  // reachable through the changes panel switcher
   return (
     <div className="session-where">
-      {list.slice(0, ROW_WORKTREES).map((w) => (
-        <div key={w.path} className="session-worktree" title={t('worktrees.row.title', { path: w.path })}>
-          <span className="wt-name">{w.rel}</span>
-          <span className="branch">⎇ {w.branch ?? t('worktrees.item.detached')}</span>
-          <PrBadge pr={prs[w.path]} compact />
-        </div>
-      ))}
-      {more > 0 && <div className="muted small">{t.plural('worktrees.row.more', more)}</div>}
+      <div className="session-worktree" title={t('worktrees.row.title', { path: first.path })}>
+        <span className="branch">⎇ {first.branch ?? t('worktrees.item.detached')}</span>
+        <PrBadge pr={prs[first.path]} compact />
+        {rest.length > 0 && (
+          <span className="muted more" title={rest.map((w) => w.path).join('\n')}>
+            {t.plural('worktrees.row.more', rest.length)}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
