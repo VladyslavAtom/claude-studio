@@ -605,7 +605,8 @@ export default function ChangesPanel({
               ))}
             </select>
           )}
-          {!session.worktree && status?.branch && (
+          {/* the switcher already names the branch */}
+          {!session.worktree && views.length <= 1 && status?.branch && (
             <span className="branch-name static" title={cwd}>
               ⑂ {status.branch}
             </span>

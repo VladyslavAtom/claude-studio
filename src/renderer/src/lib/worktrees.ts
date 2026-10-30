@@ -101,7 +101,7 @@ export function viewSession(session: Session, path: string): Session {
 /**
  * Folders the removal guard must treat as in use, from what only the renderer knows: every
  * session's own folder (a session's worktree goes with «close session», not from here), and the
- * primary worktree of every session whose agent tab is running.
+ * worktree the agent of a running session has touched.
  */
 export function liveHints(
   projects: readonly Project[],
@@ -112,10 +112,9 @@ export function liveHints(
   for (const p of projects)
     for (const s of p.sessions) {
       out.add(s.cwd)
-      if (s.terminals.some((t) => t.kind === 'agent' && awake.has(t.id))) {
-        const primary = sessionWorktrees(s, data)[0]
-        if (primary) out.add(primary.path)
-      }
+      // every folder a running agent has touched, not only its primary: it may go back to any
+      if (s.terminals.some((t) => t.kind === 'agent' && awake.has(t.id)))
+        for (const w of sessionWorktrees(s, data)) out.add(w.path)
     }
   return [...out]
 }

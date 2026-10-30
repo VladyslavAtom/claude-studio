@@ -82,6 +82,8 @@
   text-decoration: underline;
 }
 .changes-head .link-mute {
+  flex: none;
+  white-space: nowrap;
   background: transparent;
   border: none;
   padding: 0;

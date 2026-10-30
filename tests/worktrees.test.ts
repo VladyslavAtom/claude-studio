@@ -155,12 +155,13 @@ describe('session worktrees (renderer)', () => {
     expect(shown.worktree).toBeUndefined()
   })
 
-  it('liveHints: every session folder, and the primary of a session whose agent runs', () => {
+  it('liveHints: every session folder, and every worktree a running agent touched', () => {
     const running = session({ terminals: [{ id: 't1', kind: 'agent', title: 'a' }] })
     const idle = session({ id: 's2', cwd: '/repo/.worktrees/c', terminals: [{ id: 't2', kind: 'agent', title: 'b' }] })
     const project = { sessions: [running, idle] } as unknown as Project
     expect(liveHints([project], new Set(['t1']), data).sort()).toEqual([
       '/repo',
+      '/repo-b',
       '/repo/.worktrees/a',
       '/repo/.worktrees/c',
     ])
