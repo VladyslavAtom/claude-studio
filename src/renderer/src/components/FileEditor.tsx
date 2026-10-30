@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { EditorState, type Extension } from '@codemirror/state'
+import { Compartment, EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
 import { defaultKeymap, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { bracketMatching, indentOnInput, foldGutter, foldKeymap } from '@codemirror/language'
@@ -24,6 +24,10 @@ function revealLine(view: EditorView, line: number): void {
   const pos = view.state.doc.line(target).from
   view.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: 'center' }) })
 }
+
+/** long lines wrapped or not: switched in place, like the colours, so the buffer stays */
+const wrapSlot = new Compartment()
+const wrapping = (on: boolean | undefined): Extension => (on ? EditorView.lineWrapping : [])
 
 interface Props {
   /**
@@ -50,6 +54,8 @@ interface Props {
   onGuard?: (guard: CloseGuard | null) => void
   onSaved?: (path: string) => void
   onError: (msg: string) => void
+  /** the wrap button: the choice is the editor setting, so it holds for every file */
+  onWrap: (wrap: boolean) => void
 }
 
 export default function FileEditor({
@@ -64,6 +70,7 @@ export default function FileEditor({
   onGuard,
   onSaved,
   onError,
+  onWrap,
 }: Props): JSX.Element {
   const t = useT()
   const editorColours = useThemed(EDITOR_THEMES)
@@ -96,6 +103,7 @@ export default function FileEditor({
   // the file is read asynchronously, so the theme may have changed between the open and the
   // moment the view is built; the effect below only reaches a view that already exists
   const coloursRef = useRef(editorColours)
+  const wrapRef = useRef(editor.wrap)
   // the file is read before the view exists, so the line to go to has to survive that wait
   const lineRef = useRef(line)
   // the file is read once, on mount: a later path is the same file moved, not a new one to load
@@ -106,6 +114,7 @@ export default function FileEditor({
     activeRef.current = active
     tRef.current = t
     coloursRef.current = editorColours
+    wrapRef.current = editor.wrap
     lineRef.current = line
     pathRef.current = path
     onGuardRef.current = onGuard
@@ -164,6 +173,7 @@ export default function FileEditor({
           indentWithTab,
         ]),
         themeSlot.of(coloursRef.current),
+        wrapSlot.of(wrapping(wrapRef.current)),
         EditorView.updateListener.of((u) => {
           if (editedByUser(u)) fileRef.current.changed(u.state.doc.toString())
         }),
@@ -233,6 +243,10 @@ export default function FileEditor({
     viewRef.current?.dispatch({ effects: themeSlot.reconfigure(editorColours) })
   }, [editorColours])
 
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: wrapSlot.reconfigure(wrapping(editor.wrap)) })
+  }, [editor.wrap])
+
   /** "@src/lib/jwt.ts:20-40" — what both CLIs understand as a file reference */
   const sendToAgent = (): void => {
     const view = viewRef.current
@@ -294,6 +308,17 @@ export default function FileEditor({
         </span>
         <span className="muted small path">{path}</span>
         <div className="spacer" />
+        {!image && (
+          <button
+            className={'ghost wrap-toggle' + (editor.wrap ? ' on' : '')}
+            data-testid="editor-wrap"
+            aria-pressed={Boolean(editor.wrap)}
+            title={t('editor.wrap.title')}
+            onClick={() => onWrap(!editor.wrap)}
+          >
+            ↵ {t('editor.wrap')}
+          </button>
+        )}
         <button onClick={sendToAgent} title={t('editor.send.title')}>
           {t('editor.send')}
         </button>

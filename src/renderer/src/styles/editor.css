@@ -18,6 +18,11 @@
   background: var(--bg-1);
   border-bottom: 1px solid var(--line);
 }
+/* the wrap switch: lit while long lines wrap */
+.editor-head .wrap-toggle.on {
+  color: var(--accent);
+  background: var(--bg-3);
+}
 .editor-head .file {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;

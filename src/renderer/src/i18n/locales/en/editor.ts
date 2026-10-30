@@ -20,6 +20,8 @@ export const editor = {
   'status.saved': 'saved',
   'status.autoSave': 'autosave',
 
+  wrap: 'Wrap',
+  'wrap.title': 'Wrap long lines',
   send: '→ to the agent',
   'send.title': 'Put a reference to the file into the active agent tab',
   overwrite: 'Overwrite',

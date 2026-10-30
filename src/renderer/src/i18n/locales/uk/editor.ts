@@ -16,6 +16,8 @@ export const editor: EditorArea = {
   'status.saved': 'збережено',
   'status.autoSave': 'автозбереження',
 
+  wrap: 'Перенос',
+  'wrap.title': 'Переносити довгі рядки',
   send: '→ агентові',
   'send.title': 'Вставити посилання на файл в активну вкладку агента',
   overwrite: 'Перезаписати',

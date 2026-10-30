@@ -599,6 +599,9 @@ export default function TerminalArea({
                 onClose={() => requestClose(tab.id)}
                 onGuard={guardFor(tab.id)}
                 onError={onError}
+                onWrap={(wrap) =>
+                  dispatch({ type: 'settingsPatched', patch: { editor: { ...settings.editor, wrap } } })
+                }
               />
             ) : null
           }

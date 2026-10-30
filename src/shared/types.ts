@@ -107,6 +107,8 @@ export interface EditorConfig {
   autoSave: boolean
   /** the pause after the last keystroke, ms */
   delayMs: number
+  /** long lines wrap at the window's edge instead of scrolling sideways; absent is off */
+  wrap?: boolean
 }
 
 export const defaultEditor: EditorConfig = { autoSave: true, delayMs: 800 }
