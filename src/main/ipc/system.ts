@@ -51,6 +51,13 @@ function wlClipboard(argv: string[], input?: string): Promise<string | null> {
   })
 }
 
+/** a paste was reported slow; the log says whether reading the clipboard is where the time goes */
+function logSlowPaste(started: number): void {
+  const ms = Date.now() - started
+  if (ms >= SLOW_MS) console.error(`[clipboard] wl-paste took ${ms} ms at ${new Date().toString()}`)
+}
+const SLOW_MS = 300
+
 /**
  * Wayland is the case where Chromium's own clipboard is not the system's. On X11 it works, and
  * wl-clipboard is not installed there anyway.
@@ -133,6 +140,7 @@ export function register(deps: SystemDeps): void {
   })
   ipcMain.handle(CHANNELS.clipboard.read, async (_e, selection: boolean) => {
     const kind = selection && process.platform === 'linux' ? 'selection' : 'clipboard'
+    const started = Date.now()
     // same isolation the other way round: Chromium answers with what this application last put
     // there, not with what another window has copied since. The compositor is asked first, and
     // Chromium is the fallback for when wl-clipboard is not installed.
@@ -142,6 +150,7 @@ export function register(deps: SystemDeps): void {
         '--no-newline',
         ...(kind === 'selection' ? ['--primary'] : []),
       ])
+      logSlowPaste(started)
       if (fromCompositor !== null) return fromCompositor
     }
     return clipboard.readText(kind)

@@ -178,7 +178,22 @@ if (soloGuard && !app.requestSingleInstanceLock()) {
   })
 }
 
+/**
+ * The main process stalled: every IPC answer (a paste, a git status) waits behind it. Logged so
+ * that a slow window can be traced to a stall here or ruled out.
+ */
+function watchStalls(): void {
+  let last = Date.now()
+  setInterval(() => {
+    const now = Date.now()
+    if (now - last >= STALL_MS) console.error(`[main] stalled ${now - last} ms at ${new Date(now).toString()}`)
+    last = now
+  }, 100).unref()
+}
+const STALL_MS = 500
+
 app.whenReady().then(() => {
+  watchStalls()
   registerIpc()
   // writes the hook overlay and the notify program, and sweeps the reports of the previous run;
   // not awaited, because the first tab cannot start before the renderer has asked for the paths
