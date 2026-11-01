@@ -1167,3 +1167,7 @@ A derived colour is `oklch(L C hue)`: the hue from an FNV-1a hash of the name, L
 ## 2026-11-01 — A parent reuses a child before opening a new one
 
 **Owner report:** parents opened a fresh child for a topic an asleep child already held. The `open_session` description now says to call `list_sessions` first and hand same-topic work to that child (`wake_session` if asleep, then `send_to_session`); a new session only when none fits or the fitting one is closed. Wording only: the agent still decides what "same topic" is.
+
+## 2026-11-01 — A woken parent is told to look at its children, not handed their state
+
+**Owner decision:** after a sleep or a restart a parent's agent does not know what its children did meanwhile. Of three ways (the SessionStart hook putting a summary into its context, a message typed in on wake, a line in the tool description) the owner chose the description: `list_sessions` says to call it first on coming back to a conversation that has children. No code path, no extra turn; the agent may still skip it.

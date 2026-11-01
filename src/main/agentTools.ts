@@ -141,6 +141,8 @@ const TOOLS = [
       'List the sessions you opened, and the ones they opened in turn, in any state - working,',
       'waiting, asleep or closed: id, name, parent, branch, directory, conversation id, state,',
       'and uncommitted files for open ones.',
+      'Your children may have moved on while you were asleep or restarted: call it first when you',
+      'come back to a conversation that has children, before acting on what you remember of them.',
     ].join(' '),
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
