@@ -1163,3 +1163,7 @@ A derived colour is `oklch(L C hue)`: the hue from an FNV-1a hash of the name, L
 ## 2026-10-30 — A parent can put its children to sleep and wake them
 
 **Owner decision:** a parent's agent may sleep and wake its children. `sleep_session` frees a child's memory without closing it; a turn in progress is cut off, which is the parent's call. `wake_session` resumes the conversation and leaves the agent waiting; the parent then types into it with `send_to_session`. A closed child is refused both.
+
+## 2026-11-01 — A parent reuses a child before opening a new one
+
+**Owner report:** parents opened a fresh child for a topic an asleep child already held. The `open_session` description now says to call `list_sessions` first and hand same-topic work to that child (`wake_session` if asleep, then `send_to_session`); a new session only when none fits or the fitting one is closed. Wording only: the agent still decides what "same topic" is.

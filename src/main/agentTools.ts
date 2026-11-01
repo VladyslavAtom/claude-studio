@@ -109,6 +109,10 @@ const TOOLS = [
       'messaging other sessions reaches it once it has started.',
       'It becomes your child: you may list it, read it, type into it and close it, and closing it is your',
       'job once your overall plan has nothing left for it - not after its first answer.',
+      'Before opening one, call list_sessions: a child that already worked on the same topic keeps',
+      'its conversation and branch, so hand it the work instead - send_to_session if it is open,',
+      'wake_session first if it is asleep. Open a new session only when no child fits or the one',
+      'that fits is closed.',
     ].join(' '),
     inputSchema: {
       type: 'object',

@@ -364,7 +364,8 @@ The hooks are the CLI talking about itself; this is the CLI **asking for somethi
 is started with an MCP server of ours as well — `--mcp-config <userData>/agent-tools/mcp.json`,
 written next to the settings overlay by `src/main/agentTools.ts`. `open_session` (`task`, `name`,
 `isolate`) becomes an ordinary session in the window: a worktree, a tab, an agent already holding
-the task, and the answer names its session id.
+the task, and the answer names its session id. Its description tells the agent to look in
+`list_sessions` first and hand same-topic work to an existing child (waking it if asleep).
 
 That session is the asker's **child**: `Session.parentId`. More tools act on the asker's
 descendants and nothing else — `list_sessions` (id, branch, conversation id, tab state,
