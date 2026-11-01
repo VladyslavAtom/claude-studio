@@ -164,6 +164,14 @@ summary::after { content: "+"; color: var(--fg-faint); font-weight: 400; font-si
 details[open] summary::after { content: "−"; }
 details p { color: var(--fg-dim); margin: 10px 0 0; }
 
+/* similar projects */
+ul.similar { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 32px; }
+ul.similar li { color: var(--fg-dim); font-size: 15px; }
+ul.similar b { color: var(--fg); font-weight: 600; font-size: 16px; }
+ul.similar .src { font-weight: 400; font-size: 13px; margin-left: 6px; }
+ul.similar .lic { color: var(--fg-faint); font-size: 13px; margin-left: 6px; }
+@media (max-width: 720px) { ul.similar { grid-template-columns: 1fr; } }
+
 /* install */
 pre {
   background: var(--code-bg); color: #d3d6d9; border: 1px solid var(--line-2); border-radius: var(--radius);

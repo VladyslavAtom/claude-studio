@@ -86,6 +86,21 @@ PTYs live in main and are addressed by `terminalId`; `pty:start` is idempotent, 
 
 [docs/architecture.md](docs/architecture.md) — how it works · [docs/decisions.md](docs/decisions.md) — why · [docs/performance.md](docs/performance.md) — measurements · [docs/open-questions.md](docs/open-questions.md) — what is open · [CONTRIBUTING.md](CONTRIBUTING.md) — patches.
 
+## Similar projects
+
+Other tools for running coding agents side by side:
+
+- [emdash](https://emdash.com/) ([source](https://github.com/generalaction/emdash)): Electron app: Claude Code, Codex and other agents in parallel, a worktree per task, review in one place. macOS, Windows, Linux. Apache-2.0.
+- [Xum](https://xum.cdr.dev/) ([source](https://github.com/coder/xum)): Desktop app for isolated, parallel agentic development, any LLM provider. AGPL-3.0.
+- [Okena](https://www.okena.dev/) ([source](https://github.com/contember/okena)): Native terminal in Rust/GPUI for CLI agents side by side: tabs, splits, worktrees, session restore. MIT.
+- [Nimbalyst](https://github.com/nimbalyst/nimbalyst): Formerly Crystal. Visual workspace for Claude Code, Codex and OpenCode: parallel agents, edits in markdown, mockups and diagrams, tasks. MIT.
+- [Paradev](https://github.com/ParadevAI/Paradev): Formerly Superset. Agentic IDE for running many agents in parallel. source-available.
+- [Vibe Kanban](https://github.com/BloopAI/vibe-kanban): Kanban board that hands tasks to Claude Code, Codex and other agents. Apache-2.0.
+- [opcode](https://github.com/winfunc/opcode): GUI and toolkit for Claude Code: custom agents, sessions, background agents. AGPL-3.0.
+- [Claude Squad](https://github.com/smtg-ai/claude-squad): Terminal UI that runs several agents in tmux, each in its own worktree. AGPL-3.0.
+- [CCManager](https://github.com/kbwo/ccmanager): Terminal session manager for Claude Code, Gemini CLI, Codex and other CLIs. MIT.
+- [CodexMonitor](https://github.com/Dimillian/CodexMonitor): App to watch and manage Codex sessions. MIT.
+
 ## Status
 
 A personal tool, published in case it is useful: 0.1.0, one developer, one Linux desktop. The parts that have never run anywhere else — the AppArmor workaround, the Codex index, the node-pty rebuild — are the ones most likely to break for you.
