@@ -519,7 +519,9 @@ export default function TerminalPane({
      * not call that off — so the text arrived twice, once from here and once from the browser.
      * Ours is the one worth keeping: it goes through the clipboard IPC, which under Wayland falls
      * back to wl-clipboard when Chromium hands back nothing. So the browser's copy is cancelled in
-     * the paste handler below, and this is the mark it looks for.
+     * the paste handler below, and this is the mark it looks for. Chromium pastes on the release,
+     * not the press (measured: 50 ms, 600 ms, 1.2 s after the press for as long a hold), so the
+     * mark is set again when the button comes up; a press-only mark let a long click through.
      */
     let pastedAt = 0
     const onMouseDown = (e: MouseEvent): void => {
@@ -529,6 +531,10 @@ export default function TerminalPane({
       void window.api.clipboard.read(true).then((text) => text && term.paste(text))
     }
     host.addEventListener('mousedown', onMouseDown)
+    const onMouseUp = (e: MouseEvent): void => {
+      if (e.button === 1 && pastedAt) pastedAt = Date.now()
+    }
+    host.addEventListener('mouseup', onMouseUp, true)
 
     // right button: a terminal has no system menu, yet copying through one is the habit
     const onContextMenu = (e: MouseEvent): void => {
@@ -584,6 +590,7 @@ export default function TerminalPane({
       offExit()
       offCommand()
       host.removeEventListener('mousedown', onMouseDown)
+      host.removeEventListener('mouseup', onMouseUp, true)
       host.removeEventListener('contextmenu', onContextMenu)
       host.removeEventListener('paste', onPaste, true)
       pathLinkSub.dispose()
