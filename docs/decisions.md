@@ -1171,3 +1171,7 @@ A derived colour is `oklch(L C hue)`: the hue from an FNV-1a hash of the name, L
 ## 2026-11-01 — A woken parent is told to look at its children, not handed their state
 
 **Owner decision:** after a sleep or a restart a parent's agent does not know what its children did meanwhile. Of three ways (the SessionStart hook putting a summary into its context, a message typed in on wake, a line in the tool description) the owner chose the description: `list_sessions` says to call it first on coming back to a conversation that has children. No code path, no extra turn; the agent may still skip it.
+
+## 2026-11-03 — A parent may answer its children's permission prompts
+
+**Owner request:** a child's permission prompt goes to its parent session, which may approve it. `answer_permission` (allow or deny one ask) goes through the same path as the person's Allow/Deny card, which used to be "never called on anyone's behalf"; that line is dropped by this decision. The parent is told by a note typed into its agent tab, once per ask; that costs it a turn, which is the point: an idle parent would not look on its own. The person keeps the card and the terminal prompt, and whoever answers first wins. Known trade-off: a prompt raised by a guard hook that wants the person's own word (an outward write) can now be allowed by the parent; the tool's description tells the parent to allow only what the child's task needs.

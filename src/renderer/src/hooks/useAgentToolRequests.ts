@@ -6,8 +6,9 @@
  * goes back the same way to the tool call that is still blocked on it.
  *
  * A session opened through `open_session` is the asker's **child** (`Session.parentId`). The
- * other tools act on the asker's descendants only — listing them, typing into them, reading
- * their conversation, putting them to sleep and waking them, closing them — and the check is made here, against the state, never trusted
+ * other tools act on the asker's descendants only — listing them, typing into them, answering
+ * their permission prompts, reading their conversation, putting them to sleep and waking them,
+ * closing them — and the check is made here, against the state, never trusted
  * from the request. Reading is the one thing main does for us: the conversation is a file.
  *
  * The renderer does the work because a session is a renderer thing — the project, the worktree,
@@ -34,6 +35,7 @@ import type {
   AgentToolRequest,
   AgentToolResult,
   ArchivedSession,
+  PermissionAsk,
   Project,
   Session,
   Settings,
@@ -99,6 +101,15 @@ function parentNote(asker: Asker, terminalId: string): string {
   ].join(' ')
 }
 
+/** the note typed into a parent when its child holds a permission prompt open */
+function permissionNote(child: Session, ask: PermissionAsk): string {
+  const what = ask.detail ? `${ask.tool}: ${ask.detail.replace(/\s+/g, ' ')}` : ask.tool
+  return [
+    `[Claude Studio] Your child session "${child.name}" (session id ${child.id}) waits on a permission prompt - ${what}.`,
+    `Answer it with answer_permission (session ${child.id}, ask ${ask.id}, answer allow or deny), or leave it to the person, who sees the same prompt.`,
+  ].join(' ')
+}
+
 export function useAgentToolRequests(sessions: SessionActions): void {
   const stateRef = useAppStateRef()
   const runtime = useRuntimeState()
@@ -112,7 +123,7 @@ export function useAgentToolRequests(sessions: SessionActions): void {
   useEffect(() => {
     hookPathsRef.current = hookPaths
   }, [hookPaths])
-  const { wake } = useRuntimeActions()
+  const { wake, answerPermission } = useRuntimeActions()
   const resolveLaunched = useResolveLaunched()
   const t = useT()
   /** requests are carried out one after another: two worktrees must not be planned on one state */
@@ -281,6 +292,11 @@ export function useAgentToolRequests(sessions: SessionActions): void {
             return lines.join('\n')
           }
           lines.push(`  state: ${statusOf(s)}`)
+          const ask = tab && runtimeRef.current.permissions.get(tab.id)
+          if (ask)
+            lines.push(
+              `  permission prompt: ${ask.tool}${ask.detail ? `: ${ask.detail}` : ''} (ask ${ask.id}; answer_permission)`,
+            )
           // a session the person added a second agent to: read_session can be pointed at either
           const agentTabs = s.terminals.filter((x) => x.kind === 'agent')
           if (agentTabs.length > 1) for (const x of agentTabs) lines.push(`  agent tab: ${x.id} "${x.title}"`)
@@ -357,6 +373,47 @@ export function useAgentToolRequests(sessions: SessionActions): void {
     },
     [resolveChild],
   )
+
+  /** the same path as the person's Allow/Deny card; the CLI takes whichever answer comes first */
+  const permit = useCallback(
+    async (request: Extract<AgentToolRequest, { tool: 'permission' }>): Promise<AgentToolResult> => {
+      const found = resolveChild(request)
+      if (typeof found === 'string') return { ok: false, error: found }
+      const { child } = found
+      if (isClosed(child)) return { ok: false, error: `"${child.name}" is closed; it asks nothing.` }
+      const tab = child.terminals.find((x) => runtimeRef.current.permissions.get(x.id)?.id === request.ask)
+      if (!tab)
+        return {
+          ok: false,
+          error: `"${child.name}" holds no open prompt ${request.ask}: it was answered (perhaps by the person) or withdrawn.`,
+        }
+      answerPermission(tab.id, request.ask, request.answer)
+      return { ok: true, text: `Answered ${request.answer} to the prompt of "${child.name}".` }
+    },
+    [answerPermission, resolveChild],
+  )
+
+  /**
+   * A child's permission prompt is typed into its parent as a note, once per prompt, so that the
+   * parent can answer it with `answer_permission`. Only into an awake parent that is not itself
+   * blocked on a prompt: typed text and Enter into a prompt would pick one of its options. A note
+   * held back is sent on a later pass, when the parent is free, if the prompt is still open.
+   */
+  const noted = useRef(new Set<string>())
+  useEffect(() => {
+    for (const [terminalId, ask] of runtime.permissions) {
+      const key = `${terminalId}:${ask.id}`
+      if (noted.current.has(key)) continue
+      const found = findAsker(terminalId)
+      const parentId = found?.session.parentId
+      const parent = parentId ? found.project.sessions.find((s) => s.id === parentId) : undefined
+      const tab = parent?.terminals.find((x) => x.kind === 'agent' && runtime.awake.has(x.id))
+      if (!found || !tab) continue
+      if (runtime.permissions.has(tab.id) || runtime.agentActivity.get(tab.id) === 'waiting') continue
+      noted.current.add(key)
+      void submitToAgent(tab.id, permissionNote(found.session, ask))
+    }
+  }, [findAsker, runtime.agentActivity, runtime.awake, runtime.permissions])
 
   const read = useCallback(
     async (request: Extract<AgentToolRequest, { tool: 'read' }>): Promise<AgentToolResult> => {
@@ -468,9 +525,11 @@ export function useAgentToolRequests(sessions: SessionActions): void {
           return sleepChild(request)
         case 'wake':
           return wakeChild(request)
+        case 'permission':
+          return permit(request)
       }
     },
-    [close, list, open, read, sendTo, sleepChild, wakeChild],
+    [close, list, open, permit, read, sendTo, sleepChild, wakeChild],
   )
 
   useEffect(() => {

@@ -116,6 +116,21 @@ describe('parseToolRequest', () => {
         session: TAB,
       })
     expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'wake', session: 'x' }))).toBeNull()
+    expect(
+      tools.parseToolRequest(
+        JSON.stringify({ ...head, tool: 'permission', session: TAB, ask: '1793558583.4242', answer: 'allow' }),
+      ),
+    ).toEqual({ ...head, tool: 'permission', session: TAB, ask: '1793558583.4242', answer: 'allow' })
+    expect(
+      tools.parseToolRequest(
+        JSON.stringify({ ...head, tool: 'permission', session: TAB, ask: '../x', answer: 'deny' }),
+      ),
+    ).toBeNull()
+    expect(
+      tools.parseToolRequest(
+        JSON.stringify({ ...head, tool: 'permission', session: TAB, ask: '1.2', answer: 'always' }),
+      ),
+    ).toBeNull()
     expect(tools.parseToolRequest(JSON.stringify({ ...head, tool: 'close', session: TAB, force: true }))).toEqual({
       ...head,
       tool: 'close',
@@ -253,6 +268,7 @@ describe('the MCP server', () => {
         'list_sessions',
         'close_session',
         'send_to_session',
+        'answer_permission',
         'sleep_session',
         'wake_session',
         'read_session',

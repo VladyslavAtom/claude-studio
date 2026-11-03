@@ -110,9 +110,9 @@
         <div>
           <div class="num">3</div>
           <h3>Ask the lead to split the work</h3>
-          <p>Every Claude tab carries seven tools. Ask for a split in plain words:</p>
+          <p>Every Claude tab carries eight tools. Ask for a split in plain words:</p>
           <div class="prompt">Add gift cards. Split this feature into three parts: the backend, the frontend and the tests. Open a session for each, check on them, and tell me when they are ready to merge.</div>
-          <p>The lead calls <code>open_session</code> once per part: a visible session on a branch forked from its own, with a Claude already holding the sub-task. It checks on them with <code>list_sessions</code> (working, waiting, asleep or closed, uncommitted files), reads what each one said and did with <code>read_session</code>, closed ones too, sends follow-ups with <code>send_to_session</code>, puts an idle one to sleep with <code>sleep_session</code> and wakes it with <code>wake_session</code>, and closes them with <code>close_session</code>.</p>
+          <p>The lead calls <code>open_session</code> once per part: a visible session on a branch forked from its own, with a Claude already holding the sub-task. It checks on them with <code>list_sessions</code> (working, waiting, asleep or closed, uncommitted files), reads what each one said and did with <code>read_session</code>, closed ones too, sends follow-ups with <code>send_to_session</code>, answers a child's permission prompt with <code>answer_permission</code> (the prompt is passed up to it as a note; you can still answer it yourself), puts an idle one to sleep with <code>sleep_session</code> and wakes it with <code>wake_session</code>, and closes them with <code>close_session</code>.</p>
           <p style="font-size:14px;color:var(--fg-faint)">Backend, frontend and tests is an example: the split is whatever you ask for. Up to 3 levels deep, 8 open children per session.</p>
         </div>
         <div class="team" aria-label="A lead session and three child sessions">
@@ -239,7 +239,7 @@
     </details>
     <details>
       <summary>Do child sessions work with Codex?</summary>
-      <p>Codex runs fine as a tab, with its own conversation, history and search. The seven session tools are given to Claude tabs only, so a split is led by Claude.</p>
+      <p>Codex runs fine as a tab, with its own conversation, history and search. The eight session tools are given to Claude tabs only, so a split is led by Claude.</p>
     </details>
     <details>
       <summary>What does it send over the network?</summary>

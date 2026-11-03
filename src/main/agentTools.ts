@@ -5,8 +5,8 @@
  * is the opposite direction: a claude tab is started with an MCP server of ours
  * (`--mcp-config`), the server exposes `open_session`, and a call to it becomes a new session in
  * the window — a worktree, a tab, an agent already holding its first task. That session is the
- * asker's child, and six more tools act on children only: `list_sessions`, `close_session`,
- * `send_to_session`, `read_session`, `sleep_session`, `wake_session`. Which session is whose is checked in the renderer, which
+ * asker's child, and seven more tools act on children only: `list_sessions`, `close_session`,
+ * `send_to_session`, `answer_permission`, `read_session`, `sleep_session`, `wake_session`. Which session is whose is checked in the renderer, which
  * owns the state; `read_session` is then answered from the child's conversation file by
  * `conversationLog`.
  *
@@ -169,7 +169,7 @@ const TOOLS = [
     name: 'send_to_session',
     description: [
       'Type text into the agent of a session you opened and submit it, as the person would.',
-      'Meant for a child stuck on a question or a permission prompt in its terminal; ordinary',
+      'Meant for a child stuck on a question in its terminal (a permission prompt: answer_permission); ordinary',
       'messages also go through your usual way of messaging sessions.',
     ].join(' '),
     inputSchema: {
@@ -179,6 +179,26 @@ const TOOLS = [
         text: { type: 'string', description: 'What to type. Submitted with Enter.' },
       },
       required: ['session', 'text'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'answer_permission',
+    description: [
+      'Answer a permission prompt a session you opened (or one opened by it) is holding open: allow',
+      'or deny the one tool call it names. Claude Studio types a note into your session when a child',
+      'asks; list_sessions also shows an open prompt. The person sees the same prompt and may answer',
+      'it first. Allow only what the task you gave the child needs; when unsure, deny or leave it to',
+      'the person.',
+    ].join(' '),
+    inputSchema: {
+      type: 'object',
+      properties: {
+        session: SESSION_ARG,
+        ask: { type: 'string', description: 'The ask id from the note or from list_sessions.' },
+        answer: { type: 'string', enum: ['allow', 'deny'] },
+      },
+      required: ['session', 'ask', 'answer'],
       additionalProperties: false,
     },
   },
@@ -279,6 +299,12 @@ function requestFor(name, args) {
   if (name === 'send_to_session') {
     if (typeof args.text !== 'string' || !args.text.trim()) return 'text is required.'
     return { tool: 'send', session: session, text: args.text }
+  }
+  if (name === 'answer_permission') {
+    const ask = typeof args.ask === 'string' ? args.ask.trim() : ''
+    if (!ask) return 'ask is required: the ask id from the note or from list_sessions.'
+    if (args.answer !== 'allow' && args.answer !== 'deny') return 'answer is allow or deny.'
+    return { tool: 'permission', session: session, ask: ask, answer: args.answer }
   }
   if (name === 'sleep_session') return { tool: 'sleep', session: session }
   if (name === 'wake_session') return { tool: 'wake', session: session }
@@ -424,6 +450,8 @@ function emit(channel: string, payload: unknown): void {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+/** a permission ask id, as `agentHooks` names them: `<epoch>.<pid>` */
+const ASK_ID = /^\d+\.\d+$/
 
 /** a task longer than this is not a task; the cap is about a runaway writer, not about style */
 const TASK_MAX = 20_000
@@ -462,6 +490,12 @@ export function parseToolRequest(raw: string): AgentToolRequest | null {
       ...(typeof o.tab === 'string' ? { tab: o.tab } : {}),
       ...(typeof o.cursor === 'string' ? { cursor: o.cursor } : {}),
     }
+  }
+  if (tool === 'permission') {
+    if (typeof o.session !== 'string' || !UUID.test(o.session)) return null
+    if (typeof o.ask !== 'string' || !ASK_ID.test(o.ask)) return null
+    if (o.answer !== 'allow' && o.answer !== 'deny') return null
+    return { ...head, tool, session: o.session, ask: o.ask, answer: o.answer }
   }
   if (tool === 'sleep' || tool === 'wake') {
     if (typeof o.session !== 'string' || !UUID.test(o.session)) return null

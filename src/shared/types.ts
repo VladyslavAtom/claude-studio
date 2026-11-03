@@ -408,6 +408,8 @@ export type AgentToolRequest = { id: string; terminalId: string | null } & (
   /** the child's agent tabs stopped, conversation kept; a woken one resumes it */
   | { tool: 'sleep'; session: string }
   | { tool: 'wake'; session: string }
+  /** the child's open permission prompt `ask` answered, as the person's card would answer it */
+  | { tool: 'permission'; session: string; ask: string; answer: PermissionAnswer }
 )
 
 /**

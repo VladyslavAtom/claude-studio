@@ -52,7 +52,7 @@ export interface TerminalRuntimeActions {
   forgetTerminals: (ids: string[]) => void
   /** a CLI may say nothing to the terminal — then it is the conversation record that calls */
   onBell: (project: Project, session: Session, terminalId: string) => void
-  /** the person's click on a permission card; never called on anyone's behalf */
+  /** the person's click on a permission card, or a parent agent's `answer_permission` for its child */
   answerPermission: (terminalId: string, askId: string, answer: PermissionAnswer) => void
 }
 

@@ -370,7 +370,9 @@ the task, and the answer names its session id. Its description tells the agent t
 That session is the asker's **child**: `Session.parentId`. More tools act on the asker's
 descendants and nothing else — `list_sessions` (id, branch, conversation id, tab state,
 uncommitted files, agent tab ids when there is more than one), `send_to_session` (typed into the
-child's agent tab and submitted; multi-line text as a bracketed paste), `read_session`,
+child's agent tab and submitted; multi-line text as a bracketed paste), `answer_permission` (the
+child's open permission prompt answered through the same `agents:answerPermission` path as the
+person's card; whichever answer the CLI takes first wins), `read_session`,
 `sleep_session` (its awake agent tabs go through `pty.sleep`, as the tab menu does),
 `wake_session` (its sleeping agent tabs start without a pane, as «start all» does, resuming the
 conversation) and `close_session`. Closing removes the worktree only when it is clean
@@ -382,6 +384,13 @@ refused. Descendants include closed ones: the project history keeps a closed ses
 forgotten from the history, or pushed out past its 50 entries, is gone. The child forks from the parent's branch, and its first prompt opens with a line naming
 the parent and its conversation id. Limits: depth 3, 8 open children per session
 (`lib/sessionTree`).
+
+A child's permission prompt reaches its parent: when the waiting poll reports an ask on a child's
+tab, the renderer types a note into the parent's awake agent tab, once per ask, naming the tool,
+its argument and the ask id; `list_sessions` shows an open ask too. The note is held back while the
+parent's own tab is blocked on a prompt (typed Enter would pick an option there) and sent on a
+later pass if the ask is still open. The person's card and the terminal prompt stay; the first
+answer wins.
 
 `read_session` (`session`, optional `cursor`, optional `tab`) is how a lead follows a child
 without scraping its terminal. The renderer checks the child, picks its agent tab (the first, or
