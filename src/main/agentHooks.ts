@@ -507,6 +507,8 @@ export function isEventReport(raw: string, event: 'Stop' | 'Notification'): bool
 /** what a tool would act on, for the card: the first of the fields the CLI's own tools use */
 const DETAIL_FIELDS = ['command', 'file_path', 'notebook_path', 'url', 'path', 'pattern', 'query'] as const
 const DETAIL_MAX = 300
+/** the full input handed to a parent agent; a Write of a large file is the case this bounds */
+const INPUT_MAX = 8000
 
 /** tools whose prompt is itself the answer; the CLI ignores a hook's allow for them */
 const PROMPT_IS_ANSWER = new Set(['AskUserQuestion', 'ExitPlanMode'])
@@ -520,7 +522,8 @@ const PROMPT_IS_ANSWER = new Set(['AskUserQuestion', 'ExitPlanMode'])
  * nothing to show the person, and a card that says nothing must not be clickable.
  *
  * The detail is the tool's own input, verbatim but with whitespace folded and clipped: it is what
- * the person is deciding about, and the terminal prompt shows the same text.
+ * the person is deciding about, and the terminal prompt shows the same text. `input` is the whole
+ * of it, for a parent agent answering for its child: a clipped command cannot be judged.
  */
 export function parsePermissionRequest(raw: string): Omit<PermissionAsk, 'id'> | null {
   const payload = payloadOf(raw, 'PermissionRequest')
@@ -540,7 +543,9 @@ export function parsePermissionRequest(raw: string): Omit<PermissionAsk, 'id'> |
       break
     }
   }
-  return { tool, detail }
+  const json = JSON.stringify(input)
+  const extra = json.length - INPUT_MAX
+  return { tool, detail, input: extra > 0 ? `${json.slice(0, INPUT_MAX)}… (${extra} more characters)` : json }
 }
 
 /** what the hook prints for an answer: the CLI's own `PermissionRequest` output shape */

@@ -494,6 +494,11 @@ export interface PermissionAsk {
   tool: string
   /** what the tool would act on — a command, a path, a URL — verbatim and clipped; null if none */
   detail: string | null
+  /**
+   * The tool's whole input as JSON, clipped only past `INPUT_MAX`: what a parent agent is shown
+   * when it decides for its child. The card shows `detail`; an agent needs the full command.
+   */
+  input: string
 }
 
 /** the two answers a person can give from the window; «always allow» stays in the terminal */

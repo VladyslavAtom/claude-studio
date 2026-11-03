@@ -736,7 +736,11 @@ async function writeAsk(terminalId: string, askId: string, body: string): Promis
 
 describe('parsePermissionRequest', () => {
   it('names the tool and what it would act on', () => {
-    expect(hooks.parsePermissionRequest(askPayload())).toEqual({ tool: 'Bash', detail: 'rm -rf node_modules' })
+    expect(hooks.parsePermissionRequest(askPayload())).toEqual({
+      tool: 'Bash',
+      detail: 'rm -rf node_modules',
+      input: JSON.stringify({ command: 'rm -rf node_modules', description: 'Remove node_modules' }),
+    })
   })
 
   it('takes the path of a file tool, and no detail when there is nothing to show', () => {
@@ -744,9 +748,9 @@ describe('parsePermissionRequest', () => {
       tool_name: 'Edit',
       tool_input: { file_path: '/w/a.ts', old_string: 'a', new_string: 'b' },
     })
-    expect(hooks.parsePermissionRequest(edit)).toEqual({ tool: 'Edit', detail: '/w/a.ts' })
+    expect(hooks.parsePermissionRequest(edit)).toMatchObject({ tool: 'Edit', detail: '/w/a.ts' })
     const bare = askPayload({ tool_name: 'mcp__srv__do', tool_input: { n: 1 } })
-    expect(hooks.parsePermissionRequest(bare)).toEqual({ tool: 'mcp__srv__do', detail: null })
+    expect(hooks.parsePermissionRequest(bare)).toEqual({ tool: 'mcp__srv__do', detail: null, input: '{"n":1}' })
   })
 
   it('folds and clips a long command', () => {
@@ -754,6 +758,8 @@ describe('parsePermissionRequest', () => {
     const detail = hooks.parsePermissionRequest(long)?.detail ?? ''
     expect(detail.startsWith('echo x')).toBe(true)
     expect(detail.length).toBe(300)
+    // the parent agent gets all of it
+    expect(hooks.parsePermissionRequest(long)?.input).toContain('x'.repeat(500))
   })
 
   it('leaves a subagent’s request to the CLI', () => {
@@ -792,7 +798,12 @@ describe('permissionOutput', () => {
 describe('takeHookReport — permission prompts', () => {
   it('offers the open prompt and does not consume it', async () => {
     await writeAsk(TERM, '100.7', askPayload())
-    const ask = { id: '100.7', tool: 'Bash', detail: 'rm -rf node_modules' }
+    const ask = {
+      id: '100.7',
+      tool: 'Bash',
+      detail: 'rm -rf node_modules',
+      input: JSON.stringify({ command: 'rm -rf node_modules', description: 'Remove node_modules' }),
+    }
     expect((await hooks.takeHookReport(TERM)).permission).toEqual(ask)
     expect((await hooks.takeHookReport(TERM)).permission).toEqual(ask)
   })

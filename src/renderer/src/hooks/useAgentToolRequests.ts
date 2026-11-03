@@ -103,11 +103,11 @@ function parentNote(asker: Asker, terminalId: string): string {
 
 /** the note typed into a parent when its child holds a permission prompt open */
 function permissionNote(child: Session, ask: PermissionAsk): string {
-  const what = ask.detail ? `${ask.tool}: ${ask.detail.replace(/\s+/g, ' ')}` : ask.tool
   return [
-    `[Claude Studio] Your child session "${child.name}" (session id ${child.id}) waits on a permission prompt - ${what}.`,
+    `[Claude Studio] Your child session "${child.name}" (session id ${child.id}) waits on a permission prompt for ${ask.tool}.`,
     `Answer it with answer_permission (session ${child.id}, ask ${ask.id}, answer allow or deny), or leave it to the person, who sees the same prompt.`,
-  ].join(' ')
+    `Tool input: ${ask.input}`,
+  ].join('\n')
 }
 
 export function useAgentToolRequests(sessions: SessionActions): void {
@@ -294,9 +294,7 @@ export function useAgentToolRequests(sessions: SessionActions): void {
           lines.push(`  state: ${statusOf(s)}`)
           const ask = tab && runtimeRef.current.permissions.get(tab.id)
           if (ask)
-            lines.push(
-              `  permission prompt: ${ask.tool}${ask.detail ? `: ${ask.detail}` : ''} (ask ${ask.id}; answer_permission)`,
-            )
+            lines.push(`  permission prompt: ${ask.tool} (ask ${ask.id}; answer_permission), input: ${ask.input}`)
           // a session the person added a second agent to: read_session can be pointed at either
           const agentTabs = s.terminals.filter((x) => x.kind === 'agent')
           if (agentTabs.length > 1) for (const x of agentTabs) lines.push(`  agent tab: ${x.id} "${x.title}"`)

@@ -387,7 +387,8 @@ the parent and its conversation id. Limits: depth 3, 8 open children per session
 
 A child's permission prompt reaches its parent: when the waiting poll reports an ask on a child's
 tab, the renderer types a note into the parent's awake agent tab, once per ask, naming the tool,
-its argument and the ask id; `list_sessions` shows an open ask too. The note is held back while the
+the ask id and the tool's whole input as JSON (clipped past 8000 characters; the card's 300-character
+`detail` cut commands short for an agent that has to judge them); `list_sessions` shows an open ask too. The note is held back while the
 parent's own tab is blocked on a prompt (typed Enter would pick an option there) and sent on a
 later pass if the ask is still open. The person's card and the terminal prompt stay; the first
 answer wins.

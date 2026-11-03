@@ -108,7 +108,7 @@ describe('projectPulse', () => {
 })
 
 describe('shownPermission', () => {
-  const ask = { id: '100.7', tool: 'Bash', detail: 'ls' }
+  const ask = { id: '100.7', tool: 'Bash', detail: 'ls', input: '{"command":"ls"}' }
 
   it('shows the prompt while the CLI says it is blocked, or says nothing', () => {
     expect(shownPermission(ask, 'waiting')).toBe(ask)
