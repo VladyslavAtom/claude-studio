@@ -510,6 +510,7 @@ describe('the hook commands themselves', () => {
       child.stdout.setEncoding('utf8')
       child.stdout.on('data', (chunk: string) => (out += chunk))
       child.on('close', (code) => resolve({ out, code: code ?? -1 }))
+      child.stdin.on('error', () => undefined) // a hook that exits before reading closes the pipe
       child.stdin.end(stdin)
     })
   }
@@ -612,6 +613,7 @@ describe('the notify program itself', () => {
       child.stdout.setEncoding('utf8')
       child.stdout.on('data', (chunk: string) => (out += chunk))
       child.on('close', (code) => resolve({ out, code: code ?? -1 }))
+      child.stdin.on('error', () => undefined)
       child.stdin.end()
     })
   }
